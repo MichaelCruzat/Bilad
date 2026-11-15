@@ -78,12 +78,20 @@ the validation target). Also shipped: Kenya, Morocco, Bangladesh, Spain, Mexico.
 Vite + React 19 + TypeScript, Astryx UI, d3-geo + topojson for projection,
 hand-written SVG charts, Vitest. Static site on GitHub Pages; no backend, no key.
 
+## Revisions after independent review
+
+- Reframed around four case files with four different verdicts, for students and the public.
+- Added the independent witnesses (GISTEMP, GPCP), the BIC ramp-versus-jump screen and co-breaks, after Bangladesh's MERRA-2 record showed a 1997–98 jump.
+- Rainfall read as % of normal; data-poor cells excluded from the field test; season clock FDR-controlled; "years until significant" added.
+- Cut: globe, KPI tiles, compound hot–dry layer, change-point map layer, printable brief.
+- Pipeline moved to Python with an independent Python validator; statistics stay in one TypeScript engine shared by the summaries and the browser.
+
 ## Build stages (one commit + push each, branch `rebuild/national-atlas`)
 
 1. Statistics engine + tests ✅
-2. Data pipeline + six nations of real NASA POWER data
-3. App data layer, analysis worker, routing
-4. Atlas: map, layers, detail panel charts
-5. Home: globe, story, ledger
-6. Brief + method/validation
-7. Remove v1, docs, doctor, review
+2. Data pipeline + six nations of real NASA POWER data ✅
+3. Cross-examination, integrity screen, agreement verdicts ✅
+4. Casebook, case files, atlas, method ✅
+5. Python pipeline, independent validator, Makefile, CI on pull requests ✅
+6. README and submission notes ✅
+7. Independent product and code review, fixes

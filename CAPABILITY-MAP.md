@@ -1,13 +1,15 @@
 # Bilad Capability Map
 
-Bilad is an Earth System Trend Detective. The product turns open NASA Earth science data into a clear, explainable investigation: select a variable and region, inspect a long-enough time series, quantify the trend, and understand whether the signal passes a basic significance screen.
+Bilad is an Earth-system trend detective for any nation: it maps where NASA Earth-system variables have changed since 1981, tests whether each change is significant, and cross-examines it against an independent NASA record before calling it real.
 
-| Module | Responsibility | Depends on |
-| --- | --- | --- |
-| `platform-quality` | Responsive shell, accessibility, resilient loading, local fallback, GitHub Pages deployment | — |
-| `data-provenance` | Variable/region data model, NASA POWER retrieval, source citations, uncertainty and limitations | `platform-quality` |
-| `trend-explorer` | Variable and region selection, time-series chart, regression summary, Mann–Kendall screen | `data-provenance` |
-| `investigation-brief` | Plain-language verdict, guided example, method and limitation surfaces | `trend-explorer` |
-| `story-and-submission` | Challenge alignment, README, sources, AI disclosure, licensing, deployment | `data-provenance`, `investigation-brief` |
+| Module | Responsibility | Lives in | Depends on |
+| --- | --- | --- | --- |
+| `data-pipeline` | Nation registry, NASA POWER tiling and cache, boundaries and land fractions, Int16 packing, provenance | `pipeline/` (Python) | — |
+| `witnesses` | GISTEMP v4 and GPCP v2.3 sampled on each nation's cells and named regions | `pipeline/crosscheck.py` | `data-pipeline` |
+| `statistics` | Theil–Sen, Hamed–Rao Mann–Kendall, Benjamini–Hochberg, Pettitt, BIC step screen, emergence, agreement verdicts | `src/lib/stats.ts` | — |
+| `summaries` | National headlines in `index.json`, computed with the browser's engine | `scripts/summarize.ts` | `statistics`, `data-pipeline` |
+| `verification` | Independent Python recomputation of every headline; unit and integration tests | `pipeline/validate.py`, `tests/` | all |
+| `atlas` | Map, latitude profile, evidence panel, URL state | `src/pages/Atlas.tsx`, `src/viz/`, `src/features/` | `statistics`, `witnesses` |
+| `casebook` | Guided cases, home page, method page | `src/pages/`, `src/data/cases.ts` | `atlas` |
 
-Build order: `platform-quality` → `data-provenance` → `trend-explorer` → `investigation-brief` → `story-and-submission`.
+Build order: `data-pipeline` → `witnesses` → `statistics` → `summaries` → `verification` → `atlas` → `casebook`.

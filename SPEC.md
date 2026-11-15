@@ -1,6 +1,6 @@
 # Spec: Bilad — Earth System Trend Detective V1
 
-Status: approved / scope-corrected
+Status: superseded. V2 (national atlas, casebook, independent witnesses, Python pipeline) is described in [tasks/plan.md](tasks/plan.md) and the [README](README.md). This file records the V1 scope for history.
 
 ## Objective
 
