@@ -41,4 +41,3 @@ The live response is normalized in src/lib/nasaPower.ts. Invalid values and NASA
 ## AI disclosure
 
 AI assistance was used for development scaffolding, implementation support, test drafting, documentation, and review. Human responsibility remains with the project team for the final code, source interpretation, scientific language, and submission.
-

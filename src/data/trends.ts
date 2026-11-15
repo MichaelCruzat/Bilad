@@ -218,4 +218,3 @@ export function getRegion(regionId: RegionId): Region {
 export function getFallbackSeries(regionId: RegionId, variableId: VariableId): MonthlyObservation[] {
   return FALLBACK_SERIES[regionId][variableId].map(observation => ({...observation}));
 }
-

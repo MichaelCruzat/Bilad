@@ -56,4 +56,3 @@ describe('Bilad trend analysis', () => {
     expect(Number.isFinite(result.slopePerYear)).toBe(true);
   });
 });
-
