@@ -8,3 +8,7 @@ __pycache__/
 !.env.example
 .DS_Store
 *.local
+themes/*/preview.html
+themes/*/sheet.html
+themes/*/*.png
+themes/*/*.pictures.json

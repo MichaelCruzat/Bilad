@@ -1,0 +1,29 @@
+{
+  "name": "bilad",
+  "like": "neutral",
+  "mode": "dark-only",
+  "settings": [
+    {
+      "thing": "accent",
+      "value": "#e0a84f",
+      "source": "dial"
+    },
+    {
+      "thing": "neutral",
+      "value": "#31445a",
+      "source": "dial"
+    },
+    {
+      "thing": "type",
+      "value": "editorial",
+      "source": "dial"
+    },
+    {
+      "thing": "--color-text-disabled",
+      "value": "#9fb1c8",
+      "source": "token"
+    }
+  ],
+  "lifted": [],
+  "palette": "29cb16a90c9c9ba88c1106bdc3d793dcf26393ab4b5e197444ae75085b8a9e7e"
+}
