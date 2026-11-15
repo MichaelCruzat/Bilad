@@ -39,7 +39,7 @@ function getTieCounts(values: number[]): number[] {
   return Array.from(counts.values()).filter(count => count > 1);
 }
 
-function getAnnualMeans(observations: MonthlyObservation[]): number[] {
+export function getAnnualSeries(observations: MonthlyObservation[]): {year: number; value: number}[] {
   const annual = new Map<number, number[]>();
   observations.forEach(observation => {
     const values = annual.get(observation.year) ?? [];
@@ -49,7 +49,7 @@ function getAnnualMeans(observations: MonthlyObservation[]): number[] {
 
   return Array.from(annual.entries())
     .sort(([left], [right]) => left - right)
-    .map(([, values]) => values.reduce((sum, value) => sum + value, 0) / values.length);
+    .map(([year, values]) => ({year, value: values.reduce((sum, value) => sum + value, 0) / values.length}));
 }
 
 function mannKendall(values: number[]): Pick<TrendResult, 'mannKendallTau' | 'mannKendallZ' | 'pValue'> {
@@ -98,7 +98,7 @@ export function analyzeTrend(observations: MonthlyObservation[]): TrendResult {
   const residualVariance = clean.length > 2 ? residualSumSquares / (clean.length - 2) : 0;
   const standardError = sumXX === 0 ? 0 : Math.sqrt(residualVariance / sumXX);
   const margin = 1.96 * standardError;
-  const annualValues = getAnnualMeans(clean);
+  const annualValues = getAnnualSeries(clean).map(observation => observation.value);
   const mannKendallResult = mannKendall(annualValues.length >= 3 ? annualValues : y);
 
   return {

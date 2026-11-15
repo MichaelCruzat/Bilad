@@ -1,8 +1,17 @@
 import {describe, expect, it} from 'vitest';
 import {getFallbackSeries} from '../src/data/trends';
-import {analyzeTrend} from '../src/lib/trendAnalysis';
+import {analyzeTrend, getAnnualSeries} from '../src/lib/trendAnalysis';
 
 describe('Bilad trend analysis', () => {
+  it('aggregates available monthly values into chronological annual means for comparison', () => {
+    const annual = getAnnualSeries([
+      {date: '2001-02', year: 2001, month: 2, value: 8},
+      {date: '2000-02', year: 2000, month: 2, value: 6},
+      {date: '2000-01', year: 2000, month: 1, value: 2},
+    ]);
+
+    expect(annual).toEqual([{year: 2000, value: 4}, {year: 2001, value: 8}]);
+  });
   it('estimates an increasing linear trend and reports a significant monotonic signal', () => {
     const observations = Array.from({length: 60}, (_, index) => {
       const year = 2000 + Math.floor(index / 12);
