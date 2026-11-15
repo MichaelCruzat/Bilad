@@ -1,12 +1,20 @@
-"""Check that the static site's compressed assets stay within a small budget."""
+"""Check that the static site's compressed assets stay within a small budget.
+
+Pages are code-split, so two JavaScript figures matter: what a first visit
+downloads ("initial-js": the chunks index.html loads or preloads) and the
+total across every route ("js").
+"""
 
 import gzip
+import re
 import sys
 from pathlib import Path
 from typing import Mapping
 
 
-DEFAULT_LIMITS = {"js": 300 * 1024, "css": 55 * 1024}
+DEFAULT_LIMITS = {"initial-js": 240 * 1024, "js": 450 * 1024, "css": 55 * 1024}
+
+_ENTRY = re.compile(r'(?:src|href)="\./assets/([^"]+\.js)"')
 
 
 def measure_assets(build_directory: Path) -> dict[str, int]:
@@ -14,14 +22,20 @@ def measure_assets(build_directory: Path) -> dict[str, int]:
     if not assets_directory.is_dir():
         raise FileNotFoundError(f"Built assets not found in {assets_directory}")
 
+    def gz(path: Path) -> int:
+        return len(gzip.compress(path.read_bytes(), mtime=0))
+
     totals = {}
-    for extension in DEFAULT_LIMITS:
+    for extension in ("js", "css"):
         files = list(assets_directory.glob(f"*.{extension}"))
         if not files:
             raise FileNotFoundError(f"No .{extension} files found in {assets_directory}")
-        totals[extension] = sum(
-            len(gzip.compress(path.read_bytes(), mtime=0)) for path in files
-        )
+        totals[extension] = sum(gz(path) for path in files)
+
+    index = build_directory / "index.html"
+    if index.is_file():
+        entries = set(_ENTRY.findall(index.read_text(encoding="utf-8")))
+        totals["initial-js"] = sum(gz(assets_directory / name) for name in entries if (assets_directory / name).is_file())
     return totals
 
 
@@ -31,7 +45,7 @@ def over_budget(
     return {
         extension: (size, limits[extension])
         for extension, size in measured.items()
-        if size > limits[extension]
+        if extension in limits and size > limits[extension]
     }
 
 

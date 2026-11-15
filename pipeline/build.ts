@@ -248,9 +248,12 @@ function summarize(cfg: NationConfig, cells: {lat: number; lon: number; areaKm2:
   const base: [number, number] = [BASELINE[0] - FIRST_YEAR, BASELINE[1] - FIRST_YEAR];
   const stats: Record<string, unknown> = {};
   for (const v of VARIABLES as readonly VariableDef[]) {
+    const normals: number[] = [];
     const annual = cells.map(c => {
       const monthly = values.get(key(c.lat, c.lon))!.get(v.id)!;
-      return annualAnomalies(monthly, monthlyClimatology(monthly, base[0], base[1]));
+      const clim = monthlyClimatology(monthly, base[0], base[1]);
+      normals.push((clim.reduce((a, b) => a + b, 0) / 12) * v.display);
+      return annualAnomalies(monthly, clim);
     });
     const tests = annual.map(a => trendTest(years, a));
     const pStar = fdrThreshold(tests.map(t => t.p));
@@ -266,6 +269,7 @@ function summarize(cfg: NationConfig, cells: {lat: number; lon: number; areaKm2:
     const national = years.map((_, yi) => weightedMean(annual.map(a => a[yi]), weights));
     const a = analyzeSeries(years, national);
     stats[v.id] = {
+      normal: weightedMean(normals, weights),
       series: national.map(x => Math.round(x * v.display * 1000) / 1000),
       slopePerDecade: a.trend.slope * 10 * v.display,
       lowPerDecade: a.trend.slopeLow * 10 * v.display,

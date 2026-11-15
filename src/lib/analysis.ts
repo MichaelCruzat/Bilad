@@ -218,19 +218,20 @@ export function sensitivityFor(a: VariableAnalysis, cell: number | null): StartY
  * Per-calendar-month trend (display units per decade) for a cell or the
  * area-weighted nation. Answers "which part of the year is changing".
  */
-export function seasonalTrends(meta: NationMeta, grid: VariableGrid, window: Window, cell: number | null): TrendTest[] {
+export function seasonalTrends(meta: NationMeta, grid: VariableGrid, window: Window, cell: number | number[] | null): TrendTest[] {
   const def = getVariable(grid.variable);
   const years = yearsOf(window);
   const offset = window.from - meta.grid.firstYear;
   let monthly: Float64Array;
-  if (cell !== null) {
+  if (typeof cell === 'number') {
     monthly = Float64Array.from(grid.values.subarray(cell * grid.months, (cell + 1) * grid.months));
   } else {
-    const weights = cellWeights(meta);
+    const ids = cell ?? meta.cells.map((_, i) => i);
+    const weights = ids.map(c => meta.cells[c].areaKm2);
     monthly = new Float64Array(grid.months);
-    const column = new Float64Array(meta.cells.length);
+    const column = new Float64Array(ids.length);
     for (let m = 0; m < grid.months; m++) {
-      for (let c = 0; c < meta.cells.length; c++) column[c] = grid.values[c * grid.months + m];
+      ids.forEach((c, k) => (column[k] = grid.values[c * grid.months + m]));
       monthly[m] = weightedMean(column, weights);
     }
   }
@@ -275,4 +276,43 @@ export function subsetSeries(meta: NationMeta, a: VariableAnalysis, cells: numbe
   const w = cells.map(c => meta.cells[c].areaKm2);
   for (let yi = 0; yi < ny; yi++) out[yi] = weightedMean(cells.map(c => a.annual[c * ny + yi]), w);
   return out;
+}
+
+/**
+ * Area-weighted annual series in physical display units (for example mm/yr)
+ * over a subset of cells, rebuilt from each cell's normal and anomaly.
+ */
+export function subsetAbsolute(meta: NationMeta, a: VariableAnalysis, cells: number[]): Float64Array {
+  const relative = Boolean(getVariable(a.variable).relative);
+  const ny = a.years.length;
+  const out = new Float64Array(ny);
+  const w = cells.map(c => meta.cells[c].areaKm2);
+  for (let yi = 0; yi < ny; yi++) {
+    out[yi] = weightedMean(
+      cells.map(c => {
+        const v = a.annual[c * ny + yi];
+        return relative ? a.normal[c] * (1 + v / 100) : a.normal[c] + v;
+      }),
+      w,
+    );
+  }
+  return out;
+}
+
+/** West-most and east-most cell of every grid row within a latitude band. */
+export function rowEdges(meta: NationMeta, latMin: number, latMax: number): {west: number[]; east: number[]} {
+  const rows = new Map<number, number[]>();
+  meta.cells.forEach((c, i) => {
+    if (c.lat < latMin || c.lat > latMax) return;
+    rows.set(c.lat, [...(rows.get(c.lat) ?? []), i]);
+  });
+  const west: number[] = [];
+  const east: number[] = [];
+  rows.forEach(ids => {
+    if (ids.length < 3) return;
+    ids.sort((x, y) => meta.cells[x].lon - meta.cells[y].lon);
+    west.push(ids[0]);
+    east.push(ids[ids.length - 1]);
+  });
+  return {west, east};
 }

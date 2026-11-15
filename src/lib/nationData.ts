@@ -19,6 +19,9 @@ export type NationMeta = {
 };
 
 export type NationSummaryStat = {
+  /** Area-weighted 1991–2020 normal, display units. */
+  normal: number;
+  /** National annual anomaly, display units. */
   series: number[];
   slopePerDecade: number;
   lowPerDecade: number;
