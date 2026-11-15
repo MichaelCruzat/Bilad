@@ -94,6 +94,7 @@ type Props = {
 
 const PROFILE_W = 150;
 const PROFILE_GAP = 28;
+const LABEL_W = 40;
 
 export function NationMap({
   meta,
@@ -119,7 +120,7 @@ export function NationMap({
   const svgRef = useRef<SVGSVGElement>(null);
 
   const profileX0 = geo.width + PROFILE_GAP;
-  const totalW = showProfile ? profileX0 + PROFILE_W + 8 : geo.width;
+  const totalW = showProfile ? profileX0 + PROFILE_W + LABEL_W : geo.width;
   const totalH = geo.height + (showProfile ? 22 : 0);
   const values = layer === 'normal' ? analysis.normal : layer === 'change' ? analysis.slope : analysis.snr;
   const pLim = layer === 'normal' ? Math.max(Math.abs(coloring.min), Math.abs(coloring.max)) : coloring.limit;
@@ -276,10 +277,13 @@ export function NationMap({
           <text x={profileX0 + PROFILE_W} y={geo.height + 14} fontSize={9} fill={CHROME.muted} textAnchor="end">
             {layer === 'normal' ? 'high' : signed(pLim, pLim < 1 ? 2 : 1)}
           </text>
-          {[...new Set(rows.filter((_, k) => k % Math.max(1, Math.ceil(rows.length / 8)) === 0).map(r => r.lat))].map(l => (
-            <text key={l} x={totalW - 2} y={latToY(l) + 3} fontSize={8.5} fill={CHROME.faint} textAnchor="end">
-              {fmtLat(l).replace('.00', '')}
-            </text>
+          {latTicks(rows.map(r => r.lat)).map(l => (
+            <g key={l}>
+              <line x1={profileX0 + PROFILE_W + 4} x2={profileX0 + PROFILE_W + 8} y1={latToY(l)} y2={latToY(l)} stroke={CHROME.axis} />
+              <text x={totalW - 2} y={latToY(l) + 3} fontSize={9} fill={CHROME.faint} textAnchor="end">
+                {fmtLat(l).replace('.00', '')}
+              </text>
+            </g>
           ))}
         </g>
       )}
@@ -314,4 +318,15 @@ export function NationMap({
       )}
     </svg>
   );
+}
+
+/** Whole-degree latitude ticks at a step that gives about six labels. */
+function latTicks(lats: number[]): number[] {
+  if (!lats.length) return [];
+  const lo = Math.min(...lats);
+  const hi = Math.max(...lats);
+  const step = [1, 2, 5, 10].find(s => (hi - lo) / s <= 7) ?? 10;
+  const out: number[] = [];
+  for (let v = Math.ceil(lo / step) * step; v <= hi; v += step) out.push(v);
+  return out;
 }

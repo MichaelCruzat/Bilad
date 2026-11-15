@@ -1,5 +1,6 @@
 import {CHROME, ticks} from './chrome';
 import {num, signed} from '../lib/format';
+import {useWidth} from './useWidth';
 import type {StartYearPoint} from '../lib/stats';
 
 type Props = {points: StartYearPoint[]; unit: string; digits: number; title: string};
@@ -10,7 +11,7 @@ type Props = {points: StartYearPoint[]; unit: string; digits: number; title: str
  * keeps its sign and significance whichever start year you choose.
  */
 export function SensitivityChart({points, unit, digits, title}: Props) {
-  const W = 640;
+  const [ref, W] = useWidth<SVGSVGElement>(640);
   const H = 150;
   const m = {l: 40, r: 12, t: 10, b: 24};
   if (!points.length) return null;
@@ -31,8 +32,10 @@ export function SensitivityChart({points, unit, digits, title}: Props) {
     'Z';
   return (
     <svg
+      ref={ref}
       viewBox={`0 0 ${W} ${H}`}
       width="100%"
+      height={H}
       role="img"
       aria-label={`${title}. ${sig} of ${points.length} start years give a significant trend; ${sameSign} keep the same sign.`}
       style={{display: 'block'}}

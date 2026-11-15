@@ -19,6 +19,12 @@ export function pValue(p: number): string {
   return p < 0.01 ? p.toFixed(3) : p.toFixed(2);
 }
 
+/** "p < 0.001" or "p = 0.03", for running text. */
+export function pPhrase(p: number): string {
+  const v = pValue(p);
+  return v.startsWith('<') ? `p ${v}` : `p = ${v}`;
+}
+
 export function percent(fraction: number, digits = 0): string {
   return Number.isFinite(fraction) ? `${(fraction * 100).toFixed(digits)}%` : '—';
 }

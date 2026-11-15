@@ -18,7 +18,7 @@ import {useCrosscheck, useIndex, useNation, useVariable, type NationBundle} from
 import type {DataIndex} from '../lib/nationData';
 import {analyzeSeries, stepScreen, trendTest} from '../lib/stats';
 import {describe} from '../lib/narrative';
-import {digitsFor, num, percent, pValue, signed} from '../lib/format';
+import {digitsFor, num, percent, pPhrase, pValue, signed} from '../lib/format';
 import {atlasHref} from '../app/router';
 import {NationMap} from '../viz/NationMap';
 import {SeriesChart} from '../viz/SeriesChart';
@@ -152,8 +152,8 @@ function CaseBody({def, bundle, analysis, crosscheck, index}: {def: CaseDef; bun
           )}
           {compareTest && (
             <Text type="large">
-              Daytime highs in the {def.focus.kind === 'contrast' ? def.focus.labels[1].split(' (')[0].toLowerCase() : ''} changed by <Text weight="bold">{signed(result.trend.slope * 10, digits)} °C per decade</Text> (p {pValue(result.trend.p)}); at the coast, on the same rows, by{' '}
-              <Text weight="bold">{signed(compareTest.slope * 10, digits)} °C</Text> (p {pValue(compareTest.p)}).
+              Daytime highs in the {def.focus.kind === 'contrast' ? def.focus.labels[1].split(' (')[0].toLowerCase() : ''} changed by <Text weight="bold">{signed(result.trend.slope * 10, digits)} °C per decade</Text> ({pPhrase(result.trend.p)}); at the coast, on the same rows, by{' '}
+              <Text weight="bold">{signed(compareTest.slope * 10, digits)} °C</Text> ({pPhrase(compareTest.p)}).
             </Text>
           )}
         </VStack>
@@ -242,7 +242,7 @@ function CaseBody({def, bundle, analysis, crosscheck, index}: {def: CaseDef; bun
           <Heading level={3}>{step?.stepDominated ? `A jump in ${step.breakAt}, not a ramp` : 'Behaves like a gradual change'}</Heading>
           {step && (
             <Text color="secondary">
-              Best single step: {step.breakAt}, {signed(step.step, digits)} {chartUnit}. ΔBIC {num(step.deltaBic, 1)} (above 6 favours a jump); trend remaining once the step is removed: p {pValue(step.residualTrendP)}.
+              Best single step: {step.breakAt}, {signed(step.step, digits)} {chartUnit}. ΔBIC {num(step.deltaBic, 1)} (above 6 favours a jump); trend remaining once the step is removed: {pPhrase(step.residualTrendP)}.
             </Text>
           )}
           {breaks.length > 0 && (

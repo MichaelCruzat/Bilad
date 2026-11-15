@@ -22,8 +22,8 @@ import {EvidencePanel, type Selection} from '../features/EvidencePanel';
 type Props = {iso3: string; params: URLSearchParams};
 
 const LAYERS: {value: MapLayer; label: string}[] = [
-  {value: 'change', label: 'Change'},
-  {value: 'emergence', label: 'Emergence'},
+  {value: 'change', label: 'Trend'},
+  {value: 'emergence', label: 'S/N'},
   {value: 'normal', label: 'Normal'},
 ];
 
@@ -112,7 +112,7 @@ export function Atlas({iso3, params}: Props) {
           {layer === 'change'
             ? `Theil–Sen trend in ${unit} per decade.`
             : layer === 'emergence'
-              ? 'Change across the window divided by the typical year-to-year swing. Beyond ±1 the signal has emerged; beyond ±2 it is clear.'
+              ? 'Signal-to-noise: change across the window divided by the typical year-to-year swing. Beyond ±1 the signal has emerged; beyond ±2 it is clear.'
               : `The 1991–2020 average, for context: where the ${def.short.toLowerCase()} is high or low to begin with.`}
         </Text>
       </VStack>

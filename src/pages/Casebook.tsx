@@ -14,7 +14,7 @@ import {getVariable} from '../data/variables';
 import {cellsInBand, subsetAbsolute} from '../lib/analysis';
 import {agreement, trendTest, type Agreement} from '../lib/stats';
 import {VERDICT_TEXT, witnessSeries, type Crosscheck} from '../lib/evidence';
-import {useCrosscheck, useIndex, useNation, useVariable} from '../lib/hooks';
+import {useCrosscheck, useIndex, useMediaQuery, useNation, useVariable} from '../lib/hooks';
 import type {DataIndex} from '../lib/nationData';
 import {percent, signed, thousands} from '../lib/format';
 import {atlasHref} from '../app/router';
@@ -47,6 +47,7 @@ export function Casebook() {
 }
 
 function Hero() {
+  const compact = useMediaQuery('(max-width: 720px)');
   const nation = useNation('CHL');
   const meta = nation.status === 'ready' ? nation.data.meta : null;
   const rain = useVariable(meta, 'PRECTOTCORR', FULL);
@@ -69,7 +70,7 @@ function Hero() {
         <Text type="supporting" color="accent">
           BILAD · AN EARTH-SYSTEM TREND DETECTIVE · NASA SPACE APPS 2026
         </Text>
-        <Heading level={1} type="display-1">
+        <Heading level={1} type={compact ? 'display-2' : 'display-1'} textWrap="balance">
           Central Chile lost {share ? percent(share.share) : 'a third'} of its rain. Bangladesh did not cool.
         </Heading>
         <Text type="large" color="secondary">

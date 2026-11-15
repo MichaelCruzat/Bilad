@@ -4,7 +4,7 @@
  */
 import {getVariable} from '../data/variables';
 import {residualSd, yearsToSignificance, type SeriesAnalysis} from './stats';
-import {pValue, signed} from './format';
+import {pPhrase, signed} from './format';
 
 export type Finding = {headline: string; significance: string; emergence: string; record: string};
 
@@ -17,20 +17,23 @@ export function describe(variable: string, unit: string, a: SeriesAnalysis, year
   const dir = t.slope > 0 ? def.up : def.down;
   const perDecade = `${signed(t.slope * 10, digits)} ${unit} per decade`;
   const range = `95% range ${signed(t.slopeLow * 10, digits)} to ${signed(t.slopeHigh * 10, digits)}`;
+  // A straight-line total is meaningful for temperature; for a share of the
+  // normal it reads as "rain fell 70%", so relative variables omit it.
+  const totalText = unit === '% of normal' ? '' : `, ${signed(total, digits)} ${unit} across ${years[0]}–${years[years.length - 1]}`;
   const headline = Number.isFinite(t.slope)
-    ? `${def.short}: ${perDecade} (${range}), ${signed(total, digits)} ${unit} across ${years[0]}–${years[years.length - 1]}.`
+    ? `${def.short}: ${perDecade} (${range})${totalText}.`
     : `${def.short}: not enough data in this window.`;
 
   let significance: string;
   if (t.p < 0.05) {
-    significance = `The ${dir} trend is statistically significant after correcting for year-to-year persistence (Mann–Kendall, Hamed–Rao corrected p = ${pValue(t.p)}).`;
+    significance = `The ${dir} trend is statistically significant after correcting for year-to-year persistence (Mann–Kendall with Hamed–Rao correction, ${pPhrase(t.p)}).`;
   } else {
     const sd = residualSd(years, series, t.slope, t.intercept);
     const more = yearsToSignificance(t.slope, sd, t.n, t.inflation);
     const wait = Number.isFinite(more)
       ? ` At the current rate and variability it would take roughly ${more} more year${more === 1 ? '' : 's'} of record to tell apart from chance.`
       : '';
-    significance = `This is not yet distinguishable from natural year-to-year swings (corrected p = ${pValue(t.p)}).${wait}`;
+    significance = `This is not yet distinguishable from natural year-to-year swings (corrected ${pPhrase(t.p)}).${wait}`;
   }
 
   const s = Math.abs(a.snr);

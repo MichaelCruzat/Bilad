@@ -2,6 +2,7 @@ import {getVariable} from '../data/variables';
 import {divergingColor} from './color';
 import {CHROME, ticks} from './chrome';
 import {num} from '../lib/format';
+import {useWidth} from './useWidth';
 import type {SeriesAnalysis, StepScreen} from '../lib/stats';
 
 type Props = {
@@ -18,8 +19,6 @@ type Props = {
   height?: number;
 };
 
-const W = 640;
-
 /**
  * Annual anomalies as bars coloured by their own value (a stripe chart you
  * can read), the Theil–Sen line with its 95% fan, the independent witness as
@@ -27,8 +26,9 @@ const W = 640;
  */
 export function SeriesChart({years, series, analysis, variable, unit, witness, witnessLabel, step, title, height = 220}: Props) {
   const def = getVariable(variable);
+  const [ref, W] = useWidth<SVGSVGElement>(640);
   const H = height;
-  const m = {l: 40, r: 12, t: 14, b: 26};
+  const m = {l: 40, r: 12, t: 30, b: 26};
   const vals = Array.from(series).filter(Number.isFinite);
   const wVals = witness ? Array.from(witness).filter(Number.isFinite) : [];
   const all = [...vals, ...wVals, 0];
@@ -55,7 +55,7 @@ export function SeriesChart({years, series, analysis, variable, unit, witness, w
   const xt = years.filter(yr => yr % 10 === 0 || yr === years[0]);
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label={title} style={{display: 'block'}}>
+    <svg ref={ref} viewBox={`0 0 ${W} ${H}`} width="100%" height={H} role="img" aria-label={title} style={{display: 'block'}}>
       <title>{title}</title>
       {yt.map(v => (
         <g key={v}>
@@ -107,15 +107,15 @@ export function SeriesChart({years, series, analysis, variable, unit, witness, w
           </text>
         </g>
       )}
-      <g fontSize={10} fontFamily={CHROME.font}>
-        <line x1={W - m.r - 190} x2={W - m.r - 174} y1={m.t + 2} y2={m.t + 2} stroke={CHROME.ink} strokeWidth={1.8} strokeDasharray={trend.p < 0.05 ? undefined : '5 4'} />
-        <text x={W - m.r - 170} y={m.t + 5.5} fill={CHROME.muted}>
+      <g fontSize={11} fontFamily={CHROME.font}>
+        <line x1={m.l} x2={m.l + 16} y1={10} y2={10} stroke={CHROME.ink} strokeWidth={1.8} strokeDasharray={trend.p < 0.05 ? undefined : '5 4'} />
+        <text x={m.l + 21} y={14} fill={CHROME.muted}>
           {trend.p < 0.05 ? 'Sen trend' : 'Sen trend (not significant)'}
         </text>
         {witness && (
           <>
-            <line x1={W - m.r - 190} x2={W - m.r - 174} y1={m.t + 16} y2={m.t + 16} stroke={CHROME.witness} strokeWidth={1.6} />
-            <text x={W - m.r - 170} y={m.t + 19.5} fill={CHROME.muted}>
+            <line x1={m.l + (trend.p < 0.05 ? 96 : 190)} x2={m.l + (trend.p < 0.05 ? 112 : 206)} y1={10} y2={10} stroke={CHROME.witness} strokeWidth={1.6} />
+            <text x={m.l + (trend.p < 0.05 ? 117 : 211)} y={14} fill={CHROME.muted}>
               {witnessLabel ?? 'Independent record'}
             </text>
           </>

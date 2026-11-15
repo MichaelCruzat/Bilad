@@ -21,7 +21,7 @@ import {analyzeSeries, stepScreen, startYearSensitivity} from '../lib/stats';
 import {crossExamine, VERDICT_TEXT, witnessSeries, type Crosscheck} from '../lib/evidence';
 import type {NationMeta, VariableGrid} from '../lib/nationData';
 import {describe} from '../lib/narrative';
-import {digitsFor, lat, lon, percent, pValue, signed, num} from '../lib/format';
+import {digitsFor, lat, lon, percent, pPhrase, pValue, signed, num} from '../lib/format';
 import {SeriesChart} from '../viz/SeriesChart';
 import {SeasonClock} from '../viz/SeasonClock';
 import {SensitivityChart} from '../viz/SensitivityChart';
@@ -137,12 +137,12 @@ export function EvidencePanel({meta, grid, analysis, crosscheck, selection}: Pro
           <MetadataList columns={2}>
             <MetadataListItem label="MERRA-2 (claim)">
               <Text hasTabularNumbers>
-                {signed(exam.claim.slope * 10, digits)} [{signed(exam.claim.slopeLow * 10, digits)}, {signed(exam.claim.slopeHigh * 10, digits)}] · p {pValue(exam.claim.p)}
+                {signed(exam.claim.slope * 10, digits)} [{signed(exam.claim.slopeLow * 10, digits)}, {signed(exam.claim.slopeHigh * 10, digits)}] · {pPhrase(exam.claim.p)}
               </Text>
             </MetadataListItem>
             <MetadataListItem label={`${product.name.split(' ')[0]} (witness)`}>
               <Text hasTabularNumbers>
-                {signed(exam.witness.slope * 10, digits)} [{signed(exam.witness.slopeLow * 10, digits)}, {signed(exam.witness.slopeHigh * 10, digits)}] · p {pValue(exam.witness.p)}
+                {signed(exam.witness.slope * 10, digits)} [{signed(exam.witness.slopeLow * 10, digits)}, {signed(exam.witness.slopeHigh * 10, digits)}] · {pPhrase(exam.witness.p)}
               </Text>
             </MetadataListItem>
           </MetadataList>
