@@ -50,6 +50,8 @@ describe('router', () => {
       expect(atlas.params.get('v')).toBe('PRECTOTCORR');
     }
     expect(parseHash('#/method')).toEqual({page: 'method'});
+    const bare = parseHash('#/atlas');
+    expect(bare.page === 'atlas' && bare.iso3).toBe('CHL');
     expect(parseHash('#/nope').page).toBe('missing');
   });
 });
@@ -57,7 +59,7 @@ describe('router', () => {
 describe('casebook', () => {
   it('opens on a data-derived claim and lists every case', async () => {
     renderAt('#/');
-    expect(await screen.findByRole('heading', {level: 1, name: /Central Chile lost \d+% of its rain\. Bangladesh did not cool\./})).toBeInTheDocument();
+    expect(await screen.findByRole('heading', {level: 1, name: /Central Chile has had \d+–\d+% less rain since 2010\. Bangladesh did not cool\./}, {timeout: 5000})).toBeInTheDocument();
     for (const c of CASES) expect(screen.getByRole('link', {name: c.title})).toHaveAttribute('href', `#/case/${c.id}`);
     expect(await screen.findByRole('application', {name: /Chile: rainfall trend per decade/})).toBeInTheDocument();
   });
@@ -79,8 +81,24 @@ describe('case file', () => {
 
   it('reports the Chile megadrought deficit from both records', async () => {
     renderAt('#/case/chile-megadrought');
-    expect(await screen.findByText(/less rain/, {}, {timeout: 5000})).toBeInTheDocument();
+    expect(await screen.findByText(/^\d+% less rain$/, {}, {timeout: 5000})).toBeInTheDocument();
     expect(screen.getByText(/GPCP, on the same cells, shows \d+% less/)).toBeInTheDocument();
+  });
+});
+
+describe('navigation between cases', () => {
+  it('moves from a nation without regions to a regional case without crashing', async () => {
+    renderAt('#/case/kenya-half-the-warming');
+    expect(await screen.findByRole('heading', {name: /Real direction, uncertain size/}, {timeout: 5000})).toBeInTheDocument();
+    window.location.hash = '#/case/chile-megadrought';
+    window.dispatchEvent(new HashChangeEvent('hashchange'));
+    expect(await screen.findByRole('heading', {name: /Supported: a partly independent/}, {timeout: 5000})).toBeInTheDocument();
+  });
+
+  it('never shows an error banner while a nation is still loading', async () => {
+    renderAt('#/atlas/KEN');
+    expect(screen.queryByText(/Could not load/)).not.toBeInTheDocument();
+    expect(await screen.findByRole('heading', {level: 2, name: /Kenya, whole nation/}, {timeout: 5000})).toBeInTheDocument();
   });
 });
 

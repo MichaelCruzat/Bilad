@@ -45,9 +45,10 @@ NATIONS: tuple[Nation, ...] = (
         "4,300 km from the Atacama to Patagonia: one nation spanning almost every climate zone, and home to a well-documented megadrought.",
         clip=Clip(-56.5, -17, -76.5, -66),
         regions=(
-            Region("north", "Norte Grande (Atacama)", -28, -17),
+            # Contiguous on the 0.5° grid: every Chilean cell belongs to exactly one region.
+            Region("north", "Norte (Atacama and Coquimbo)", -29.75, -17),
             Region("central", "Central Chile", -38, -30),
-            Region("south", "Sur and Patagonia", -56.5, -38),
+            Region("south", "Sur and Patagonia", -56.5, -38.25),
         ),
     ),
     Nation("KEN", "404", "Kenya", "Equatorial East Africa, where the reanalysis sees only about half the warming that weather stations record."),

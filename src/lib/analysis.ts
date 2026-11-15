@@ -28,15 +28,17 @@ export const MIN_YEARS = 10;
 /** Unit in which trends of a variable are read. */
 export function trendUnit(variable: string): string {
   const def = getVariable(variable);
-  return def.relative ? '% of normal' : def.unit;
+  return def.relative ? '% of normal' : def.changeUnit ?? def.unit;
 }
 
 export type VariableAnalysis = {
   variable: string;
   window: Window;
   years: number[];
-  /** Annual anomalies vs 1991–2020, display units, `annual[cell * years.length + y]`. */
+  /** Annual values as mapped: anomaly vs 1991–2020 in display units, or % of the cell's normal for relative variables. `annual[cell * years.length + y]`. */
   annual: Float32Array;
+  /** Annual anomaly vs 1991–2020 in display units for every cell (never a percentage). */
+  anomaly: Float32Array;
   /** Mean annual value over the baseline, display units (the "normal"). */
   normal: Float32Array;
   /** Theil–Sen slope and 95% bounds, display units per decade. */
@@ -102,6 +104,7 @@ export function analyzeVariable(meta: NationMeta, grid: VariableGrid, window: Wi
   const offset = window.from - meta.grid.firstYear;
   const {annual: full, normal} = fullAnnual(meta, grid);
   const annual = new Float32Array(nCells * ny);
+  const anomaly = new Float32Array(nCells * ny);
   const slope = new Float32Array(nCells);
   const low = new Float32Array(nCells);
   const high = new Float32Array(nCells);
@@ -114,6 +117,7 @@ export function analyzeVariable(meta: NationMeta, grid: VariableGrid, window: Wi
   const minNormal = 0.1 * def.display;
   for (let c = 0; c < nCells; c++) {
     const raw = full[c].subarray(offset, offset + ny);
+    anomaly.set(raw, c * ny);
     const y = def.relative ? raw.map(v => (normal[c] >= minNormal ? (v / normal[c]) * 100 : NaN)) : raw;
     annual.set(y, c * ny);
     const t = trendTest(years, y);
@@ -169,6 +173,7 @@ export function analyzeVariable(meta: NationMeta, grid: VariableGrid, window: Wi
     window,
     years,
     annual,
+    anomaly,
     normal,
     slope,
     low,
@@ -269,12 +274,22 @@ export function cellsInBand(meta: NationMeta, latMin: number, latMax: number): n
   return meta.cells.flatMap((c, i) => (c.lat >= latMin && c.lat <= latMax ? [i] : []));
 }
 
-/** Area-weighted annual series over a subset of cells. */
+/**
+ * Area-weighted annual series over a subset of cells, built exactly like the
+ * national series (and like the witnesses): the weighted anomaly, divided by
+ * the weighted normal for relative variables. Every cell counts, including
+ * hyper-arid ones that cannot be mapped as a percentage.
+ */
 export function subsetSeries(meta: NationMeta, a: VariableAnalysis, cells: number[]): Float64Array {
+  const relative = Boolean(getVariable(a.variable).relative);
   const ny = a.years.length;
   const out = new Float64Array(ny);
   const w = cells.map(c => meta.cells[c].areaKm2);
-  for (let yi = 0; yi < ny; yi++) out[yi] = weightedMean(cells.map(c => a.annual[c * ny + yi]), w);
+  const normal = weightedMean(cells.map(c => a.normal[c]), w);
+  for (let yi = 0; yi < ny; yi++) {
+    const v = weightedMean(cells.map(c => a.anomaly[c * ny + yi]), w);
+    out[yi] = relative ? (v / normal) * 100 : v;
+  }
   return out;
 }
 
@@ -283,18 +298,11 @@ export function subsetSeries(meta: NationMeta, a: VariableAnalysis, cells: numbe
  * over a subset of cells, rebuilt from each cell's normal and anomaly.
  */
 export function subsetAbsolute(meta: NationMeta, a: VariableAnalysis, cells: number[]): Float64Array {
-  const relative = Boolean(getVariable(a.variable).relative);
   const ny = a.years.length;
   const out = new Float64Array(ny);
   const w = cells.map(c => meta.cells[c].areaKm2);
   for (let yi = 0; yi < ny; yi++) {
-    out[yi] = weightedMean(
-      cells.map(c => {
-        const v = a.annual[c * ny + yi];
-        return relative ? a.normal[c] * (1 + v / 100) : a.normal[c] + v;
-      }),
-      w,
-    );
+    out[yi] = weightedMean(cells.map(c => a.normal[c] + a.anomaly[c * ny + yi]), w);
   }
   return out;
 }

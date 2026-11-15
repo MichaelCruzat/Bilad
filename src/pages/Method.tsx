@@ -64,7 +64,7 @@ const BLOCKS: Block[] = [
   {
     title: 'Cross-examination',
     body: [
-      'Temperature is compared with GISTEMP v4 (250 km smoothing, land stations only); precipitation with GPCP v2.3 (gauges and satellites). Each witness is sampled at the centre of every Bilad cell and averaged with Bilad’s own weights, so the footprint is identical. The verdict compares direction, significance and overlap of the two 95% intervals: corroborated, same direction with a different size, weakly supported, not supported, contradicted, or no detectable trend.',
+      'Temperature is compared with GISTEMP v4 (250 km smoothing, land stations only); precipitation with GPCP v2.3 (gauges and satellites; originally developed at NASA Goddard, now distributed by NOAA). Witnesses are stored per grid box, so the atlas can cross-examine any selection, from the whole nation down to one cell. Each witness is sampled at the centre of every Bilad cell and averaged with Bilad’s own weights, so the footprint is identical. The verdict compares direction, significance and overlap of the two 95% intervals: corroborated, same direction with a different size, weakly supported, not supported, contradicted, or no detectable trend.',
       'The witnesses are coarser (2° and 2.5°) and are themselves estimates. GPCP and MERRA-2’s corrected precipitation both draw on rain gauges, so their agreement rules out a reanalysis artefact but not a problem shared by the gauges.',
     ],
   },
@@ -72,6 +72,7 @@ const BLOCKS: Block[] = [
 
 const REFS = [
   ['Mann (1945), Nonparametric tests against trend, Econometrica', 'https://doi.org/10.2307/1907187'],
+  ['Gilbert (1987), Statistical Methods for Environmental Pollution Monitoring, Van Nostrand Reinhold (book)', ''],
   ['Sen (1968), Estimates of the regression coefficient based on Kendall’s tau, JASA', 'https://doi.org/10.1080/01621459.1968.10480934'],
   ['Hamed & Rao (1998), A modified Mann–Kendall trend test for autocorrelated data, Journal of Hydrology', 'https://doi.org/10.1016/S0022-1694(97)00125-X'],
   ['Benjamini & Hochberg (1995), Controlling the false discovery rate, JRSS B', 'https://doi.org/10.1111/j.2517-6161.1995.tb02031.x'],
@@ -134,11 +135,15 @@ export function Method() {
         <VStack gap={2}>
           <Divider />
           <Heading level={2}>References</Heading>
-          {REFS.map(([label, url]) => (
-            <Link key={url} href={url}>
-              {label}
-            </Link>
-          ))}
+          {REFS.map(([label, url]) =>
+            url ? (
+              <Link key={url} href={url}>
+                {label}
+              </Link>
+            ) : (
+              <Text key={label}>{label}</Text>
+            ),
+          )}
         </VStack>
       </VStack>
     </LayoutContent>

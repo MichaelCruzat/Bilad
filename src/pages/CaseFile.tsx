@@ -13,14 +13,17 @@ import {Heading, Text} from '@astryxdesign/core/Text';
 import {CASES, getCase, type CaseDef} from '../data/cases';
 import {getVariable} from '../data/variables';
 import {cellsInBand, rowEdges, subsetAbsolute, subsetSeries, trendUnit, type VariableAnalysis} from '../lib/analysis';
-import {coBreaks, crossExamine, VERDICT_TEXT, witnessSeries, type Crosscheck} from '../lib/evidence';
-import {useCrosscheck, useIndex, useNation, useVariable, type NationBundle} from '../lib/hooks';
+import {coBreaks, crossExamine, INDEPENDENCE, loadWitness, PRODUCTS, VERDICT_TEXT, witnessSeries, type Crosscheck, type WitnessGrid} from '../lib/evidence';
+import {useAsync, useCrosscheck, useIndex, useNation, useVariable, type NationBundle} from '../lib/hooks';
 import type {DataIndex} from '../lib/nationData';
 import {analyzeSeries, stepScreen, trendTest} from '../lib/stats';
 import {describe} from '../lib/narrative';
 import {digitsFor, num, percent, pPhrase, pValue, signed} from '../lib/format';
 import {atlasHref} from '../app/router';
-import {NationMap} from '../viz/NationMap';
+import {NationMap, colorCells} from '../viz/NationMap';
+import {Legend} from '../viz/Legend';
+import {Card} from '@astryxdesign/core/Card';
+import {CHROME} from '../viz/chrome';
 import {SeriesChart} from '../viz/SeriesChart';
 
 const FULL = {from: 1981, to: 2024};
@@ -33,6 +36,7 @@ export function CaseFile({id}: {id: string}) {
   const data = useVariable(meta, def?.variable ?? 'T2M', FULL);
   const crosscheck = useCrosscheck();
   const index = useIndex();
+  const witnessGrid = useAsync(() => loadWitness(def?.iso3 ?? 'CHL'), [def?.iso3]);
 
   if (!def) {
     return (
@@ -41,8 +45,8 @@ export function CaseFile({id}: {id: string}) {
       </LayoutContent>
     );
   }
-  const ready = nation.status === 'ready' && data.status === 'ready' && crosscheck.status === 'ready' && index.status === 'ready';
-  const failed = [nation, data, crosscheck, index].find(s => s.status === 'error');
+  const ready = nation.status === 'ready' && data.status === 'ready' && crosscheck.status === 'ready' && index.status === 'ready' && witnessGrid.status === 'ready';
+  const failed = [nation, data, crosscheck, index, witnessGrid].find(s => s.status === 'error');
   return (
     <LayoutContent padding={8}>
       <VStack gap={8}>
@@ -63,7 +67,7 @@ export function CaseFile({id}: {id: string}) {
         {failed && failed.status === 'error' ? (
           <Banner status="error" title="Could not load the evidence" description={failed.error.message} endContent={<Button label="Retry" onClick={failed.retry} />} />
         ) : ready ? (
-          <CaseBody def={def} bundle={nation.data} analysis={data.data.analysis} crosscheck={crosscheck.data} index={index.data} />
+          <CaseBody def={def} bundle={nation.data} analysis={data.data.analysis} crosscheck={crosscheck.data} index={index.data} witnessGrid={witnessGrid.data} />
         ) : (
           <HStack gap={2} vAlign="center">
             <Spinner size="sm" />
@@ -75,7 +79,7 @@ export function CaseFile({id}: {id: string}) {
   );
 }
 
-function CaseBody({def, bundle, analysis, crosscheck, index}: {def: CaseDef; bundle: NationBundle; analysis: VariableAnalysis; crosscheck: Crosscheck; index: DataIndex}) {
+function CaseBody({def, bundle, analysis, crosscheck, index, witnessGrid}: {def: CaseDef; bundle: NationBundle; analysis: VariableAnalysis; crosscheck: Crosscheck; index: DataIndex; witnessGrid: WitnessGrid}) {
   const {meta, boundary} = bundle;
   const v = getVariable(def.variable);
   const unit = trendUnit(def.variable);
@@ -85,7 +89,8 @@ function CaseBody({def, bundle, analysis, crosscheck, index}: {def: CaseDef; bun
 
   const focus = useMemo(() => {
     if (def.focus.kind === 'region') {
-      const r = meta.regions.find(x => x.id === (def.focus as {region: string}).region)!;
+      const r = meta.regions.find(x => x.id === (def.focus as {region: string}).region);
+      if (!r) throw new Error(`Region ${(def.focus as {region: string}).region} is not defined for ${meta.iso3}`);
       const cells = cellsInBand(meta, r.latMin, r.latMax);
       return {name: r.name, cells, series: subsetSeries(meta, analysis, cells), region: r.id, compare: null as null | {cells: number[]; series: Float64Array}};
     }
@@ -107,8 +112,17 @@ function CaseBody({def, bundle, analysis, crosscheck, index}: {def: CaseDef; bun
   const witness = def.focus.kind === 'contrast' ? null : witnessSeries(crosscheck, meta.iso3, def.variable, FULL, focus.region);
   const exam = witness ? crossExamine(years, focus.series, witness) : null;
   const step = exam?.claimStep ?? stepScreen(years, focus.series);
-  const product = crosscheck.products[def.variable];
-  const breaks = coBreaks(index, meta.iso3);
+  const product = PRODUCTS[def.variable];
+  // Co-breaks only bear on a case when its own variable is one of the jumpers.
+  const breaks = coBreaks(index, meta.iso3).filter(b => b.variables.includes(def.variable));
+  const sharedBoxes = useMemo(() => {
+    if (!focus.compare || !witnessGrid.T2M) return null;
+    const box = witnessGrid.T2M.cellBox;
+    const east = focus.cells!.filter(c => !focus.compare!.cells.includes(c));
+    const pairs = focus.compare.cells.map((w, k) => box[w] === box[east[k]]);
+    return {same: pairs.filter(Boolean).length, total: pairs.length};
+  }, [focus, witnessGrid]);
+  const coloring = colorCells(analysis, 'change');
   const emphasis = focus.cells ? new Set(focus.cells) : null;
   const compareTest = focus.compare ? trendTest(years, focus.compare.series) : null;
 
@@ -166,8 +180,12 @@ function CaseBody({def, bundle, analysis, crosscheck, index}: {def: CaseDef; bun
             emphasis={emphasis}
             showProfile
             maxHeight={520}
+            unitLabel={`${unit} per decade`}
+            outlines={focus.compare ? [{cells: focus.compare.cells, color: CHROME.witness}, {cells: focus.cells!.filter(c => !focus.compare!.cells.includes(c)), color: CHROME.accent}] : []}
             title={`${meta.name}: ${v.short} trend per decade, 1981–2024${focus.cells ? `, ${focus.name} highlighted` : ''}`}
           />
+          <Legend variable={def.variable} layer="change" coloring={coloring} unit={unit} />
+          {focus.compare && <Text type="supporting">Outlined: coast cells (blue) and Andes cells (gold), one pair per grid row.</Text>}
         </VStack>
       </Grid>
 
@@ -187,11 +205,19 @@ function CaseBody({def, bundle, analysis, crosscheck, index}: {def: CaseDef; bun
           variable={def.variable}
           unit={chartUnit}
           witness={witness ?? focus.compare?.series ?? null}
-          witnessLabel={witness ? `${product.name.split(' (')[0]} (independent)` : focus.compare ? (def.focus as {labels: [string, string]}).labels[0] : undefined}
+          witnessLabel={witness ? `${product.name} (independent record)` : focus.compare ? (def.focus as {labels: [string, string]}).labels[0] : undefined}
           step={step}
           height={240}
           title={`${focus.name}: annual anomaly, ${chartUnit}, 1981–2024`}
         />
+        <Card variant="muted" padding={4}>
+          <VStack gap={1}>
+            <Text weight="semibold">How to read these numbers</Text>
+            <Text type="supporting">
+              The trend is the typical change per decade, estimated so that one extreme year cannot drag it. The 95% range is where the true trend probably lies; if it does not include zero, the direction is clear. The p-value is how often a trend this strong would appear by chance in a record with no real trend; below 0.05 is the usual bar, and Bilad uses a version that allows for dry or warm years clustering together.
+            </Text>
+          </VStack>
+        </Card>
       </VStack>
 
       <Grid columns={{minWidth: 320, max: 2}} gap={8}>
@@ -207,19 +233,20 @@ function CaseBody({def, bundle, analysis, crosscheck, index}: {def: CaseDef; bun
                 <Badge variant={TONE[verdict.tone]} label={verdict.label} />
               </HStack>
               <Text color="secondary">{verdict.plain}</Text>
+              <Text type="supporting">{INDEPENDENCE[def.variable]}</Text>
               <MetadataList columns={2}>
                 <MetadataListItem label={`MERRA-2, ${unit}/decade`}>
                   <Text hasTabularNumbers>
                     {signed(exam.claim.slope * 10, digits)} [{signed(exam.claim.slopeLow * 10, digits)}, {signed(exam.claim.slopeHigh * 10, digits)}]
                   </Text>
                 </MetadataListItem>
-                <MetadataListItem label={`${product.name.split(' ')[0]}, ${unit}/decade`}>
+                <MetadataListItem label={`${product.name}, ${unit}/decade`}>
                   <Text hasTabularNumbers>
                     {signed(exam.witness.slope * 10, digits)} [{signed(exam.witness.slopeLow * 10, digits)}, {signed(exam.witness.slopeHigh * 10, digits)}]
                   </Text>
                 </MetadataListItem>
                 <MetadataListItem label="p, MERRA-2">{pValue(exam.claim.p)}</MetadataListItem>
-                <MetadataListItem label={`p, ${product.name.split(' ')[0]}`}>{pValue(exam.witness.p)}</MetadataListItem>
+                <MetadataListItem label={`p, ${product.name}`}>{pValue(exam.witness.p)}</MetadataListItem>
               </MetadataList>
             </>
           ) : (
@@ -229,7 +256,8 @@ function CaseBody({def, bundle, analysis, crosscheck, index}: {def: CaseDef; bun
                 <Badge variant="neutral" label="Unwitnessed" />
               </HStack>
               <Text color="secondary">
-                The coast and mountain cells compared here sit about 1.5–2.5° of longitude apart. GISTEMP’s grid boxes are 2° wide and GPCP’s 2.5°, so each independent record blends both into one value. Bilad therefore gives no verdict here and relies on published station studies for context.
+                The coast and mountain cells compared here sit about 1.5–2.5° of longitude apart, while GISTEMP’s grid boxes are 2° wide.
+                {sharedBoxes ? ` In ${sharedBoxes.same} of ${sharedBoxes.total} rows the coast cell and the Andes cell fall in the same GISTEMP box, so the witness gives both the same value.` : ''} Bilad therefore gives no verdict here; published station studies are the context.
               </Text>
             </>
           )}
@@ -247,7 +275,7 @@ function CaseBody({def, bundle, analysis, crosscheck, index}: {def: CaseDef; bun
           )}
           {breaks.length > 0 && (
             <Text color="secondary">
-              Across all seven national {meta.name} series, {breaks.map(b => `${b.variables.length} jump within a year of ${b.year} (${b.variables.join(', ')})`).join('; ')}. Independent physical variables rarely change regime in the same year; a change in the observing system is a common cause.
+              Across {meta.name}’s seven national series, {breaks.map(b => `${b.variables.length} variables jump within a year of ${b.year} (${b.variables.join(', ')})`).join('; ')}. These variables are coupled inside the same model, so a shared jump is one clue, not proof, that something changed in the data fed to it.{exam?.artifactSuspected ? ' It matters here because the independent record does not show the jump.' : ''}
             </Text>
           )}
         </VStack>
@@ -286,9 +314,10 @@ function CaseBody({def, bundle, analysis, crosscheck, index}: {def: CaseDef; bun
 }
 
 function verdictHeadline(def: CaseDef, verdict?: string, artifact?: boolean): string {
-  if (!verdict) return 'A real contrast, resolved only by the reanalysis.';
+  if (!verdict) return 'A contrast in one dataset, with no witness at this scale.';
   if (artifact) return 'Not climate: a likely artefact of the dataset.';
-  if (verdict === 'corroborated') return 'Real: two independent records agree.';
+  if (verdict === 'corroborated')
+    return def.variable === 'PRECTOTCORR' ? 'Supported: a partly independent gauge-and-satellite record agrees.' : 'Real: an independent station record agrees.';
   if (verdict === 'same-direction') return 'Real direction, uncertain size.';
   return VERDICT_TEXT[verdict as keyof typeof VERDICT_TEXT].label;
 }

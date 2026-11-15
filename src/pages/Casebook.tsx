@@ -18,7 +18,8 @@ import {useCrosscheck, useIndex, useMediaQuery, useNation, useVariable} from '..
 import type {DataIndex} from '../lib/nationData';
 import {percent, signed, thousands} from '../lib/format';
 import {atlasHref} from '../app/router';
-import {NationMap} from '../viz/NationMap';
+import {NationMap, colorCells} from '../viz/NationMap';
+import {Legend} from '../viz/Legend';
 
 const FULL = {from: 1981, to: 2024};
 const TONE: Record<string, 'success' | 'warning' | 'error' | 'neutral'> = {success: 'success', warning: 'warning', error: 'error', neutral: 'neutral'};
@@ -29,7 +30,7 @@ export function Casebook() {
   return (
     <LayoutContent padding={8}>
       <VStack gap={10}>
-        <Hero />
+        <Hero crosscheck={crosscheck.status === 'ready' ? crosscheck.data : null} />
         <CaseList />
         <Method />
         {index.status === 'ready' && crosscheck.status === 'ready' ? (
@@ -46,7 +47,7 @@ export function Casebook() {
   );
 }
 
-function Hero() {
+function Hero({crosscheck}: {crosscheck: Crosscheck | null}) {
   const compact = useMediaQuery('(max-width: 720px)');
   const nation = useNation('CHL');
   const meta = nation.status === 'ready' ? nation.data.meta : null;
@@ -61,8 +62,22 @@ function Hero() {
       const v = rain.data.analysis.years.flatMap((y, i) => (y >= a && y <= b ? [abs[i]] : []));
       return v.reduce((s, x) => s + x, 0) / v.length;
     };
-    return {share: 1 - avg(2010, 2019) / avg(1981, 2009), cells: new Set(cells)};
-  }, [meta, central, rain]);
+    let witnessShare: number | null = null;
+    const w = crosscheck ? witnessSeries(crosscheck, 'CHL', 'PRECTOTCORR', FULL, 'central') : null;
+    if (w) {
+      const years = rain.data.analysis.years;
+      const wavg = (a: number, b: number) => {
+        const v = years.flatMap((y, i) => (y >= a && y <= b ? [w[i]] : []));
+        return v.reduce((s, x) => s + x, 0) / v.length;
+      };
+      witnessShare = 1 - (100 + wavg(2010, 2019)) / (100 + wavg(1981, 2009));
+    }
+    return {share: 1 - avg(2010, 2019) / avg(1981, 2009), witnessShare, cells: new Set(cells)};
+  }, [meta, central, rain, crosscheck]);
+  const range =
+    share && share.witnessShare !== null
+      ? `${percent(Math.min(share.share, share.witnessShare)).replace('%', '')}–${percent(Math.max(share.share, share.witnessShare))}`
+      : 'a quarter to a third';
 
   return (
     <Grid columns={{minWidth: 340, max: 2}} gap={10}>
@@ -70,11 +85,11 @@ function Hero() {
         <Text type="supporting" color="accent">
           BILAD · AN EARTH-SYSTEM TREND DETECTIVE · NASA SPACE APPS 2026
         </Text>
-        <Heading level={1} type={compact ? 'display-2' : 'display-1'} textWrap="balance">
-          Central Chile lost {share ? percent(share.share) : 'a third'} of its rain. Bangladesh did not cool.
+        <Heading level={1} type={compact ? 'display-3' : 'display-2'} textWrap="balance">
+          Central Chile has had {range} less rain since 2010. Bangladesh did not cool.
         </Heading>
         <Text type="large" color="secondary">
-          Both claims come out of the same NASA dataset, and both pass a standard significance test. Only one is true. Bilad maps 44 years of NASA Earth-system data across a nation, tests every trend properly, and cross-examines it against an independent NASA record before calling it real.
+          Both trends come out of the same NASA reanalysis, and both pass a standard significance test. Only one holds up against an independent record: rain gauges and satellites confirm Chile’s drought, while weather stations show Bangladesh warming. Bilad maps 44 years of NASA Earth-system data across a nation, tests every trend, and checks it against a second record before calling it real.
         </Text>
         <HStack gap={2} wrap="wrap">
           <Button label="Open case 01: Chile’s missing rain" variant="primary" href="#/case/chile-megadrought" />
@@ -92,6 +107,7 @@ function Hero() {
             emphasis={share?.cells ?? null}
             maxHeight={600}
             title="Chile: rainfall trend per decade 1981–2024, percent of normal, central Chile highlighted; dots mark cells significant after false-discovery control"
+            unitLabel="% of normal per decade"
           />
         ) : (
           <HStack gap={2} vAlign="center">
@@ -99,8 +115,9 @@ function Hero() {
             <Text color="secondary">Loading 382 Chilean grid cells…</Text>
           </HStack>
         )}
+        {rain.status === 'ready' && <Legend variable="PRECTOTCORR" layer="change" coloring={colorCells(rain.data.analysis, 'change')} unit="% of normal" />}
         <Text type="supporting">
-          Rainfall trend 1981–2024, % of the 1991–2020 normal per decade (brown drier, teal wetter); central Chile highlighted. Dots: significant after false-discovery control. Beside the map, each cell’s trend against latitude.
+          Rainfall trend 1981–2024 (brown drier, teal wetter), central Chile highlighted. Dots: significant after false-discovery control. Beside the map, each cell’s trend against latitude. The {range} range compares 2010–19 with 1981–2009 in MERRA-2 and GPCP.
         </Text>
       </VStack>
     </Grid>
@@ -218,20 +235,20 @@ function NationLedger({index, crosscheck}: {index: DataIndex; crosscheck: Crossc
     {key: 'merra', header: 'Warming, MERRA-2', align: 'end', width: proportional(1), renderCell: r => <Text hasTabularNumbers>{signed(r.merra, 2)} °C/dec</Text>},
     {key: 'gistemp', header: 'Warming, GISTEMP', align: 'end', width: proportional(1), renderCell: r => <Text hasTabularNumbers>{signed(r.gistemp, 2)} °C/dec</Text>},
     {key: 'verdict', header: 'Temperature verdict', width: proportional(1.4), renderCell: r => verdictCell(r.verdict)},
-    {key: 'rainVerdict', header: 'Rainfall verdict (vs GPCP)', width: proportional(1.4), renderCell: r => verdictCell(r.rainVerdict)},
+    {key: 'rainVerdict', header: 'Rainfall verdict (vs GPCP, partly independent)', width: proportional(1.5), renderCell: r => verdictCell(r.rainVerdict)},
   ];
   return (
     <VStack gap={4}>
       <VStack gap={1}>
         <Heading level={2}>Six nations, one pipeline</Heading>
         <Text color="secondary">
-          The same code builds every nation: boundary, grid, land weights, tests and cross-examination. Adding a country is one line in a registry and one command, so the ledger can grow to any nation NASA POWER covers.
+          The same code builds every nation: boundary, grid, land weights, tests and cross-examination. Six are shipped today. Adding a country is one line in a registry and one command, and NASA POWER covers the whole globe.
         </Text>
       </VStack>
       <Table data={rows} columns={columns} idKey="iso3" density="balanced" hasHover />
       <Grid columns={{minWidth: 300, max: 2}} gap={6}>
         <Text type="supporting">
-          National, area-weighted trends 1981–2024. The pattern matters: MERRA-2 matches stations in Chile and Mexico, runs slow in Kenya, Morocco and Spain, and reverses sign in Bangladesh, where its record jumps in 1997–98. That is why Bilad never shows a reanalysis trend without its witness.
+          National, area-weighted trends 1981–2024. MERRA-2 matches stations closely in Chile and Mexico. It warms more slowly than stations in Morocco and Spain (ranges still overlap) and in Kenya (they do not). It reverses sign in Bangladesh, where its record jumps in 1997–98. That is why Bilad shows a witness for temperature and rainfall wherever you look, and says so when a variable has none. Rainfall verdicts are against a partly independent record that shares rain gauges with MERRA-2.
         </Text>
         <VStack gap={1}>
           <Text type="supporting">Add a nation:</Text>

@@ -1,4 +1,5 @@
 import {useId} from 'react';
+import {VStack} from '@astryxdesign/core/Stack';
 import {getVariable} from '../data/variables';
 import {divergingColor, emergenceRamp} from './color';
 import {CHROME} from './chrome';
@@ -21,6 +22,7 @@ export function Legend({variable, layer, coloring, unit}: Props) {
   const caption =
     layer === 'change' ? `${unit} per decade` : layer === 'emergence' ? 'signal ÷ year-to-year noise' : `1991–2020 normal, ${def.unit}`;
   return (
+    <VStack maxWidth={320}>
     <svg viewBox="0 0 240 46" width="100%" role="img" aria-label={`Legend: ${caption}, from ${labels[0]} to ${labels[2]}`}>
       <defs>
         <linearGradient id={`lg-${id}`}>
@@ -39,5 +41,6 @@ export function Legend({variable, layer, coloring, unit}: Props) {
         {caption}
       </text>
     </svg>
+    </VStack>
   );
 }

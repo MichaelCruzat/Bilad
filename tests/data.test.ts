@@ -2,6 +2,9 @@ import {readFileSync} from 'node:fs';
 import {join} from 'node:path';
 import {describe, expect, it} from 'vitest';
 import {analyzeVariable, cellsInBand, subsetSeries} from '../src/lib/analysis';
+import {witnessForCells, type WitnessGrid} from '../src/lib/evidence';
+import {describe as narrate} from '../src/lib/narrative';
+import {analyzeSeries} from '../src/lib/stats';
 import {coBreaks, crossExamine, witnessSeries, type Crosscheck} from '../src/lib/evidence';
 import {decodeGrid, type DataIndex, type NationMeta} from '../src/lib/nationData';
 
@@ -30,6 +33,39 @@ describe('shipped data', () => {
       const a = analyzeVariable(meta, grid, FULL);
       expect(a.national.slopeDecade).toBeCloseTo(n.stats.T2M.slopePerDecade, 2);
       expect(a.areaUp).toBeCloseTo(n.stats.T2M.areaUp, 1);
+    }
+  });
+});
+
+describe('consistency', () => {
+  it('a subset covering every cell reproduces the national series, for rainfall too', () => {
+    const {meta, grid} = load('CHL', 'PRECTOTCORR');
+    const a = analyzeVariable(meta, grid, FULL);
+    const all = meta.cells.map((_, i) => i);
+    const sub = subsetSeries(meta, a, all);
+    a.national.series.forEach((v, i) => expect(sub[i]).toBeCloseTo(v, 6));
+  });
+
+  it('per-cell witnesses aggregate to the shipped national witness', () => {
+    for (const iso3 of ['CHL', 'BGD', 'MEX']) {
+      const meta: NationMeta = JSON.parse(readFileSync(join(DATA, 'nations', iso3, 'meta.json'), 'utf8'));
+      const w: WitnessGrid = JSON.parse(readFileSync(join(DATA, 'nations', iso3, 'witness.json'), 'utf8'));
+      const weights = meta.cells.map(c => c.areaKm2);
+      for (const v of ['T2M', 'PRECTOTCORR']) {
+        const mine = witnessForCells(w, v, weights, meta.cells.map((_, i) => i), FULL)!;
+        const shipped = witnessSeries(xc, iso3, v, FULL)!;
+        shipped.forEach((x, i) => expect(Math.abs(mine[i] - x)).toBeLessThan(v === 'T2M' ? 0.002 : 0.05));
+      }
+    }
+  });
+
+  it('never tells a reader a non-significant trend needs zero more years', () => {
+    const {meta, grid} = load('CHL', 'T2M');
+    const a = analyzeVariable(meta, grid, FULL);
+    for (let c = 0; c < meta.cells.length; c++) {
+      const series = Float64Array.from(a.annual.subarray(c * 44, (c + 1) * 44));
+      const text = narrate('T2M', '°C', analyzeSeries(a.years, series), a.years, series).significance;
+      expect(text).not.toMatch(/\b0 more years/);
     }
   });
 });

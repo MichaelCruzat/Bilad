@@ -5,21 +5,31 @@ import {loadCrosscheck, type Crosscheck} from './evidence';
 
 export type Async<T> = {status: 'loading'} | {status: 'error'; error: Error; retry: () => void} | {status: 'ready'; data: T};
 
-export function useAsync<T>(load: () => Promise<T>, deps: unknown[]): Async<T> {
-  const [state, setState] = useState<Async<T>>({status: 'loading'});
+type Stored<T> = {key: string; state: Async<T>};
+
+/**
+ * Run `load` whenever `deps` change. State is tagged with the deps it was
+ * loaded for, so a render with new deps never sees the previous result
+ * (which once paired one nation's data with another nation's page).
+ * Pass `enabled = false` to stay in the loading state without calling `load`.
+ */
+export function useAsync<T>(load: () => Promise<T>, deps: unknown[], enabled = true): Async<T> {
+  const key = JSON.stringify(deps);
+  const [stored, setStored] = useState<Stored<T>>({key: '', state: {status: 'loading'}});
   const [attempt, setAttempt] = useState(0);
   useEffect(() => {
+    if (!enabled) return;
     let live = true;
-    setState({status: 'loading'});
     load().then(
-      data => live && setState({status: 'ready', data}),
-      error => live && setState({status: 'error', error: error as Error, retry: () => setAttempt(a => a + 1)}),
+      data => live && setStored({key, state: {status: 'ready', data}}),
+      error => live && setStored({key, state: {status: 'error', error: error as Error, retry: () => setAttempt(a => a + 1)}}),
     );
     return () => {
       live = false;
     };
-  }, [...deps, attempt]);
-  return state;
+    // `load` is recreated every render; `key` captures what it depends on.
+  }, [key, attempt, enabled]);
+  return enabled && stored.key === key ? stored.state : {status: 'loading'};
 }
 
 export const useIndex = () => useAsync<DataIndex>(loadIndex, []);
@@ -40,17 +50,16 @@ const analysisCache = new Map<string, VariableAnalysis>();
 export function useVariable(meta: NationMeta | null, variable: string, window: Window): Async<{grid: VariableGrid; analysis: VariableAnalysis}> {
   const key = meta ? `${meta.iso3}:${variable}:${window.from}-${window.to}` : '';
   return useAsync(async () => {
-    if (!meta) throw new Error('No nation loaded');
-    const grid = await loadGrid(meta, variable);
+    const grid = await loadGrid(meta!, variable);
     let analysis = analysisCache.get(key);
     if (!analysis) {
       // Yield so the loading state can paint before the synchronous analysis.
       await new Promise(r => setTimeout(r, 0));
-      analysis = analyzeVariable(meta, grid, window);
+      analysis = analyzeVariable(meta!, grid, window);
       analysisCache.set(key, analysis);
     }
     return {grid, analysis};
-  }, [key]);
+  }, [key], meta !== null);
 }
 
 export function useMediaQuery(query: string): boolean {

@@ -12,7 +12,8 @@ import {Heading, Text} from '@astryxdesign/core/Text';
 import {Banner} from '@astryxdesign/core/Banner';
 import {FIRST_YEAR, LAST_YEAR, VARIABLES, getVariable} from '../data/variables';
 import {trendUnit} from '../lib/analysis';
-import {useCrosscheck, useIndex, useMediaQuery, useNation, useVariable} from '../lib/hooks';
+import {useAsync, useIndex, useMediaQuery, useNation, useVariable} from '../lib/hooks';
+import {loadWitness} from '../lib/evidence';
 import {useAtlasParams} from '../app/router';
 import {lat, lon, signed, num} from '../lib/format';
 import {NationMap, colorCells, type MapLayer} from '../viz/NationMap';
@@ -36,7 +37,7 @@ export function Atlas({iso3, params}: Props) {
   const set = useAtlasParams(iso3, params);
   const index = useIndex();
   const nation = useNation(iso3);
-  const crosscheck = useCrosscheck();
+  const witness = useAsync(() => loadWitness(iso3), [iso3]);
   const narrow = useMediaQuery('(max-width: 1100px)');
 
   const variable = VARIABLES.some(v => v.id === params.get('v')) ? params.get('v')! : 'T2M';
@@ -185,6 +186,7 @@ export function Atlas({iso3, params}: Props) {
             onSelect={c => set({cell: c})}
             onHover={setHover}
             band={band}
+            unitLabel={`${unit} per decade`}
             onBand={b => set({band: b ? b.join(',') : null, region: null, cell: null})}
             title={`${meta!.name}: ${def.short} ${layer === 'normal' ? '1991–2020 normal' : layer === 'change' ? `trend per decade, ${from}–${to}` : `signal-to-noise, ${from}–${to}`}`}
           />
@@ -207,7 +209,7 @@ export function Atlas({iso3, params}: Props) {
         meta={meta}
         grid={data.data.grid}
         analysis={data.data.analysis}
-        crosscheck={crosscheck.status === 'ready' ? crosscheck.data : null}
+        witnessGrid={witness.status === 'ready' ? witness.data : null}
         selection={selection}
       />
     ) : null;

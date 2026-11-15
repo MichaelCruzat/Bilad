@@ -14,7 +14,7 @@ The challenge asks what is changing, where, by how much, and whether the change 
 
 | Case | Claim tested | Reanalysis (MERRA-2) | Independent witness | Verdict |
 |---|---|---|---|---|
-| 01 Central Chile's missing rain | Rainfall fell after 2010 | −16.9% of normal per decade; 34% less rain in 2010–19 than 1981–2009 | GPCP: −11.2% per decade; 23% less | **Corroborated** |
+| 01 Central Chile's missing rain | Rainfall fell after 2010 | −17.1% of normal per decade; 34% less rain in 2010–19 than 1981–2009 | GPCP (partly independent: shares rain gauges): −11.2% per decade; 23% less | **Corroborated** |
 | 02 Two Chiles | Coast and Andes warm differently | Daytime highs: coast −0.01 °C/decade (p = 0.87), Andes +0.29 (p < 0.001) | Witness grids (2°) are wider than Chile | **No witness at this scale** |
 | 03 Bangladesh's phantom cooling | Bangladesh cooled since 1981 | −0.19 °C/decade, p = 0.03, 80% of land "significant"; behaves as a jump in 1997 (ΔBIC 18.7) | GISTEMP: +0.35 °C/decade | **Contradicted: a likely dataset artefact** |
 | 04 Kenya | Kenya is warming | +0.18 °C/decade | GISTEMP: +0.34 °C/decade | **Same direction, different size** |
@@ -23,13 +23,13 @@ Case 03 is the reason Bilad exists. A tool that stopped at a significant Mann–
 
 ## The product
 
-- **Casebook** (`#/`): opens on the two opposite claims and a live map of Chile's rainfall trend, then lists the case files, the testing chain and a six-nation table of verdicts.
+- **Casebook** (`#/`): opens on two claims from the same reanalysis ("Central Chile has had 23–34% less rain since 2010. Bangladesh did not cool.") beside a live map of Chile's rainfall trend, then lists the case files, the testing chain and a six-nation table of verdicts.
 - **Case files** (`#/case/<id>`): claim → evidence → cross-examination → integrity screen → verdict, with sources. Every number is computed in the browser from the shipped data.
 - **Atlas** (`#/atlas/<ISO3>`): any shipped nation and any of seven variables.
   - Each grid cell coloured by its trend, its signal-to-noise ratio, or its 1991–2020 normal.
   - Cells that survive false-discovery control are stippled.
   - A latitude profile beside the map shares its vertical axis; drag on it to define a band.
-  - The evidence panel shows the whole nation, a band, or a single cell. It includes the annual series with its Theil–Sen trend, the independent witness, the ramp-or-jump screen, a month-by-month "season clock", start-year sensitivity, the full test record and every NASA POWER request URL.
+  - The evidence panel shows the whole nation, a band, or a single cell. It includes the annual series with its Theil–Sen trend, the independent witness for that exact selection (temperature and rainfall), the ramp-or-jump screen, a month-by-month "season clock", start-year sensitivity, the full test record and every NASA POWER request URL.
   - All atlas state lives in the URL, so any view can be shared.
 - **Method** (`#/method`): formulas, assumptions, limitations and references.
 
@@ -44,7 +44,7 @@ Shipped nations: Chile (pilot), Bangladesh, Kenya, Mexico, Morocco and Spain. 1,
 | Test each cell | Theil–Sen slope with Gilbert (1987) interval; Mann–Kendall with Hamed–Rao (1998) correction for serial correlation | Outliers; persistence posing as a trend |
 | Test the map | Benjamini–Hochberg false-discovery control, α = 0.10 (Wilks 2016) | Hundreds of tests producing "significant" cells by chance |
 | Screen integrity | Straight line versus single step compared by BIC; co-breaks across a nation's seven variables | A change in satellites or processing posing as climate |
-| Cross-examine | Same footprint in GISTEMP v4 (stations) and GPCP v2.3 (gauges + satellites) | Trusting a single dataset |
+| Cross-examine | Same footprint in GISTEMP v4 (stations) and GPCP v2.3 (gauges + satellites, partly independent), for any selection down to one cell | Trusting a single dataset |
 
 For trends that are not yet significant, Bilad estimates how many more years of record would be needed at the current rate and noise.
 
@@ -52,7 +52,7 @@ For trends that are not yet significant, Bilad estimates how many more years of 
 
 ```
 NASA POWER regional API ──► pipeline/ (Python) ──► public/data/nations/<ISO3>/*.i16, meta.json, boundary.json
-GISTEMP v4, GPCP v2.3   ──► pipeline/crosscheck.py ──► public/data/crosscheck.json
+GISTEMP v4, GPCP v2.3   ──► pipeline/crosscheck.py ──► public/data/crosscheck.json, nations/<ISO3>/witness.json
                                          │
                  scripts/summarize.ts ◄──┘  uses src/lib/stats.ts ──► public/data/index.json
                                          │

@@ -24,6 +24,8 @@ export type VariableDef = {
   /** Number of decimals for a per-decade change in display units. */
   digits: number;
   description: string;
+  /** Unit for a change when it differs from the level's unit (percentage points). */
+  changeUnit?: string;
   /** Map and headline trends as % of the 1991–2020 normal per decade. */
   relative?: boolean;
   /** Plain words for an increase / decrease. */
@@ -100,6 +102,7 @@ export const VARIABLES = [
     sphere: 'Land surface',
     sourceUnit: '0–1',
     unit: '%',
+    changeUnit: 'pts',
     display: 100,
     scale: 0.0001,
     palette: 'moisture',
@@ -115,6 +118,7 @@ export const VARIABLES = [
     sphere: 'Atmosphere',
     sourceUnit: '%',
     unit: '%',
+    changeUnit: 'pts',
     display: 1,
     scale: 0.01,
     palette: 'moisture',

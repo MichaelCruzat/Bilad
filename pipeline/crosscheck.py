@@ -44,36 +44,57 @@ def nearest(axis: np.ndarray, value: float, periodic: bool = False) -> int:
     return int(np.argmin(diff))
 
 
-def national_series(field, ym, lats, lons, cells, lon360: bool, fill_check) -> tuple[list, list]:
-    """Annual national mean (area-weighted, renormalised over cells with data) and coverage."""
-    li = np.array([nearest(lats, c["lat"]) for c in cells])
-    lo = np.array([nearest(lons, (c["lon"] % 360) if lon360 else c["lon"], periodic=True) for c in cells])
-    w = np.array([c["areaKm2"] for c in cells], dtype=float)
-    pairs = sorted(set(zip(li.tolist(), lo.tolist())))
-    pair_index = {p: k for k, p in enumerate(pairs)}
-    cell_to_pair = np.array([pair_index[(a, b)] for a, b in zip(li.tolist(), lo.tolist())])
-    pi = np.array([p[0] for p in pairs])
-    pj = np.array([p[1] for p in pairs])
+def sample_cells(field, ym, lats, lons, cells, lon360: bool, fill_check) -> tuple[np.ndarray, np.ndarray]:
+    """Annual means of every product grid box that contains a Bilad cell centre.
 
-    out, coverage = [], []
-    for year in range(FIRST, LAST + 1):
+    Returns (years x boxes array, NaN where fewer than MIN_MONTHS months) and,
+    for each Bilad cell, the index of the box that contains it.
+    """
+    li = [nearest(lats, c["lat"]) for c in cells]
+    lo = [nearest(lons, (c["lon"] % 360) if lon360 else c["lon"], periodic=True) for c in cells]
+    boxes = sorted(set(zip(li, lo)))
+    box_index = {b: k for k, b in enumerate(boxes)}
+    cell_to_box = np.array([box_index[b] for b in zip(li, lo)])
+    bi = np.array([b[0] for b in boxes])
+    bj = np.array([b[1] for b in boxes])
+    annual = np.full((LAST - FIRST + 1, len(boxes)), np.nan)
+    for row, year in enumerate(range(FIRST, LAST + 1)):
         idx = [k for k, (y, _) in enumerate(ym) if y == year]
         if not idx:
-            out.append(None)
-            coverage.append(0.0)
             continue
-        block = np.ma.filled(field[idx][:, pi, pj].astype(float), np.nan)  # months x pairs
+        block = np.ma.filled(field[idx][:, bi, bj].astype(float), np.nan)  # months x boxes
         block[~fill_check(block)] = np.nan
         valid = np.sum(np.isfinite(block), axis=0)
         with np.errstate(invalid="ignore"):
             sums = np.nansum(block, axis=0)
-        annual_pair = np.where(valid >= MIN_MONTHS, sums / np.maximum(valid, 1), np.nan)
-        annual_cell = annual_pair[cell_to_pair]
-        ok = np.isfinite(annual_cell)
+        annual[row] = np.where(valid >= MIN_MONTHS, sums / np.maximum(valid, 1), np.nan)
+    return annual, cell_to_box
+
+
+def aggregate(annual: np.ndarray, cell_to_box: np.ndarray, cells: list[dict]) -> tuple[list, list]:
+    """Area-weighted mean over cells (renormalised over cells with data) and coverage per year."""
+    w = np.array([c["areaKm2"] for c in cells], dtype=float)
+    out, coverage = [], []
+    for row in annual:
+        values = row[cell_to_box]
+        ok = np.isfinite(values)
         cov = float(w[ok].sum() / w.sum())
         coverage.append(round(cov, 3))
-        out.append(round(float(np.sum(annual_cell[ok] * w[ok]) / w[ok].sum()), 4) if cov >= 0.5 else None)
+        out.append(round(float(np.sum(values[ok] * w[ok]) / w[ok].sum()), 4) if cov >= 0.5 else None)
     return out, coverage
+
+
+def national_series(field, ym, lats, lons, cells, lon360: bool, fill_check) -> tuple[list, list]:
+    annual, cell_to_box = sample_cells(field, ym, lats, lons, cells, lon360, fill_check)
+    return aggregate(annual, cell_to_box, cells)
+
+
+def box_payload(annual: np.ndarray, cell_to_box: np.ndarray) -> dict:
+    """Compact per-cell witness: one annual series per product box plus each cell's box."""
+    return {
+        "boxes": [[None if not np.isfinite(v) else round(float(v), 3) for v in annual[:, k]] for k in range(annual.shape[1])],
+        "cellBox": cell_to_box.tolist(),
+    }
 
 
 def run(gistemp: Path, gpcp: Path, data: Path) -> None:
@@ -142,6 +163,16 @@ def run(gistemp: Path, gpcp: Path, data: Path) -> None:
                 "PRECTOTCORR": {"series": rp, "coverage": rpc},
             }
         result["nations"][iso] = entry
+        gis_annual, gis_map = sample_cells(
+            gis_field, gis_ym, gis.variables["lat"][:], gis.variables["lon"][:], cells, False,
+            lambda b: np.isfinite(b) & (np.abs(b) < 50),
+        )
+        gp_annual, gp_map = sample_cells(
+            gp_field, gp_ym, gp.variables["lat"][:], gp.variables["lon"][:], cells, True,
+            lambda b: np.isfinite(b) & (b >= 0) & (b < 200),
+        )
+        witness = {"firstYear": FIRST, "lastYear": LAST, "T2M": box_payload(gis_annual, gis_map), "PRECTOTCORR": box_payload(gp_annual, gp_map)}
+        (data / "nations" / iso / "witness.json").write_text(json.dumps(witness, separators=(",", ":")))
         print(f"{iso}: GISTEMP years {sum(v is not None for v in t_series)}, GPCP years {sum(v is not None for v in p_series)}")
 
     (data / "crosscheck.json").write_text(json.dumps(result))

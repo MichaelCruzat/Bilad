@@ -89,6 +89,10 @@ type Props = {
   emphasis?: ReadonlySet<number> | null;
   showProfile?: boolean;
   maxHeight?: number;
+  /** Unit caption under the latitude profile, e.g. "°C per decade". */
+  unitLabel?: string;
+  /** Cell groups drawn with a coloured outline (for contrasts). */
+  outlines?: {cells: number[]; color: string}[];
   title: string;
 };
 
@@ -110,6 +114,8 @@ export function NationMap({
   emphasis = null,
   showProfile = true,
   maxHeight = 620,
+  unitLabel,
+  outlines = [],
   title,
 }: Props) {
   const clipId = useId().replace(/:/g, '');
@@ -121,7 +127,7 @@ export function NationMap({
 
   const profileX0 = geo.width + PROFILE_GAP;
   const totalW = showProfile ? profileX0 + PROFILE_W + LABEL_W : geo.width;
-  const totalH = geo.height + (showProfile ? 22 : 0);
+  const totalH = geo.height + (showProfile ? 34 : 0);
   const values = layer === 'normal' ? analysis.normal : layer === 'change' ? analysis.slope : analysis.snr;
   const pLim = layer === 'normal' ? Math.max(Math.abs(coloring.min), Math.abs(coloring.max)) : coloring.limit;
   const px = (v: number) =>
@@ -147,23 +153,25 @@ export function NationMap({
     );
   }, [geo, analysis, showSignificance, layer]);
 
+  // The profile is a pure latitude axis (along the central meridian), so dots,
+  // the zonal line and the brush all agree even where parallels curve on the map.
+  const yToLat = (y: number) => geo.projection.invert!([geo.width / 2, y])![1];
+  const latToY = (l: number) => geo.projection([geo.projection.invert!([geo.width / 2, 0])![0], l])![1];
+
   // Zonal (row) means, area-weighted, for the profile line.
   const rows = useMemo(() => {
-    const byLat = new Map<number, {sum: number; w: number; y: number}>();
+    const byLat = new Map<number, {sum: number; w: number}>();
     meta.cells.forEach((c, i) => {
       const v = values[i];
       if (!Number.isFinite(v)) return;
-      const row = byLat.get(c.lat) ?? {sum: 0, w: 0, y: 0};
+      const row = byLat.get(c.lat) ?? {sum: 0, w: 0};
       row.sum += v * c.areaKm2;
       row.w += c.areaKm2;
-      row.y = geo.projection([geo.projection.invert!([geo.width / 2, 0])![0], c.lat])![1];
       byLat.set(c.lat, row);
     });
-    return [...byLat.entries()].sort((a, b) => b[0] - a[0]).map(([latV, r]) => ({lat: latV, mean: r.sum / r.w, y: r.y}));
-  }, [meta, values, geo]);
+    return [...byLat.entries()].sort((a, b) => b[0] - a[0]).map(([latV, r]) => ({lat: latV, mean: r.sum / r.w}));
+  }, [meta, values]);
 
-  const yToLat = (y: number) => geo.projection.invert!([geo.width / 2, y])![1];
-  const latToY = (l: number) => geo.projection([geo.projection.invert!([geo.width / 2, 0])![0], l])![1];
 
   const eventCell = (e: PointerEvent<SVGElement>) => {
     const i = (e.target as SVGElement).getAttribute('data-i');
@@ -248,6 +256,9 @@ export function NationMap({
         {stipple}
       </g>
       <path d={geo.boundaryPath} fill="none" stroke={CHROME.muted} strokeOpacity={0.55} strokeWidth={0.8} pointerEvents="none" />
+      {outlines.map(group =>
+        group.cells.map(c => <path key={`${group.color}-${c}`} d={geo.cellPaths[c]} fill="none" stroke={group.color} strokeWidth={1.4} pointerEvents="none" />),
+      )}
       {shown !== null && (
         <path d={geo.cellPaths[shown]} fill="none" stroke={CHROME.ink} strokeWidth={1.6} pointerEvents="none" />
       )}
@@ -256,19 +267,19 @@ export function NationMap({
         <g aria-hidden="true">
           <line x1={px(layer === 'normal' ? coloring.min : 0)} x2={px(layer === 'normal' ? coloring.min : 0)} y1={PAD} y2={geo.height - PAD} stroke={CHROME.axis} strokeWidth={0.8} />
           {bandY && <rect x={profileX0 - 6} width={PROFILE_W + 12} y={bandY[0]} height={Math.max(2, bandY[1] - bandY[0])} fill={CHROME.ink} fillOpacity={0.08} stroke={CHROME.ink} strokeOpacity={0.4} />}
-          {geo.centers.map(([, y], i) =>
+          {meta.cells.map((cell, i) =>
             Number.isFinite(values[i]) ? (
-              <circle key={i} cx={px(values[i])} cy={y} r={1.4} fill={coloring.colors[i]} fillOpacity={dimmed(i) ? 0.25 : 0.9} />
+              <circle key={i} cx={px(values[i])} cy={latToY(cell.lat)} r={1.4} fill={coloring.colors[i]} fillOpacity={dimmed(i) ? 0.25 : 0.9} />
             ) : null,
           )}
           <path
-            d={rows.map((r, k) => `${k ? 'L' : 'M'}${px(r.mean).toFixed(1)},${r.y.toFixed(1)}`).join('')}
+            d={rows.map((r, k) => `${k ? 'L' : 'M'}${px(r.mean).toFixed(1)},${latToY(r.lat).toFixed(1)}`).join('')}
             fill="none"
             stroke={CHROME.ink}
             strokeWidth={1.3}
           />
           {shown !== null && Number.isFinite(values[shown]) && (
-            <circle cx={px(values[shown])} cy={geo.centers[shown][1]} r={3.2} fill="none" stroke={CHROME.ink} strokeWidth={1.2} />
+            <circle cx={px(values[shown])} cy={latToY(meta.cells[shown].lat)} r={3.2} fill="none" stroke={CHROME.ink} strokeWidth={1.2} />
           )}
           {dragY && <rect x={profileX0 - 6} width={PROFILE_W + 12} y={dragY[0]} height={dragY[1] - dragY[0]} fill={CHROME.ink} fillOpacity={0.15} />}
           <text x={profileX0} y={geo.height + 14} fontSize={9} fill={CHROME.muted}>
@@ -276,6 +287,9 @@ export function NationMap({
           </text>
           <text x={profileX0 + PROFILE_W} y={geo.height + 14} fontSize={9} fill={CHROME.muted} textAnchor="end">
             {layer === 'normal' ? 'high' : signed(pLim, pLim < 1 ? 2 : 1)}
+          </text>
+          <text x={profileX0 + PROFILE_W / 2} y={geo.height + 27} fontSize={9} fill={CHROME.faint} textAnchor="middle">
+            {layer === 'emergence' ? 'signal ÷ noise' : unitLabel ?? ''}
           </text>
           {latTicks(rows.map(r => r.lat)).map(l => (
             <g key={l}>
@@ -302,6 +316,7 @@ export function NationMap({
             setDrag([y, y]);
           }}
           onPointerMove={e => drag && setDrag([drag[0], svgPoint(e)])}
+          onPointerCancel={() => setDrag(null)}
           onPointerUp={() => {
             if (!drag) return;
             const [a, b] = [Math.min(drag[0], drag[1]), Math.max(drag[0], drag[1])];

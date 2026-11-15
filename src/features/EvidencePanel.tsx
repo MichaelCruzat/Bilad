@@ -18,7 +18,7 @@ import {
   type VariableAnalysis,
 } from '../lib/analysis';
 import {analyzeSeries, stepScreen, startYearSensitivity} from '../lib/stats';
-import {crossExamine, VERDICT_TEXT, witnessSeries, type Crosscheck} from '../lib/evidence';
+import {crossExamine, INDEPENDENCE, PRODUCTS, VERDICT_TEXT, witnessBoxes, witnessForCells, type WitnessGrid} from '../lib/evidence';
 import type {NationMeta, VariableGrid} from '../lib/nationData';
 import {describe} from '../lib/narrative';
 import {digitsFor, lat, lon, percent, pPhrase, pValue, signed, num} from '../lib/format';
@@ -32,13 +32,13 @@ type Props = {
   meta: NationMeta;
   grid: VariableGrid;
   analysis: VariableAnalysis;
-  crosscheck: Crosscheck | null;
+  witnessGrid: WitnessGrid | null;
   selection: Selection;
 };
 
 const BADGE: Record<string, 'success' | 'warning' | 'error' | 'neutral'> = {success: 'success', warning: 'warning', error: 'error', neutral: 'neutral'};
 
-export function EvidencePanel({meta, grid, analysis, crosscheck, selection}: Props) {
+export function EvidencePanel({meta, grid, analysis, witnessGrid, selection}: Props) {
   const def = getVariable(analysis.variable);
   const unit = trendUnit(analysis.variable);
   const digits = digitsFor(unit, def.digits);
@@ -70,10 +70,12 @@ export function EvidencePanel({meta, grid, analysis, crosscheck, selection}: Pro
     };
   }, [meta, grid, analysis, selection, years]);
 
-  const region = selection.kind === 'band' ? selection.regionId : undefined;
-  const witness =
-    crosscheck && (selection.kind === 'nation' || region) ? witnessSeries(crosscheck, meta.iso3, analysis.variable, analysis.window, region) : null;
-  const product = crosscheck?.products[analysis.variable];
+  const selectedCells =
+    selection.kind === 'cell' ? [selection.cell] : selection.kind === 'band' ? (view.cells ?? []) : meta.cells.map((_, i) => i);
+  const weights = useMemo(() => meta.cells.map(c => c.areaKm2), [meta]);
+  const witness = witnessGrid ? witnessForCells(witnessGrid, analysis.variable, weights, selectedCells, analysis.window) : null;
+  const boxes = witness && witnessGrid ? witnessBoxes(witnessGrid, analysis.variable, selectedCells) : 0;
+  const product = PRODUCTS[analysis.variable];
   const exam = witness ? crossExamine(years, view.series, witness) : null;
   const step = exam?.claimStep ?? stepScreen(years, view.series);
   const finding = describe(analysis.variable, unit, view.result, years, view.series);
@@ -116,7 +118,7 @@ export function EvidencePanel({meta, grid, analysis, crosscheck, selection}: Pro
         variable={analysis.variable}
         unit={unit === '% of normal' ? '%' : def.unit}
         witness={witness}
-        witnessLabel={product ? `${product.name.split(' (')[0]} (${product.agency.split(' (')[0]})` : undefined}
+        witnessLabel={product ? `${product.name} (independent record)` : undefined}
         step={step}
         title={`Annual ${def.short.toLowerCase()} anomaly versus 1991–2020, ${unit === '% of normal' ? 'percent of normal' : def.unit}, ${place}`}
       />
@@ -132,15 +134,17 @@ export function EvidencePanel({meta, grid, analysis, crosscheck, selection}: Pro
             <Badge variant={BADGE[VERDICT_TEXT[exam.verdict].tone]} label={VERDICT_TEXT[exam.verdict].label} />
           </HStack>
           <Text color="secondary">
-            {VERDICT_TEXT[exam.verdict].plain} Witness: <Link href={product.url}>{product.name}</Link>, {product.agency}, sampled on the same grid cells.
+            {VERDICT_TEXT[exam.verdict].plain} Witness: <Link href={product.url}>{product.long}</Link>, {product.agency}, sampled on the same grid cells ({boxes} witness grid {boxes === 1 ? 'box' : 'boxes'}).
+            {boxes <= 2 && selection.kind !== 'nation' ? ' At this scale the witness is much coarser than the selection, so treat the comparison as rough.' : ''}
           </Text>
+          <Text type="supporting">{INDEPENDENCE[analysis.variable]}</Text>
           <MetadataList columns={2}>
             <MetadataListItem label="MERRA-2 (claim)">
               <Text hasTabularNumbers>
                 {signed(exam.claim.slope * 10, digits)} [{signed(exam.claim.slopeLow * 10, digits)}, {signed(exam.claim.slopeHigh * 10, digits)}] · {pPhrase(exam.claim.p)}
               </Text>
             </MetadataListItem>
-            <MetadataListItem label={`${product.name.split(' ')[0]} (witness)`}>
+            <MetadataListItem label={`${product.name} (witness)`}>
               <Text hasTabularNumbers>
                 {signed(exam.witness.slope * 10, digits)} [{signed(exam.witness.slopeLow * 10, digits)}, {signed(exam.witness.slopeHigh * 10, digits)}] · {pPhrase(exam.witness.p)}
               </Text>
@@ -154,13 +158,29 @@ export function EvidencePanel({meta, grid, analysis, crosscheck, selection}: Pro
         </VStack>
       )}
 
+      {!exam && (
+        <VStack gap={2}>
+          <Divider />
+          <Heading level={3}>Cross-examination</Heading>
+          <Text color="secondary">
+            No independent record is wired in for {def.short.toLowerCase()} yet: Bilad’s witnesses cover temperature (GISTEMP) and rainfall (GPCP). Read this trend as a single-dataset claim.
+          </Text>
+        </VStack>
+      )}
+
       <VStack gap={2}>
         <Divider />
         <Heading level={3}>Ramp or jump?</Heading>
         {step ? (
           <Text color="secondary">
             {step.stepDominated
-              ? `A single jump in ${step.breakAt} (${signed(step.step, digits)} ${unit === '% of normal' ? '%' : def.unit}) explains this record better than a steady trend (ΔBIC ${num(step.deltaBic, 1)}), and no trend remains once the jump is removed. Real regime shifts happen, but so do changes in satellites, instruments and processing: check an independent record before calling it climate.`
+              ? `A single jump in ${step.breakAt} (${signed(step.step, digits)} ${unit === '% of normal' ? '%' : def.unit}) explains this record better than a steady trend (ΔBIC ${num(step.deltaBic, 1)}), and no trend remains once the jump is removed. ${
+                  exam && (exam.verdict === 'corroborated' || exam.verdict === 'same-direction')
+                    ? 'The independent record shows the same change, so this looks like a genuine shift whose timing and shape are uncertain, rather than a data artefact.'
+                    : exam
+                      ? 'The independent record does not show the same change, which points to how the data were produced rather than to the climate.'
+                      : 'Regime shifts happen, but so do changes in satellites and processing; without an independent record this cannot be settled.'
+                }`
               : step.deltaBic > 2
                 ? `There is some evidence of a jump around ${step.breakAt} (ΔBIC ${num(step.deltaBic, 1)}), but a trend survives within the two periods, so the record is not explained by the jump alone.`
                 : `The record behaves like a gradual change rather than a single jump (ΔBIC ${num(step.deltaBic, 1)}; above 6 would favour a jump).`}

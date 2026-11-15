@@ -88,7 +88,7 @@ export function crossExamine(years: number[], claimSeries: ArrayLike<number>, wi
 }
 
 export const VERDICT_TEXT: Record<Agreement, {label: string; tone: 'success' | 'warning' | 'error' | 'neutral'; plain: string}> = {
-  corroborated: {label: 'Corroborated', tone: 'success', plain: 'Both records show a significant change in the same direction, and their ranges overlap.'},
+  corroborated: {label: 'Corroborated', tone: 'success', plain: 'Both records show a significant change in the same direction, and their 95% ranges overlap.'},
   'same-direction': {label: 'Same direction, different size', tone: 'warning', plain: 'Both records agree on the direction, but not on how fast; their 95% ranges do not overlap.'},
   'weakly-supported': {label: 'Weakly supported', tone: 'warning', plain: 'One record shows a significant change; the other leans the same way without reaching significance.'},
   contradicted: {label: 'Contradicted', tone: 'error', plain: 'The two records show significant changes in opposite directions. At least one of them is wrong here.'},
@@ -120,3 +120,85 @@ export function coBreaks(index: DataIndex, iso3: string, minVariables = 3): CoBr
   }
   return groups.filter(g => g.variables.length >= minVariables);
 }
+
+/** Per-cell witness: one annual series per product grid box, and each Bilad cell's box. */
+export type WitnessGrid = {
+  firstYear: number;
+  lastYear: number;
+} & Record<string, {boxes: (number | null)[][]; cellBox: number[]}>;
+
+const witnessMemo = new Map<string, Promise<WitnessGrid>>();
+
+export function loadWitness(iso3: string): Promise<WitnessGrid> {
+  let hit = witnessMemo.get(iso3);
+  if (!hit) {
+    hit = fetch(`${base}nations/${iso3}/witness.json`)
+      .then(res => {
+        if (!res.ok) throw new Error(`witness.json: HTTP ${res.status}`);
+        return res.json() as Promise<WitnessGrid>;
+      })
+      .catch(error => {
+        witnessMemo.delete(iso3);
+        throw error;
+      });
+    witnessMemo.set(iso3, hit);
+  }
+  return hit;
+}
+
+/** Number of distinct witness grid boxes behind a set of cells (resolution check). */
+export function witnessBoxes(w: WitnessGrid, variable: string, cells: number[]): number {
+  const src = w[variable];
+  return src ? new Set(cells.map(c => src.cellBox[c])).size : 0;
+}
+
+/**
+ * Witness series for any set of cells, area-weighted with Bilad's own
+ * weights and expressed like Bilad's series (anomaly vs 1991–2020; % of
+ * normal for precipitation). Years with under half the area covered are NaN.
+ */
+export function witnessForCells(w: WitnessGrid, variable: string, weights: ArrayLike<number>, cells: number[], window: Window): Float64Array | null {
+  const src = w[variable];
+  if (!src || !hasWitness(variable) || !cells.length) return null;
+  const nYears = w.lastYear - w.firstYear + 1;
+  const total = cells.reduce((s, c) => s + weights[c], 0);
+  const all = new Float64Array(nYears);
+  for (let y = 0; y < nYears; y++) {
+    let sum = 0;
+    let wsum = 0;
+    for (const c of cells) {
+      const v = src.boxes[src.cellBox[c]][y];
+      if (v !== null) {
+        sum += v * weights[c];
+        wsum += weights[c];
+      }
+    }
+    all[y] = wsum >= total / 2 ? sum / wsum : NaN;
+  }
+  const baseVals = Array.from(all.subarray(BASELINE[0] - w.firstYear, BASELINE[1] - w.firstYear + 1)).filter(Number.isFinite);
+  const normal = baseVals.reduce((s, v) => s + v, 0) / baseVals.length;
+  const relative = Boolean(getVariable(variable).relative);
+  const out = new Float64Array(window.to - window.from + 1);
+  for (let i = 0; i < out.length; i++) {
+    const v = all[window.from - w.firstYear + i];
+    out[i] = relative ? ((v - normal) / normal) * 100 : v - normal;
+  }
+  return out;
+}
+
+/** How independent each witness is from MERRA-2. */
+export const INDEPENDENCE: Record<string, string> = {
+  T2M: 'Independent: built from weather-station thermometers, not from the reanalysis.',
+  PRECTOTCORR:
+    'Partly independent: GPCP combines rain gauges and satellites, and MERRA-2’s corrected rainfall also leans on gauge analyses, so the two share some of the same gauges. Agreement rules out a reanalysis artefact, not a problem in the gauges themselves.',
+};
+
+export const PRODUCTS: Record<string, {name: string; long: string; agency: string; url: string}> = {
+  T2M: {name: 'GISTEMP v4', long: 'GISTEMP v4 (250 km smoothing, land stations)', agency: 'NASA GISS', url: 'https://data.giss.nasa.gov/gistemp/'},
+  PRECTOTCORR: {
+    name: 'GPCP v2.3',
+    long: 'GPCP v2.3 monthly precipitation (gauges + satellites)',
+    agency: 'GPCP, originally developed at NASA Goddard; distributed by NOAA PSL',
+    url: 'https://psl.noaa.gov/data/gridded/data.gpcp.html',
+  },
+};

@@ -52,6 +52,8 @@ export function SeriesChart({years, series, analysis, variable, unit, witness, w
   const fanLo = line(trend.slopeLow);
   const fanHi = line(trend.slopeHigh);
   const yt = ticks(y0, y1, 4);
+  const tickStep = yt.length > 1 ? yt[1] - yt[0] : 1;
+  const tickDigits = (String(+tickStep.toPrecision(6)).split('.')[1] ?? '').length;
   const xt = years.filter(yr => yr % 10 === 0 || yr === years[0]);
 
   return (
@@ -61,7 +63,7 @@ export function SeriesChart({years, series, analysis, variable, unit, witness, w
         <g key={v}>
           <line x1={m.l} x2={W - m.r} y1={y(v)} y2={y(v)} stroke={v === 0 ? CHROME.axis : CHROME.grid} strokeWidth={v === 0 ? 1 : 0.6} />
           <text x={m.l - 6} y={y(v) + 3.5} fontSize={10} fill={CHROME.muted} textAnchor="end" fontFamily={CHROME.font}>
-            {num(v, Math.abs(y1 - y0) < 4 ? 1 : 0)}
+            {num(v, tickDigits)}
           </text>
         </g>
       ))}
@@ -107,19 +109,38 @@ export function SeriesChart({years, series, analysis, variable, unit, witness, w
           </text>
         </g>
       )}
+      <text x={4} y={m.t - 4} fontSize={10} fill={CHROME.faint} fontFamily={CHROME.font}>
+        {unit}
+      </text>
       <g fontSize={11} fontFamily={CHROME.font}>
-        <line x1={m.l} x2={m.l + 16} y1={10} y2={10} stroke={CHROME.ink} strokeWidth={1.8} strokeDasharray={trend.p < 0.05 ? undefined : '5 4'} />
-        <text x={m.l + 21} y={14} fill={CHROME.muted}>
-          {trend.p < 0.05 ? 'Sen trend' : 'Sen trend (not significant)'}
-        </text>
-        {witness && (
-          <>
-            <line x1={m.l + (trend.p < 0.05 ? 96 : 190)} x2={m.l + (trend.p < 0.05 ? 112 : 206)} y1={10} y2={10} stroke={CHROME.witness} strokeWidth={1.6} />
-            <text x={m.l + (trend.p < 0.05 ? 117 : 211)} y={14} fill={CHROME.muted}>
-              {witnessLabel ?? 'Independent record'}
-            </text>
-          </>
-        )}
+        {(() => {
+          // Items flow left to right; widths estimated from character count.
+          const items: {key: string; label: string; mark: 'bars' | 'trend' | 'witness'}[] = [
+            {key: 'bars', label: 'yearly value', mark: 'bars'},
+            {key: 'trend', label: trend.p < 0.05 ? 'Sen trend' : 'Sen trend (not significant)', mark: 'trend'},
+            ...(witness ? [{key: 'witness', label: witnessLabel ?? 'Independent record', mark: 'witness' as const}] : []),
+          ];
+          let x = m.l;
+          return items.map(item => {
+            const x0 = x;
+            x += 22 + item.label.length * 5.9 + 14;
+            return (
+              <g key={item.key}>
+                {item.mark === 'bars' ? (
+                  <>
+                    <rect x={x0} y={5} width={6} height={10} rx={1} fill={divergingColor(def.palette, lim, lim)} />
+                    <rect x={x0 + 8} y={5} width={6} height={10} rx={1} fill={divergingColor(def.palette, -lim, lim)} />
+                  </>
+                ) : (
+                  <line x1={x0} x2={x0 + 16} y1={10} y2={10} stroke={item.mark === 'trend' ? CHROME.ink : CHROME.witness} strokeWidth={1.7} strokeDasharray={item.mark === 'trend' && trend.p >= 0.05 ? '5 4' : undefined} />
+                )}
+                <text x={x0 + 21} y={14} fill={CHROME.muted}>
+                  {item.label}
+                </text>
+              </g>
+            );
+          });
+        })()}
       </g>
     </svg>
   );

@@ -21,7 +21,7 @@ export function parseHash(hash: string): Route {
   const parts = path.split('/').filter(Boolean);
   if (parts.length === 0) return {page: 'home'};
   if (parts[0] === 'case' && parts[1]) return {page: 'case', id: parts[1]};
-  if (parts[0] === 'atlas' && parts[1]) return {page: 'atlas', iso3: parts[1].toUpperCase(), params: new URLSearchParams(query)};
+  if (parts[0] === 'atlas') return {page: 'atlas', iso3: (parts[1] ?? 'CHL').toUpperCase(), params: new URLSearchParams(query)};
   if (parts[0] === 'method') return {page: 'method'};
   return {page: 'missing', path};
 }

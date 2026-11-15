@@ -45,7 +45,7 @@ function page(route: Route): ReactNode {
     case 'home':
       return <Layout contentWidth={1216} content={<Casebook />} />;
     case 'case':
-      return <Layout contentWidth={1152} content={<CaseFile id={route.id} />} />;
+      return <Layout contentWidth={1152} content={<CaseFile key={route.id} id={route.id} />} />;
     case 'atlas':
       return <Atlas key={route.iso3} iso3={route.iso3} params={route.params} />;
     case 'method':

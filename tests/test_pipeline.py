@@ -76,6 +76,16 @@ class Consistency(unittest.TestCase):
         ts = dict(re.findall(r"id: '(\w+)',[\s\S]*?scale: ([\d.]+),", source))
         self.assertEqual({v.id: v.scale for v in VARIABLES}, {k: float(s) for k, s in ts.items()})
 
+    def test_named_regions_partition_each_nation(self):
+        import json
+        for nation in NATIONS:
+            if not nation.regions:
+                continue
+            meta = json.loads((ROOT / "public" / "data" / "nations" / nation.iso3 / "meta.json").read_text())
+            for cell in meta["cells"]:
+                hits = [r.id for r in nation.regions if r.lat_min <= cell["lat"] <= r.lat_max]
+                self.assertEqual(len(hits), 1, (nation.iso3, cell["lat"], hits))
+
     def test_every_registered_nation_is_shipped(self):
         for nation in NATIONS:
             self.assertTrue((ROOT / "public" / "data" / "nations" / nation.iso3 / "meta.json").exists(), nation.iso3)
