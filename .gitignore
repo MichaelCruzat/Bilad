@@ -12,3 +12,4 @@ themes/*/preview.html
 themes/*/sheet.html
 themes/*/*.png
 themes/*/*.pictures.json
+pipeline/.cache/
