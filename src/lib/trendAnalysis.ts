@@ -4,6 +4,7 @@ export type TrendDirection = 'increasing' | 'decreasing' | 'stable';
 
 export type TrendResult = {
   sampleCount: number;
+  annualCount: number;
   startDate: string;
   endDate: string;
   slopePerYear: number;
@@ -40,16 +41,23 @@ function getTieCounts(values: number[]): number[] {
 }
 
 export function getAnnualSeries(observations: MonthlyObservation[]): {year: number; value: number}[] {
-  const annual = new Map<number, number[]>();
+  const annual = new Map<number, Map<number, number>>();
   observations.forEach(observation => {
-    const values = annual.get(observation.year) ?? [];
-    values.push(observation.value);
+    const values = annual.get(observation.year) ?? new Map<number, number>();
+    if (Number.isFinite(observation.value)) values.set(observation.month, observation.value);
     annual.set(observation.year, values);
   });
 
   return Array.from(annual.entries())
+    .filter(([, values]) => values.size === 12)
     .sort(([left], [right]) => left - right)
-    .map(([year, values]) => ({year, value: values.reduce((sum, value) => sum + value, 0) / values.length}));
+    .map(([year, values]) => ({year, value: Array.from(values.values()).reduce((sum, value) => sum + value, 0) / 12}));
+}
+
+export function getBaselineMean(annual: {year: number; value: number}[]): number | null {
+  const reference = annual.filter(point => point.year >= 2000 && point.year <= 2004);
+  if (reference.length !== 5 || new Set(reference.map(point => point.year)).size !== 5) return null;
+  return reference.reduce((sum, point) => sum + point.value, 0) / reference.length;
 }
 
 function mannKendall(values: number[]): Pick<TrendResult, 'mannKendallTau' | 'mannKendallZ' | 'pValue'> {
@@ -75,12 +83,15 @@ function mannKendall(values: number[]): Pick<TrendResult, 'mannKendallTau' | 'ma
 }
 
 export function analyzeTrend(observations: MonthlyObservation[]): TrendResult {
-  const clean = observations
+  const valid = observations
     .filter(observation => Number.isFinite(observation.value))
     .sort((left, right) => left.date.localeCompare(right.date));
+  const annual = getAnnualSeries(valid);
+  const eligibleYears = new Set(annual.map(point => point.year));
+  const clean = valid.filter(observation => eligibleYears.has(observation.year));
 
-  if (clean.length < 3) {
-    throw new Error('At least three valid observations are required to analyze a trend.');
+  if (annual.length < 3) {
+    throw new Error('At least three complete years are required to analyze a trend.');
   }
 
   const x = clean.map(observation => observation.year + (observation.month - 1) / 12);
@@ -98,11 +109,11 @@ export function analyzeTrend(observations: MonthlyObservation[]): TrendResult {
   const residualVariance = clean.length > 2 ? residualSumSquares / (clean.length - 2) : 0;
   const standardError = sumXX === 0 ? 0 : Math.sqrt(residualVariance / sumXX);
   const margin = 1.96 * standardError;
-  const annualValues = getAnnualSeries(clean).map(observation => observation.value);
-  const mannKendallResult = mannKendall(annualValues.length >= 3 ? annualValues : y);
+  const mannKendallResult = mannKendall(annual.map(observation => observation.value));
 
   return {
     sampleCount: clean.length,
+    annualCount: annual.length,
     startDate: clean[0].date,
     endDate: clean[clean.length - 1].date,
     slopePerYear,

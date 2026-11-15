@@ -3,16 +3,18 @@ import {VStack} from '@astryxdesign/core/Stack';
 import {Heading, Text} from '@astryxdesign/core/Text';
 import type {Region, VariableDefinition} from '../data/trends';
 import type {TrendResult} from '../lib/trendAnalysis';
+import type {PowerSeries} from '../lib/nasaPower';
 
 function number(value: number, digits = 2) {
   return value.toFixed(digits);
 }
 
-export function EvidenceReadout({region, variable, result, source, primary}: {
+export function EvidenceReadout({region, variable, result, source, details, primary}: {
   region: Region;
   variable: VariableDefinition;
   result: TrendResult;
   source: string;
+  details: Pick<PowerSeries, 'sources' | 'requestUrl'> | null;
   primary: boolean;
 }) {
   return (
@@ -27,7 +29,10 @@ export function EvidenceReadout({region, variable, result, source, primary}: {
         <Text type="supporting" color="secondary">
           Approx. 95% slope interval {number(result.confidenceInterval.lower)} to {number(result.confidenceInterval.upper)} {variable.unit}/yr · p {result.pValue < 0.001 ? '< 0.001' : `= ${number(result.pValue, 3)}`} · R² {number(result.rSquared, 3)}
         </Text>
-        <Text type="supporting" color="secondary">{source} · {result.sampleCount} monthly values</Text>
+        <Text type="supporting" color="secondary">{source} · {result.startDate} to {result.endDate} · {result.annualCount}/25 complete years · {result.sampleCount} monthly values analyzed</Text>
+        {details && <Text type="supporting" color="secondary">
+          NASA products: {details.sources.length ? details.sources.join(' + ') : 'unspecified'} · <a href={details.requestUrl} target="_blank" rel="noopener noreferrer">Exact NASA POWER request</a>
+        </Text>}
       </VStack>
     </Section>
   );

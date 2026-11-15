@@ -1,9 +1,12 @@
 import type {MonthlyObservation, Region, VariableDefinition} from '../data/trends';
+import {getAnnualSeries} from './trendAnalysis';
 
 export const POWER_API_URL = 'https://power.larc.nasa.gov/api/temporal/monthly/point';
 
 type FetchLike = (input: string, init?: RequestInit) => Promise<Response>;
-const liveRequests = new Map<string, Promise<MonthlyObservation[]>>();
+export type PowerSeries = {observations: MonthlyObservation[]; sources: string[]; requestUrl: string};
+const liveRequests = new Map<string, Promise<PowerSeries>>();
+const REQUEST_TIMEOUT_MS = 25000;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
@@ -31,6 +34,14 @@ export function buildPowerUrl(
 export function normalizePowerResponse(payload: unknown, variable: VariableDefinition): MonthlyObservation[] {
   if (!isRecord(payload)) throw new Error('NASA POWER returned an invalid response.');
 
+  const parameters = payload.parameters;
+  const parameter = isRecord(parameters) ? parameters[variable.parameter] : null;
+  const unit = isRecord(parameter) ? parameter.units : null;
+  const expectedUnit = variable.id === 'temperature' ? 'C' : variable.id === 'solar' ? 'MJ/m^2/day' : 'mm/day';
+  if (unit !== expectedUnit) {
+    throw new Error(`NASA POWER returned an unexpected unit for ${variable.parameter}: ${String(unit)}.`);
+  }
+
   const properties = payload.properties;
   if (!isRecord(properties) || !isRecord(properties.parameter)) {
     throw new Error('NASA POWER response did not include parameter data.');
@@ -55,15 +66,11 @@ export function normalizePowerResponse(payload: unknown, variable: VariableDefin
         date: `${year}-${String(month).padStart(2, '0')}`,
         year,
         month,
-        value,
+        value: variable.id === 'solar' ? value / 3.6 : value,
       };
     })
     .filter((observation): observation is MonthlyObservation => observation !== null)
     .sort((left, right) => left.date.localeCompare(right.date));
-
-  if (observations.length < 3) {
-    throw new Error('NASA POWER returned too few valid monthly observations.');
-  }
 
   return observations;
 }
@@ -74,30 +81,53 @@ export type FetchPowerOptions = {
   fetchImpl?: FetchLike;
 };
 
-async function requestPowerSeries(url: string, fetchImpl: FetchLike, variable: VariableDefinition): Promise<MonthlyObservation[]> {
-  const response = await fetchImpl(url, {headers: {Accept: 'application/json'}});
+async function requestPowerSeries(url: string, fetchImpl: FetchLike, variable: VariableDefinition, startYear: number, endYear: number): Promise<PowerSeries> {
+  const controller = new AbortController();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => {
+      controller.abort();
+      reject(new Error('NASA POWER timed out. Try loading again.'));
+    }, REQUEST_TIMEOUT_MS);
+  });
 
-  if (!response.ok) {
-    throw new Error(`NASA POWER request failed with status ${response.status}.`);
+  try {
+    const response = await Promise.race([fetchImpl(url, {headers: {Accept: 'application/json'}, signal: controller.signal}), timeout]);
+    if (!response.ok) throw new Error(`NASA POWER request failed with status ${response.status}.`);
+    const payload: unknown = await Promise.race([response.json(), timeout]);
+    const observations = normalizePowerResponse(payload, variable)
+      .filter(point => point.year >= startYear && point.year <= endYear);
+    const annual = getAnnualSeries(observations);
+    const minimumYears = Math.max(3, Math.ceil((endYear - startYear + 1) * 0.8));
+    if (annual.length < minimumYears) {
+      throw new Error('NASA POWER returned insufficient complete years for this comparison.');
+    }
+    const header = isRecord(payload) ? payload.header : null;
+    const sources = isRecord(header) && Array.isArray(header.sources)
+      ? header.sources.filter((source): source is string => typeof source === 'string')
+      : [];
+    return {observations, sources, requestUrl: url};
+  } finally {
+    clearTimeout(timer);
   }
-
-  return normalizePowerResponse(await response.json(), variable);
 }
 
 export function fetchPowerSeries(
   region: Region,
   variable: VariableDefinition,
   options: FetchPowerOptions = {},
-): Promise<MonthlyObservation[]> {
-  const url = buildPowerUrl(region, variable, options.startYear, options.endYear);
+): Promise<PowerSeries> {
+  const startYear = options.startYear ?? 2000;
+  const endYear = options.endYear ?? 2024;
+  const url = buildPowerUrl(region, variable, startYear, endYear);
 
   if (options.fetchImpl) {
-    return requestPowerSeries(url, options.fetchImpl, variable);
+    return requestPowerSeries(url, options.fetchImpl, variable, startYear, endYear);
   }
 
   let request = liveRequests.get(url);
   if (!request) {
-    request = requestPowerSeries(url, fetch, variable).catch(error => {
+    request = requestPowerSeries(url, fetch, variable, startYear, endYear).catch(error => {
       liveRequests.delete(url);
       throw error;
     });

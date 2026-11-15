@@ -1,16 +1,29 @@
 import {describe, expect, it} from 'vitest';
 import {getFallbackSeries} from '../src/data/trends';
-import {analyzeTrend, getAnnualSeries} from '../src/lib/trendAnalysis';
+import {analyzeTrend, getAnnualSeries, getBaselineMean} from '../src/lib/trendAnalysis';
 
 describe('Bilad trend analysis', () => {
-  it('aggregates available monthly values into chronological annual means for comparison', () => {
+  it('uses complete years and leaves partial years out of the annual comparison', () => {
     const annual = getAnnualSeries([
-      {date: '2001-02', year: 2001, month: 2, value: 8},
-      {date: '2000-02', year: 2000, month: 2, value: 6},
-      {date: '2000-01', year: 2000, month: 1, value: 2},
+      {date: '2002-01', year: 2002, month: 1, value: 9},
+      ...Array.from({length: 12}, (_, index) => ({date: `2001-${String(index + 1).padStart(2, '0')}`, year: 2001, month: index + 1, value: 8})),
+      ...Array.from({length: 12}, (_, index) => ({date: `2000-${String(index + 1).padStart(2, '0')}`, year: 2000, month: index + 1, value: 4})),
     ]);
 
     expect(annual).toEqual([{year: 2000, value: 4}, {year: 2001, value: 8}]);
+    expect(() => analyzeTrend(Array.from({length: 3}, (_, index) => ({date: `2000-0${index + 1}`, year: 2000, month: index + 1, value: index})))).toThrow('three complete years');
+  });
+
+  it('uses only 2000–2004 annual values as the anomaly reference', () => {
+    expect(getBaselineMean([
+      {year: 2000, value: 2},
+      {year: 2001, value: 4},
+      {year: 2002, value: 6},
+      {year: 2003, value: 8},
+      {year: 2004, value: 10},
+      {year: 2005, value: 20},
+    ])).toBe(6);
+    expect(getBaselineMean([{year: 2000, value: 2}, {year: 2004, value: 10}])).toBeNull();
   });
   it('estimates an increasing linear trend and reports a significant monotonic signal', () => {
     const observations = Array.from({length: 60}, (_, index) => {

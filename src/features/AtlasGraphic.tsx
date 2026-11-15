@@ -53,7 +53,7 @@ export function AtlasGraphic({primaryId, comparisonId}: AtlasGraphicProps) {
       })}
       <text x="58" y="24" fill="var(--color-text-accent)" fontSize="11" letterSpacing="3">BILAD / FIELD 01</text>
       <text x="662" y="24" textAnchor="end" fill="var(--color-text-secondary)" fontSize="11" letterSpacing="2">2000—2024</text>
-      <text x="58" y="430" fill="var(--color-text-secondary)" fontSize="11" letterSpacing="2">POINT SAMPLES · EQUIRECTANGULAR GRID</text>
+      <text x="58" y="430" fill="var(--color-text-secondary)" fontSize="11" letterSpacing="2">POINT LOCATIONS · SCHEMATIC CURVES</text>
       <text x="662" y="430" textAnchor="end" fill="var(--color-text-accent)" fontSize="11" letterSpacing="2">NASA POWER / AG</text>
     </svg>
   );

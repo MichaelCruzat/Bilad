@@ -10,13 +10,13 @@ import {AtlasGraphic} from './AtlasGraphic';
 export function AtlasHero({primaryId, comparisonId}: {primaryId: RegionId; comparisonId: RegionId | null}) {
   return (
     <Section variant="transparent" padding={8} minHeight="78dvh">
-      <VStack gap={8} id="top">
+      <VStack gap={8} id="top" style={{scrollMarginTop: 'calc(var(--spacing-10) + var(--spacing-6))'}}>
         <Grid columns={{minWidth: 360, max: 2}} gap={8} align="center">
           <VStack gap={6}>
             <Text type="supporting" color="accent" style={{letterSpacing: '0.22em', fontWeight: 700}}>
               NASA SPACE APPS 2026 / TREND DETECTIVE
             </Text>
-            <Heading level={1} type="display-1" style={{maxWidth: '11ch', letterSpacing: '-0.055em', lineHeight: 0.95}}>
+            <Heading level={1} type="display-1" style={{maxWidth: '13ch', fontSize: 'clamp(3rem, 5vw, 5rem)', letterSpacing: '-0.055em', lineHeight: 0.95}}>
               25 years. Five places. What changed?
             </Heading>
             <Text type="large" color="secondary" style={{maxWidth: '50ch'}}>
@@ -42,7 +42,7 @@ export function AtlasHero({primaryId, comparisonId}: {primaryId: RegionId; compa
           </VStack>
           <VStack gap={1}>
             <Heading level={2} type="display-3">02</Heading>
-            <Text color="secondary">regions visible on one shared scale</Text>
+            <Text color="secondary">regions can be compared on one scale</Text>
           </VStack>
         </Grid>
       </VStack>
