@@ -7,6 +7,18 @@ import App from '../src/app/App';
 afterEach(() => vi.unstubAllGlobals());
 
 describe('Bilad trend detective', () => {
+  it('compares the same variable across two selectable regions', () => {
+    render(
+      <Theme theme={themes[defaultThemeSlug]} mode="dark">
+        <App />
+      </Theme>,
+    );
+
+    expect(screen.getByRole('img', {name: /Atacama Desert and Canadian Arctic/i})).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('combobox'));
+    fireEvent.click(screen.getByRole('option', {name: 'Amazon Basin'}));
+    expect(screen.getByRole('img', {name: /Atacama Desert and Amazon Basin/i})).toBeInTheDocument();
+  });
   it('renders the investigation and lets the user switch variables', () => {
     render(
       <Theme theme={themes[defaultThemeSlug]}>

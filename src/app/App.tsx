@@ -15,6 +15,7 @@ import {
   SideNavSection,
 } from '@astryxdesign/core/SideNav';
 import {SegmentedControl, SegmentedControlItem} from '@astryxdesign/core/SegmentedControl';
+import {Selector} from '@astryxdesign/core/Selector';
 import {Heading, Text} from '@astryxdesign/core/Text';
 import {HStack, VStack} from '@astryxdesign/core/Stack';
 import {
@@ -78,8 +79,11 @@ function formatPValue(value: number): string {
 export default function App() {
   const [variableId, setVariableId] = useState<VariableId>('temperature');
   const [regionId, setRegionId] = useState<RegionId>('atacama');
+  const [comparedRegionId, setComparedRegionId] = useState<RegionId | null>('arctic');
   const [series, setSeries] = useState<MonthlyObservation[]>(() => getFallbackSeries('atacama', 'temperature'));
+  const [comparedSeries, setComparedSeries] = useState<MonthlyObservation[]>(() => getFallbackSeries('arctic', 'temperature'));
   const [sourceLabel, setSourceLabel] = useState('Deterministic demo fallback');
+  const [comparedSourceLabel, setComparedSourceLabel] = useState('Deterministic demo fallback');
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const requestVersion = useRef(0);
@@ -87,13 +91,17 @@ export default function App() {
   const variable = VARIABLE_DEFINITIONS[variableId];
   const region = getRegion(regionId);
   const result = useMemo(() => analyzeTrend(series), [series]);
+  const comparedResult = useMemo(() => comparedRegionId ? analyzeTrend(comparedSeries) : null, [comparedRegionId, comparedSeries]);
+  const comparedRegion = comparedRegionId ? getRegion(comparedRegionId) : null;
 
   const selectVariable = (value: string) => {
     const nextVariable = value as VariableId;
     requestVersion.current += 1;
     setVariableId(nextVariable);
     setSeries(getFallbackSeries(regionId, nextVariable));
+    if (comparedRegionId) setComparedSeries(getFallbackSeries(comparedRegionId, nextVariable));
     setSourceLabel('Deterministic demo fallback');
+    setComparedSourceLabel('Deterministic demo fallback');
     setLoadError(null);
     setIsLoading(false);
   };
@@ -102,7 +110,19 @@ export default function App() {
     requestVersion.current += 1;
     setRegionId(nextRegion);
     setSeries(getFallbackSeries(nextRegion, variableId));
+    if (nextRegion === comparedRegionId) setComparedRegionId(null);
     setSourceLabel('Deterministic demo fallback');
+    setComparedSourceLabel('Deterministic demo fallback');
+    setLoadError(null);
+    setIsLoading(false);
+  };
+
+  const selectComparison = (value: string) => {
+    requestVersion.current += 1;
+    const nextRegion = value === 'none' ? null : value as RegionId;
+    setComparedRegionId(nextRegion);
+    if (nextRegion) setComparedSeries(getFallbackSeries(nextRegion, variableId));
+    setComparedSourceLabel('Deterministic demo fallback');
     setLoadError(null);
     setIsLoading(false);
   };
@@ -113,10 +133,30 @@ export default function App() {
     setLoadError(null);
 
     try {
-      const liveSeries = await fetchPowerSeries(region, variable);
+      const [primaryRequest, comparisonRequest] = await Promise.allSettled([
+        fetchPowerSeries(region, variable),
+        comparedRegion ? fetchPowerSeries(comparedRegion, variable) : Promise.resolve(null),
+      ]);
       if (requestVersionAtStart !== requestVersion.current) return;
-      setSeries(liveSeries);
-      setSourceLabel('NASA POWER live');
+      if (primaryRequest.status === 'fulfilled') {
+        setSeries(primaryRequest.value);
+        setSourceLabel('NASA POWER live');
+      } else {
+        setSeries(getFallbackSeries(regionId, variableId));
+        setSourceLabel('Deterministic demo fallback');
+      }
+      if (comparedRegion) {
+        if (comparisonRequest.status === 'fulfilled' && comparisonRequest.value) {
+          setComparedSeries(comparisonRequest.value);
+          setComparedSourceLabel('NASA POWER live');
+        } else {
+          setComparedSeries(getFallbackSeries(comparedRegion.id, variableId));
+          setComparedSourceLabel('Deterministic demo fallback');
+        }
+      }
+      if (primaryRequest.status === 'rejected' || comparisonRequest.status === 'rejected') {
+        setLoadError('One or more live requests were unavailable. The affected location uses labeled demo data.');
+      }
     } catch (error) {
       if (requestVersionAtStart !== requestVersion.current) return;
       setSeries(getFallbackSeries(regionId, variableId));
@@ -130,7 +170,9 @@ export default function App() {
   const useDemoData = () => {
     requestVersion.current += 1;
     setSeries(getFallbackSeries(regionId, variableId));
+    if (comparedRegionId) setComparedSeries(getFallbackSeries(comparedRegionId, variableId));
     setSourceLabel('Deterministic demo fallback');
+    setComparedSourceLabel('Deterministic demo fallback');
     setLoadError(null);
     setIsLoading(false);
   };
@@ -216,6 +258,16 @@ export default function App() {
                     </Card>
                   ))}
                 </Grid>
+                <Selector
+                  label="Comparison region"
+                  value={comparedRegionId ?? 'none'}
+                  onChange={selectComparison}
+                  options={[
+                    {value: 'none', label: 'No comparison'},
+                    ...REGIONS.filter(item => item.id !== regionId).map(item => ({value: item.id, label: item.name})),
+                  ]}
+                  presentation="adaptive"
+                />
               </VStack>
 
               <VStack gap={3} id="analysis">
@@ -228,7 +280,18 @@ export default function App() {
                 </Text>
                 <Card>
                   <VStack gap={3}>
-                    <TrendChart observations={series} result={result} unit={variable.unit} label={variable.label} regionName={region.name} />
+                    <TrendChart
+                      observations={series}
+                      result={result}
+                      unit={variable.unit}
+                      label={variable.label}
+                      regionName={region.name}
+                      comparison={comparedRegion && comparedResult ? {
+                        observations: comparedSeries,
+                        result: comparedResult,
+                        regionName: comparedRegion.name,
+                      } : undefined}
+                    />
                     <HStack gap={2}>
                       <Button
                         label={isLoading ? 'Loading NASA POWER…' : 'Load NASA POWER data'}
@@ -247,8 +310,25 @@ export default function App() {
                         The demo series is deterministic and clearly labeled. Load NASA POWER when you want the public monthly endpoint.
                       </Text>
                     )}
+                    <Text type="supporting" color="secondary">
+                      {region.name}: {sourceLabel}{comparedRegion ? ` · ${comparedRegion.name}: ${comparedSourceLabel}` : ''}
+                    </Text>
                   </VStack>
                 </Card>
+
+                {comparedRegion && comparedResult && (
+                  <Card variant="muted">
+                    <VStack gap={2}>
+                      <Heading level={3}>Regional contrast</Heading>
+                      <Text>
+                        {region.name}: {formatNumber(result.slopePerYear, 3)} {variable.unit}/year · {comparedRegion.name}: {formatNumber(comparedResult.slopePerYear, 3)} {variable.unit}/year.
+                      </Text>
+                      <Text type="supporting" color="secondary">
+                        These are point-based screening results from the same 2000–2024 window. Different slopes do not establish why either place changed.
+                      </Text>
+                    </VStack>
+                  </Card>
+                )}
 
                 <Grid columns={{minWidth: 190, max: 4}} gap={3}>
                   <Card variant="muted">
