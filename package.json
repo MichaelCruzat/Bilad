@@ -1,7 +1,7 @@
 {
   "name": "bilad",
   "version": "0.1.0",
-  "description": "Earth analog explorer for lunar and Martian mission rehearsal",
+  "description": "Earth System Trend Detective for NASA Space Apps",
   "private": true,
   "license": "Apache-2.0",
   "devEngines": {

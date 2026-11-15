@@ -1,5 +1,9 @@
 # Bilad V1 Task List
 
+## Scope correction
+
+The pasted NASA prompt is the source of truth for this release: **Be An Earth System Trend Detective!** The original analog-site slice is retained only as repository history; current work replaces it with variable selection, regional time series, and transparent trend analysis.
+
 ## Phase 1: Foundation
 
 - [x] Task 1: Bootstrap the Vite/React/TypeScript project and initialize Astryx.
@@ -9,74 +13,68 @@
   - Files likely touched: `package.json`, `vite.config.ts`, `tsconfig*.json`, `src/main.tsx`, `src/app/App.tsx`.
   - Estimated scope: Medium. Completed in the foundation slice.
 
-- [x] Task 2: Add typed candidate/profile/source data and deterministic scoring utilities with tests.
-  - Acceptance: Six analog candidates and Moon/Mars profiles are typed; score normalization and ranking are deterministic; source IDs resolve to a registry entry.
+- [ ] Task 2: Add typed variable/region/source data and deterministic trend utilities with tests.
+  - Acceptance: NASA POWER variables and contrasting regions are typed; linear trend, confidence interval, and Mann–Kendall screening are deterministic; source IDs resolve to a registry entry.
   - Verify: `pnpm test`, `pnpm lint`, `pnpm build`.
   - Dependencies: Task 1.
-  - Files likely touched: `src/data/*`, `src/lib/scoring.ts`, `tests/scoring.test.ts`.
-  - Estimated scope: Medium. Completed with six candidates, source registry, Moon/Mars profiles, and scoring tests.
+  - Files likely touched: `src/data/*`, `src/lib/trendAnalysis.ts`, `tests/trends.test.ts`.
+  - Estimated scope: Medium.
 
 ## Checkpoint: Foundation
 
-- [x] Tests, lint, and build pass.
+- [x] Tests, lint, and build passed before the scope correction.
+- [ ] Tests, lint, and build pass after the scope correction.
 - [x] The app renders without a network request.
-- [x] Local commit is ready for review before continuing.
+- [ ] The trend model and fallback data are ready for review.
 
-## Phase 2: Core discovery
+## Phase 2: Core investigation
 
-- [ ] Task 3: Build the briefing-to-discovery flow with Moon/Mars profile selection, ranking controls, candidate list, and map enhancement.
-  - Acceptance: A user can select a profile, adjust at least three priorities, see ranked cards update, and use a list fallback independent of the map.
+- [ ] Task 3: Build the briefing-to-explorer flow with variable/region selection, chart, verdict, and method surface.
+  - Acceptance: A user can select a variable and region, see the signal and fitted trend, and understand the plain-language verdict.
   - Verify: Component behavior tests plus browser smoke test at desktop and mobile widths.
   - Dependencies: Task 2.
-  - Files likely touched: `src/app/*`, `src/features/discovery/*`, `src/components/*`, `tests/discovery.test.tsx`.
-  - Estimated scope: Large; split into list/ranking and map enhancement if needed.
+  - Files likely touched: `src/app/*`, `src/features/explorer/*`, `src/components/*`, `tests/explorer.test.tsx`.
+  - Estimated scope: Large; keep the chart domain-specific and the surrounding UI Astryx-based.
 
-- [ ] Task 4: Add candidate detail with NASA POWER enrichment, fallback states, evidence, limitations, and source links.
-  - Acceptance: Selected candidates show evidence and limitations; live NASA POWER data is normalized; API failure leaves a clearly labeled fallback visible.
+- [ ] Task 4: Add NASA POWER enrichment, fallback states, variable definitions, limitations, and source links.
+  - Acceptance: Selected analyses show the NASA POWER series when available; API failure leaves a clearly labeled deterministic fallback visible.
   - Verify: Unit tests for response normalization/failure; browser smoke test with the API available and blocked.
   - Dependencies: Task 3.
-  - Files likely touched: `src/lib/nasaPower.ts`, `src/features/provenance/*`, `src/features/discovery/*`, `tests/nasaPower.test.ts`.
+  - Files likely touched: `src/lib/nasaPower.ts`, `src/features/provenance/*`, `src/app/*`, `tests/nasaPower.test.ts`.
   - Estimated scope: Medium.
 
-## Checkpoint: Core discovery
+## Checkpoint: Core investigation
 
-- [ ] User can inspect six candidates and explain the score.
+- [ ] User can answer what changed, where, how much, and whether the prototype significance screen passes.
 - [ ] Network failure does not block the primary flow.
 - [ ] Keyboard navigation and narrow viewport layout are usable.
 
-## Phase 3: Decision and storytelling
+## Phase 3: Storytelling
 
-- [ ] Task 5: Add three-site comparison and mission rehearsal brief generation.
-  - Acceptance: A user can compare up to three candidates, see aligned dimensions/trade-offs, and copy or download a brief.
-  - Verify: Component behavior tests; manual copy/download check.
-  - Dependencies: Task 4.
-  - Files likely touched: `src/features/comparison/*`, `src/lib/brief.ts`, `tests/comparison.test.tsx`.
-  - Estimated scope: Medium.
-
-- [ ] Task 6: Add guided judge mode, method/provenance surfaces, and submission-ready copy.
-  - Acceptance: Judge mode presents the problem, method, candidate, comparison, and impact in a predictable sequence; sources and limitations are reachable from every relevant surface.
+- [ ] Task 5: Add the guided judge example, method/provenance surfaces, and submission-ready copy.
+  - Acceptance: Judge mode presents the question, variable, region, method, result, limitation, and impact in a predictable sequence; sources are reachable from the analysis surface.
   - Verify: Browser smoke test follows the 3-minute path; links and headings are checked.
-  - Dependencies: Task 5.
-  - Files likely touched: `src/features/briefing/*`, `src/features/provenance/*`, `src/app/*`, `tests/briefing.test.tsx`.
+  - Dependencies: Task 4.
+  - Files likely touched: `src/app/*`, `docs/*`, `README.md`.
   - Estimated scope: Medium.
 
 ## Phase 4: Release readiness
 
-- [ ] Task 7: Add README, source registry, license, AI disclosure, GitHub Pages workflow, and release checks.
+- [ ] Task 6: Add README, source registry, license, AI disclosure, GitHub Pages workflow, and release checks.
   - Acceptance: A fresh checkout can follow the README; sources, license, AI disclosure, and deployment workflow are present; CI runs test/lint/build.
   - Verify: Clean install/build; inspect workflow syntax; run `git diff --check` and secret scan.
-  - Dependencies: Task 6.
+  - Dependencies: Task 5.
   - Files likely touched: `README.md`, `LICENSE`, `docs/*`, `.github/workflows/deploy.yml`, `package.json`.
   - Estimated scope: Medium.
 
-- [ ] Task 8: Run browser acceptance, accessibility review, code review, and final simplification pass.
+- [ ] Task 7: Run browser acceptance, accessibility review, code review, and final simplification pass.
   - Acceptance: Core flows work at desktop/mobile sizes, console is clean, visible focus exists, and no release-blocking review findings remain.
   - Verify: Browser smoke test, test/lint/build, review checklist.
-  - Dependencies: Task 7.
+  - Dependencies: Task 6.
   - Files likely touched: Only files required by findings.
   - Estimated scope: Medium.
 
 ## Checkpoint: Release candidate
 
 - [ ] All acceptance criteria are met.
-- [ ] GitHub push is ready for user confirmation.
+- [ ] GitHub push is ready.

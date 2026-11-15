@@ -1,13 +1,13 @@
 # Bilad Capability Map
 
-Bilad is an Earth-analog explorer for future lunar and Martian missions. The product turns open NASA Earth, Moon, and Mars data into a clear, explainable decision surface: find candidate places on Earth, understand why they are useful as analogs, and build a small mission rehearsal around them.
+Bilad is an Earth System Trend Detective. The product turns open NASA Earth science data into a clear, explainable investigation: select a variable and region, inspect a long-enough time series, quantify the trend, and understand whether the signal passes a basic significance screen.
 
 | Module | Responsibility | Depends on |
 | --- | --- | --- |
 | `platform-quality` | Responsive shell, accessibility, resilient loading, local fallback, GitHub Pages deployment | — |
-| `data-provenance` | Candidate data model, NASA POWER retrieval, source citations, uncertainty and limitations | `platform-quality` |
-| `analog-discovery` | Planet profile, map, candidate ranking, filters, explainable score | `data-provenance` |
-| `mission-comparison` | Compare analog sites, tune priorities, create a mission rehearsal brief | `analog-discovery` |
-| `story-and-submission` | Guided demo narrative, challenge alignment, README, sources, AI disclosure, licensing | `data-provenance`, `mission-comparison` |
+| `data-provenance` | Variable/region data model, NASA POWER retrieval, source citations, uncertainty and limitations | `platform-quality` |
+| `trend-explorer` | Variable and region selection, time-series chart, regression summary, Mann–Kendall screen | `data-provenance` |
+| `investigation-brief` | Plain-language verdict, guided example, method and limitation surfaces | `trend-explorer` |
+| `story-and-submission` | Challenge alignment, README, sources, AI disclosure, licensing, deployment | `data-provenance`, `investigation-brief` |
 
-Build order: `platform-quality` → `data-provenance` → `analog-discovery` → `mission-comparison` → `story-and-submission`.
+Build order: `platform-quality` → `data-provenance` → `trend-explorer` → `investigation-brief` → `story-and-submission`.
