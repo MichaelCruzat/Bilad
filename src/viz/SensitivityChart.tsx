@@ -7,8 +7,8 @@ type Props = {points: StartYearPoint[]; unit: string; digits: number; title: str
 
 /**
  * Trend estimate (per decade) against the first year of the record, with
- * its 95% interval. Filled dots pass the corrected test. A robust finding
- * keeps its sign and significance whichever start year you choose.
+ * its 95% interval. Filled dots pass the corrected test. A finding worth
+ * keeping holds its sign and significance whichever start year you choose.
  */
 export function SensitivityChart({points, unit, digits, title}: Props) {
   const [ref, W] = useWidth<SVGSVGElement>(640);

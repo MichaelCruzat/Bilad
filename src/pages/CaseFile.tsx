@@ -276,7 +276,7 @@ function CaseBody({def, bundle, analysis, crosscheck, index, witnessGrid}: {def:
           )}
           {breaks.length > 0 && (
             <Text color="secondary">
-              Across {meta.name}’s seven national series, {breaks.map(b => `${b.variables.length} variables jump within a year of ${b.year} (${b.variables.join(', ')})`).join('; ')}. These variables are coupled inside the same model, so a shared jump is one clue, not proof, that something changed in the data fed to it.{exam?.artifactSuspected ? ' It matters here because the independent record does not show the jump.' : ''}
+              Across {meta.name}’s seven national series, {breaks.map(b => `${b.variables.length} variables jump within a year of ${b.year} (${b.variables.join(', ')})`).join('; ')}. These variables are coupled inside one model, so a shared jump suggests something changed in the data fed to it, though it does not prove it.{exam?.artifactSuspected ? ' The independent record shows no such jump.' : ''}
             </Text>
           )}
         </VStack>

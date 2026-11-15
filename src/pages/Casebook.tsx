@@ -87,7 +87,7 @@ function Hero({crosscheck}: {crosscheck: Crosscheck | null}) {
         </VStack>
         <VStack gap={3} maxWidth="38rem">
           <Text type="large">
-            Every place on Earth keeps a climate record. {APP_NAME} reads each one, finds what changed and by how much, and asks a second, independent record whether to believe it.
+            {APP_NAME} maps how every patch of land on Earth has changed since 1981, then checks each trend against a second, independent NASA record before it calls the trend real.
           </Text>
           <Text color="secondary">
             {g
@@ -221,7 +221,7 @@ function HowItWorks() {
     <VStack gap={5}>
       <Eyebrow>How Bilad works</Eyebrow>
       <Heading level={2} type="display-3">
-        From a NASA record to a verdict
+        How a NASA record becomes a verdict
       </Heading>
       <Grid columns={{minWidth: 190, max: 5}} gap={6}>
         {STAGES.map(([n, title, body]) => (
@@ -283,7 +283,7 @@ function CaseList() {
     <VStack gap={4}>
       <Eyebrow>Case files</Eyebrow>
       <Heading level={2} type="display-3">
-        Four investigations, four verdicts
+        Four case files, each with a different verdict
       </Heading>
       <VStack gap={0}>
         {CASES.map(c => {
@@ -364,7 +364,7 @@ function Coverage({index, crosscheck}: {index: DataIndex; crosscheck: Crosscheck
     <VStack gap={5}>
       <Eyebrow>Coverage</Eyebrow>
       <Heading level={2} type="display-3">
-        {WORDS[rows.length] ?? rows.length} nations in detail, one pipeline
+        {WORDS[rows.length] ?? rows.length} nations in full detail
       </Heading>
       <Text color="secondary">
         Warming per grid cell since 1981, every nation on the same scale ({signed(-STRIP_LIMIT, 1)} to {signed(STRIP_LIMIT, 1)} °C per decade), dots where the trend survives false-discovery control. The badge is the national verdict against weather stations.

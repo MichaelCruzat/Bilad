@@ -1,14 +1,16 @@
 # Bilad
 
-**An Earth-system trend detective for any nation.** Bilad maps 44 years (1981–2024) of NASA Earth-system data across a country, cell by cell. It tests every trend with methods built for autocorrelated climate records, then cross-examines the result against an independent NASA record before calling it real.
+**A global Earth-system trend detective.** Bilad maps how every land cell on Earth, from 60°S to 84°N, has changed since 1981 using NASA POWER data. It tests each trend with methods built for autocorrelated climate records, then checks it against an independent NASA record before calling it real.
 
 Built for the NASA Space Apps 2026 challenge [Be An Earth System Trend Detective!](https://www.spaceappschallenge.org/2026/challenges/earth-system-trend-detective/).
 
 **Live site:** [michaelcruzat.github.io/Bilad](https://michaelcruzat.github.io/Bilad/)
 
-*Bilad* (بلاد) is Arabic for "land" or "country".
+*Bilad* (بلاد) is Arabic for "lands".
 
 ## What it finds
+
+Across 54,425 land cells, temperature has risen by about 0.25 °C per decade since 1981, and 71% of the world's land has warmed beyond chance after a worldwide false-discovery test. Weather stations back that warming over most of the planet. On about 5% of land they contradict the reanalysis, and Bilad flags those trends instead of reporting them. South Asia is the largest such region.
 
 The challenge asks what is changing, where, by how much, and whether the change is significant. Bilad adds a fifth question: **is it real?** A significance test only checks the record it is given. The four case files each end in a different verdict:
 
@@ -23,7 +25,12 @@ Case 03 is the reason Bilad exists. A tool that stopped at a significant Mann–
 
 ## The product
 
-- **Home** (`#/`): an animated hero that plays Chile's rainfall year by year on NASA relief, with a one-row-per-year ledger of central Chile beside it, so the post-2010 drought builds up as you watch. Then the scale of the shipped data, how Bilad works, validation receipts, the case files and the six nations on one colour scale. It opens on two claims from the same reanalysis ("Central Chile has had 23–34% less rain since 2010. Bangladesh did not cool.") beside a live map of Chile's rainfall trend, then lists the case files, the testing chain and a six-nation table of verdicts.
+- **World** (`#/world`): every land cell on a zoomable map over NASA Blue Marble relief, for temperature and rainfall.
+  - The verdict layer shows, cell by cell, whether the station or gauge record backs the trend. Other layers show the trend itself, any single year (playable), and the 1991–2020 normal.
+  - A strip of yearly global values sits under the map; pointing at a year shows it on the map.
+  - Search any of 223 countries, or click a cell. Bilad builds that country's series from its cells and cross-examines it against the witness on the spot.
+  - Rankings list the fastest-changing countries and the ones whose reanalysis record is least trustworthy.
+- **Home** (`#/`): opens on the world verdict map at full width, then the scale of the shipped data, how Bilad works, validation figures, the four case files and the seven featured nations on one colour scale with their verdicts.
 - **Case files** (`#/case/<id>`): claim → evidence → cross-examination → integrity screen → verdict, with sources. Every number is computed in the browser from the shipped data.
 - **Atlas** (`#/atlas/<ISO3>`): any shipped nation and any of seven variables.
   - Every map sits on NASA GIBS Blue Marble shaded relief with neighbouring borders.
@@ -34,7 +41,7 @@ Case 03 is the reason Bilad exists. A tool that stopped at a significant Mann–
   - All atlas state lives in the URL, so any view can be shared.
 - **Method** (`#/method`): formulas, assumptions, limitations and references.
 
-Shipped nations: Chile (pilot), Bangladesh, Kenya, Mexico, Morocco and Spain. 1,765 grid cells, 7 variables, 528 months each.
+Seven nations also ship with the full seven-variable atlas: Bangladesh, Chile, Kenya, Mexico, Morocco, the Philippines and Spain.
 
 ## How a trend earns a verdict
 
@@ -53,6 +60,8 @@ For trends that are not yet significant, Bilad estimates how many more years of 
 
 ```
 NASA POWER regional API ──► pipeline/ (Python) ──► public/data/nations/<ISO3>/*.i16, meta.json, boundary.json
+                         └► python -m pipeline global ──► every land cell, 60°S–84°N (cached; ~700 requests)
+                                         scripts/summarize-global.ts ──► public/data/global/*.stats.bin, *.annual.i16, summary.json
 GISTEMP v4, GPCP v2.3   ──► pipeline/crosscheck.py ──► public/data/crosscheck.json, nations/<ISO3>/witness.json
                                          │
                  scripts/summarize.ts ◄──┘  uses src/lib/stats.ts ──► public/data/index.json
@@ -66,10 +75,10 @@ Each language does the job it is best at:
 
 - **Python** for the data pipeline: tiling NASA POWER requests, Natural Earth boundaries (shapely), land fractions, packing, and reading netCDF witnesses (netCDF4). Python with numpy, shapely and netCDF4 is the standard Earth-science stack.
 - **TypeScript** for the statistics engine (`src/lib/stats.ts`) and the interactive app. The same engine writes the shipped headlines and runs in the reader's browser, so the two always agree.
-- **Python, again, as an independent check.** `pipeline/validate.py` rebuilds all 42 nation-variable headlines from the raw binaries with different code (`scipy.stats.theilslopes`, `pymannkendall`, a separate Benjamini–Hochberg). Two implementations in two languages must agree before CI passes.
+- **Python, again, as an independent check.** `pipeline/validate.py` rebuilds every nation-variable headline and a random sample of global cells from the raw binaries with different code (`scipy.stats.theilslopes`, `pymannkendall`, a separate Benjamini–Hochberg). Two implementations in two languages must agree before CI passes. Values are rounded to 1e-9 before testing in both, so ties are detected the same way despite different floating-point summation.
 - **Make** as the single entry point.
 
-A rerun of the heaviest nation's analysis (Mexico, 688 cells) takes about 55 ms in the browser and is cached per variable and window, so a compiled WebAssembly kernel was not worth its build complexity. Much larger nations would move the analysis to a Web Worker first.
+Per-cell statistics for the whole globe are precomputed (17 seconds for both variables), so the World page only draws. A rerun of the heaviest featured nation (Mexico, 688 cells) takes about 55 ms in the browser and is cached, so a WebAssembly kernel was not worth its build complexity. The world map is drawn on a canvas, batched by colour, so all 54,425 cells pan and zoom smoothly.
 
 ## Run locally
 
@@ -78,6 +87,7 @@ Requires Node.js 22+, pnpm 11+ and Python 3.11+.
     make install     # pnpm install + pip install -r pipeline/requirements.txt
     make dev         # http://localhost:5173
     make check       # TypeScript + Python tests, lint, build, size budget, independent recomputation
+    make global      # rebuild the global atlas (downloads once, then served from cache)
 
 The site is static and needs no key, account or backend. The shipped data is committed, so `make dev` works offline once installed.
 

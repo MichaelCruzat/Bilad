@@ -77,7 +77,7 @@ export const CASES: CaseDef[] = [
     id: 'bangladesh-phantom-cooling',
     number: '03',
     title: 'Bangladesh’s phantom cooling',
-    dek: 'A significant trend that is not real.',
+    dek: 'A statistically significant trend that stations say is false.',
     iso3: 'BGD',
     variable: 'T2M',
     focus: {kind: 'nation'},
@@ -88,7 +88,7 @@ export const CASES: CaseDef[] = [
     ],
     expected: 'contradicted',
     lesson:
-      'A significance test checks a record against chance, not against the way the record was made. It assumes the data were produced the same way throughout. When a record jumps instead of drifting and an independent record disagrees, the trend tells you about the dataset, not about the climate.',
+      'A significance test only compares a record with chance. It assumes the data were produced the same way from start to finish, which a reanalysis cannot promise. When a record jumps in one year and an independent record disagrees, the trend is telling you about the dataset.',
     references: [
       {label: 'Gelaro et al. (2017), The Modern-Era Retrospective Analysis for Research and Applications, Version 2 (MERRA-2), Journal of Climate', url: 'https://doi.org/10.1175/JCLI-D-16-0758.1'},
       {label: 'Lenssen et al. (2019), Improvements in the GISTEMP uncertainty model, JGR Atmospheres', url: 'https://doi.org/10.1029/2018JD029522'},

@@ -273,7 +273,7 @@ function robustness(points: {slope: number; p: number}[]): string {
   const sig = points.filter(p => p.p < 0.05).length;
   const sign = Math.sign(points[0].slope);
   const same = points.filter(p => Math.sign(p.slope) === sign).length;
-  if (sig === points.length) return 'Significant whichever start year you pick: a robust finding.';
+  if (sig === points.length) return 'Significant whichever start year you pick.';
   if (sig === 0) return 'Not significant for any start year.';
-  return `Significant for ${sig} of ${points.length} start years; the sign holds for ${same}. Treat claims that depend on one start year with care.`;
+  return `Significant for ${sig} of ${points.length} start years, with the same sign in ${same}. A claim that only works from one start year is weak.`;
 }
