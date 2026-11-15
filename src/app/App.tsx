@@ -24,6 +24,7 @@ import {
 } from '../data/trends';
 import {TrendChart} from '../features/TrendChart';
 import {AtlasHero} from '../features/AtlasHero';
+import {EvidenceReadout} from '../features/EvidenceReadout';
 import {fetchPowerSeries} from '../lib/nasaPower';
 import {analyzeTrend} from '../lib/trendAnalysis';
 
@@ -43,11 +44,6 @@ function Navigation() {
 
 function formatNumber(value: number, digits = 2): string {
   return value.toFixed(digits);
-}
-
-function formatPValue(value: number): string {
-  if (value < 0.001) return '< 0.001';
-  return value.toFixed(3);
 }
 
 export default function App() {
@@ -85,6 +81,7 @@ export default function App() {
     setRegionId(nextRegion);
     setSeries(getFallbackSeries(nextRegion, variableId));
     if (nextRegion === comparedRegionId) setComparedRegionId(null);
+    else if (comparedRegionId) setComparedSeries(getFallbackSeries(comparedRegionId, variableId));
     setSourceLabel('Deterministic demo fallback');
     setComparedSourceLabel('Deterministic demo fallback');
     setLoadError(null);
@@ -150,16 +147,6 @@ export default function App() {
     setLoadError(null);
     setIsLoading(false);
   };
-
-  const directionText =
-    result.direction === 'increasing'
-      ? 'an increasing signal'
-      : result.direction === 'decreasing'
-        ? 'a decreasing signal'
-        : 'a stable signal';
-  const significanceText = result.significant
-    ? 'passes the prototype significance screen'
-    : 'does not pass the prototype significance screen';
 
   return (
     <AppShell contentPadding={0} height="auto" topNav={<Navigation />} variant="surface">
@@ -233,16 +220,16 @@ export default function App() {
                 ))}
               </VStack>
 
-              <VStack gap={3} id="analysis">
-                <HStack gap={2}>
-                  <Heading level={2}>3. Read the evidence</Heading>
-                  <Badge label={sourceLabel} variant="blue" />
-                </HStack>
-                <Text color="secondary">
-                  {variable.label} in {region.name} · {result.startDate} to {result.endDate} · {result.sampleCount} monthly observations
-                </Text>
-                <Card>
-                  <VStack gap={3}>
+              <VStack gap={5} id="analysis">
+                <VStack gap={2}>
+                  <Text type="supporting" color="accent" style={{letterSpacing: '0.2em'}}>03 / EVIDENCE ROOM</Text>
+                  <Heading level={2} type="display-2">Read the evidence.</Heading>
+                  <Text type="large" color="secondary">
+                    {variable.label} · {result.startDate} to {result.endDate} · shared {variable.unit} scale
+                  </Text>
+                </VStack>
+                <Section variant="muted" padding={6}>
+                  <VStack gap={4}>
                     <TrendChart
                       observations={series}
                       result={result}
@@ -255,7 +242,7 @@ export default function App() {
                         regionName: comparedRegion.name,
                       } : undefined}
                     />
-                    <HStack gap={2}>
+                    <HStack gap={2} wrap="wrap">
                       <Button
                         label={isLoading ? 'Loading NASA POWER…' : 'Load NASA POWER data'}
                         variant="primary"
@@ -264,65 +251,19 @@ export default function App() {
                       />
                       <Button label="Use demo data" variant="secondary" onClick={useDemoData} />
                     </HStack>
-                    {loadError ? (
-                      <Text type="supporting" color="secondary">
-                        Live request unavailable, so Bilad kept the analysis usable with a deterministic fallback. {loadError}
-                      </Text>
-                    ) : (
-                      <Text type="supporting" color="secondary">
-                        The demo series is deterministic and clearly labeled. Load NASA POWER when you want the public monthly endpoint.
-                      </Text>
-                    )}
+                    {loadError && <Text type="supporting" color="secondary" role="status">{loadError}</Text>}
                     <Text type="supporting" color="secondary">
-                      {region.name}: {sourceLabel}{comparedRegion ? ` · ${comparedRegion.name}: ${comparedSourceLabel}` : ''}
+                      The initial series is synthetic demo data. Select “Load NASA POWER data” to request the public monthly endpoint. Live and demo sources are labeled separately below.
                     </Text>
                   </VStack>
-                </Card>
-
-                {comparedRegion && comparedResult && (
-                  <Card variant="muted">
-                    <VStack gap={2}>
-                      <Heading level={3}>Regional contrast</Heading>
-                      <Text>
-                        {region.name}: {formatNumber(result.slopePerYear, 3)} {variable.unit}/year · {comparedRegion.name}: {formatNumber(comparedResult.slopePerYear, 3)} {variable.unit}/year.
-                      </Text>
-                      <Text type="supporting" color="secondary">
-                        These are point-based screening results from the same 2000–2024 window. Different slopes do not establish why either place changed.
-                      </Text>
-                    </VStack>
-                  </Card>
-                )}
-
-                <Grid columns={{minWidth: 190, max: 4}} gap={3}>
-                  <Card variant="muted">
-                    <VStack gap={1}>
-                      <Text type="supporting">Trend verdict</Text>
-                      <Heading level={3}>{result.significant ? 'Signal detected' : 'Signal needs caution'}</Heading>
-                      <Text>{directionText} in {region.name}.</Text>
-                    </VStack>
-                  </Card>
-                  <Card variant="muted">
-                    <VStack gap={1}>
-                      <Text type="supporting">Change per year</Text>
-                      <Heading level={3}>{formatNumber(result.slopePerYear)} {variable.unit}/yr</Heading>
-                      <Text>95% interval: {formatNumber(result.confidenceInterval.lower)} to {formatNumber(result.confidenceInterval.upper)}.</Text>
-                    </VStack>
-                  </Card>
-                  <Card variant="muted">
-                    <VStack gap={1}>
-                      <Text type="supporting">Mann–Kendall screen</Text>
-                      <Heading level={3}>{result.significant ? 'p < 0.05' : `p = ${formatPValue(result.pValue)}`}</Heading>
-                      <Text>The signal {significanceText}.</Text>
-                    </VStack>
-                  </Card>
-                  <Card variant="muted">
-                    <VStack gap={1}>
-                      <Text type="supporting">Linear fit</Text>
-                      <Heading level={3}>R² {formatNumber(result.rSquared, 3)}</Heading>
-                      <Text>How much of the variation a straight line describes.</Text>
-                    </VStack>
-                  </Card>
+                </Section>
+                <Grid columns={{minWidth: 320, max: 2}} gap={6}>
+                  <EvidenceReadout region={region} variable={variable} result={result} source={sourceLabel} primary />
+                  {comparedRegion && comparedResult && (
+                    <EvidenceReadout region={comparedRegion} variable={variable} result={comparedResult} source={comparedSourceLabel} primary={false} />
+                  )}
                 </Grid>
+                <Text type="supporting" color="secondary">Point-based screening results on a common 2000–2024 window. Neither a different slope nor a significant screen identifies a cause.</Text>
               </VStack>
 
               <Card variant="muted" id="method">

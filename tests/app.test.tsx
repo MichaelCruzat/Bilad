@@ -33,13 +33,13 @@ describe('Bilad trend detective', () => {
     fireEvent.click(screen.getByRole('radio', {name: 'Precipitation'}));
 
     expect(screen.getByRole('heading', {name: 'Precipitation'})).toBeInTheDocument();
-    expect(screen.getByText(/Precipitation in Atacama Desert/)).toBeInTheDocument();
+    expect(screen.getByRole('img', {name: /Precipitation annual trend chart.*Atacama Desert/i})).toBeInTheDocument();
   });
 
   it('ignores an old live-data failure after the user chooses another variable', async () => {
-    let rejectRequest!: (reason?: unknown) => void;
+    const rejectRequests: Array<(reason?: unknown) => void> = [];
     vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>((_, reject) => {
-      rejectRequest = reject;
+      rejectRequests.push(reject);
     })));
 
     render(
@@ -52,8 +52,24 @@ describe('Bilad trend detective', () => {
     fireEvent.click(screen.getByRole('radio', {name: 'Precipitation'}));
 
     expect(screen.getByRole('button', {name: 'Load NASA POWER data'})).toBeEnabled();
-    await act(async () => rejectRequest(new Error('Old request failed')));
-    expect(screen.getByRole('heading', {name: '0.01 mm/day/yr'})).toBeInTheDocument();
+    await act(async () => rejectRequests.forEach(reject => reject(new Error('Old request failed'))));
+    expect(screen.getAllByRole('heading', {name: '0.01 mm/day/yr'}).length).toBeGreaterThan(0);
     expect(screen.queryByText(/Old request failed/)).not.toBeInTheDocument();
+  });
+
+  it('resets both locations to labeled demo series after changing the primary region', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({
+      ok: true,
+      json: async () => ({properties: {parameter: {T2M: {200001: 12, 200002: 13, 200003: 14}}}}),
+    })));
+
+    render(
+      <Theme theme={themes[defaultThemeSlug]} mode="dark"><App /></Theme>,
+    );
+    fireEvent.click(screen.getByRole('button', {name: 'Load NASA POWER data'}));
+    expect((await screen.findAllByText(/NASA POWER live/))).toHaveLength(2);
+
+    fireEvent.click(screen.getByRole('button', {name: 'Inspect Amazon Basin'}));
+    expect(screen.getAllByText(/Deterministic demo fallback · 300 monthly values/)).toHaveLength(2);
   });
 });
