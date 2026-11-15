@@ -9,18 +9,18 @@
   - Files likely touched: `package.json`, `vite.config.ts`, `tsconfig*.json`, `src/main.tsx`, `src/app/App.tsx`.
   - Estimated scope: Medium. Completed in the foundation slice.
 
-- [ ] Task 2: Add typed candidate/profile/source data and deterministic scoring utilities with tests.
+- [x] Task 2: Add typed candidate/profile/source data and deterministic scoring utilities with tests.
   - Acceptance: Six analog candidates and Moon/Mars profiles are typed; score normalization and ranking are deterministic; source IDs resolve to a registry entry.
   - Verify: `pnpm test`, `pnpm lint`, `pnpm build`.
   - Dependencies: Task 1.
   - Files likely touched: `src/data/*`, `src/lib/scoring.ts`, `tests/scoring.test.ts`.
-  - Estimated scope: Medium.
+  - Estimated scope: Medium. Completed with six candidates, source registry, Moon/Mars profiles, and scoring tests.
 
 ## Checkpoint: Foundation
 
-- [ ] Tests, lint, and build pass.
-- [ ] The app renders without a network request.
-- [ ] Local commit is ready for review before continuing.
+- [x] Tests, lint, and build pass.
+- [x] The app renders without a network request.
+- [x] Local commit is ready for review before continuing.
 
 ## Phase 2: Core discovery
 
