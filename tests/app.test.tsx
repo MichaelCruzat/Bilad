@@ -14,10 +14,10 @@ describe('Bilad trend detective', () => {
       </Theme>,
     );
 
-    expect(screen.getByRole('img', {name: /Atacama Desert and Canadian Arctic/i})).toBeInTheDocument();
+    expect(screen.getByRole('img', {name: /annual trend chart.*Atacama Desert and Canadian Arctic/i})).toBeInTheDocument();
     fireEvent.click(screen.getByRole('combobox'));
     fireEvent.click(screen.getByRole('option', {name: 'Amazon Basin'}));
-    expect(screen.getByRole('img', {name: /Atacama Desert and Amazon Basin/i})).toBeInTheDocument();
+    expect(screen.getByRole('img', {name: /annual trend chart.*Atacama Desert and Amazon Basin/i})).toBeInTheDocument();
   });
   it('renders the investigation and lets the user switch variables', () => {
     render(
@@ -26,7 +26,7 @@ describe('Bilad trend detective', () => {
       </Theme>,
     );
 
-    expect(screen.getByRole('heading', {name: /find the signal/i})).toBeInTheDocument();
+    expect(screen.getByRole('heading', {name: /25 years. Five places. What changed/i})).toBeInTheDocument();
     expect(screen.getByRole('heading', {name: 'Surface temperature'})).toBeInTheDocument();
     expect(screen.getByText('Trend verdict')).toBeInTheDocument();
 

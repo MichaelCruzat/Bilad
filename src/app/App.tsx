@@ -6,25 +6,11 @@ import {Card} from '@astryxdesign/core/Card';
 import {Divider} from '@astryxdesign/core/Divider';
 import {Grid} from '@astryxdesign/core/Grid';
 import {Layout, LayoutContent} from '@astryxdesign/core/Layout';
-import {NavIcon} from '@astryxdesign/core/NavIcon';
-import {Icon} from '@astryxdesign/core/Icon';
-import {
-  SideNav,
-  SideNavHeading,
-  SideNavItem,
-  SideNavSection,
-} from '@astryxdesign/core/SideNav';
 import {SegmentedControl, SegmentedControlItem} from '@astryxdesign/core/SegmentedControl';
 import {Selector} from '@astryxdesign/core/Selector';
+import {Section} from '@astryxdesign/core/Section';
 import {Heading, Text} from '@astryxdesign/core/Text';
 import {HStack, VStack} from '@astryxdesign/core/Stack';
-import {
-  BookOpenIcon,
-  ChartBarIcon,
-  GlobeAmericasIcon,
-  LightBulbIcon,
-  MapPinIcon,
-} from '@heroicons/react/24/outline';
 import {
   getFallbackSeries,
   getRegion,
@@ -37,33 +23,21 @@ import {
   type VariableId,
 } from '../data/trends';
 import {TrendChart} from '../features/TrendChart';
+import {AtlasHero} from '../features/AtlasHero';
 import {fetchPowerSeries} from '../lib/nasaPower';
 import {analyzeTrend} from '../lib/trendAnalysis';
 
 function Navigation() {
   return (
-    <SideNav
-      aria-label="Bilad navigation"
-      collapsible
-      header={
-        <SideNavHeading
-          heading="Bilad"
-          icon={<NavIcon icon={<Icon icon={GlobeAmericasIcon} size="sm" />} />}
-          headingHref="#top"
-        />
-      }
-      footer={
-        <SideNavSection title="Resources" isHeaderHidden>
-          <SideNavItem label="NASA challenge" icon={BookOpenIcon} href={SOURCE_REGISTRY.challenge.url} />
-        </SideNavSection>
-      }>
-      <SideNavSection title="Investigation" isHeaderHidden>
-        <SideNavItem label="Briefing" icon={LightBulbIcon} href="#top" isSelected />
-        <SideNavItem label="Trend explorer" icon={ChartBarIcon} href="#explore" />
-        <SideNavItem label="Regions" icon={MapPinIcon} href="#regions" />
-        <SideNavItem label="Method & sources" icon={BookOpenIcon} href="#method" />
-      </SideNavSection>
-    </SideNav>
+    <HStack as="nav" aria-label="Bilad sections" paddingInline={6} paddingBlock={2} hAlign="between" vAlign="center" wrap="wrap"
+      style={{borderBottom: '1px solid var(--color-border)', background: 'var(--color-background-body)'}}>
+      <Text style={{fontWeight: 800, letterSpacing: '0.2em'}}>BILAD <Text color="accent" type="supporting">/ EARTH SYSTEM LAB</Text></Text>
+      <HStack gap={1} wrap="wrap">
+        <Button label="Explore" variant="ghost" href="#explore" size="sm" />
+        <Button label="Method" variant="ghost" href="#method" size="sm" />
+        <Button label="NASA challenge" variant="secondary" href={SOURCE_REGISTRY.challenge.url} size="sm" />
+      </HStack>
+    </HStack>
   );
 }
 
@@ -188,86 +162,75 @@ export default function App() {
     : 'does not pass the prototype significance screen';
 
   return (
-    <AppShell contentPadding={0} height="auto" sideNav={<Navigation />} variant="elevated">
+    <AppShell contentPadding={0} height="auto" topNav={<Navigation />} variant="surface">
+      <AtlasHero primaryId={regionId} comparisonId={comparedRegionId} />
       <Layout
         height="auto"
         content={
-          <LayoutContent padding={6}>
+          <LayoutContent padding={8}>
             <VStack gap={8}>
-              <VStack gap={3} id="top">
-                <Badge label="NASA Space Apps 2026 · Earth System Trend Detective" variant="blue" />
-                <Heading level={1}>Find the signal in a changing Earth.</Heading>
-                <Text type="large" color="secondary">
-                  Bilad helps you choose an Earth-system variable, focus on a region, and test what the time series is really saying: what changed, where, by how much, and whether the signal is statistically meaningful.
-                </Text>
-                <HStack gap={2}>
-                  <Button label="Start the investigation" variant="primary" href="#explore" />
-                  <Button label="Read the method" variant="secondary" href="#method" />
-                </HStack>
-              </VStack>
-
-              <Divider />
-
-              <VStack gap={3} id="explore">
-                <Heading level={2}>1. Choose a variable</Heading>
-                <Text color="secondary">
-                  Start with a measurable Earth-system quantity. Bilad keeps the definition and unit beside the result so the chart has scientific context.
-                </Text>
-                <SegmentedControl
-                  label="Earth science variable"
-                  value={variableId}
-                  onChange={selectVariable}
-                  layout="fill">
-                  {VARIABLE_IDS.map(id => (
-                    <SegmentedControlItem
-                      key={id}
-                      value={id}
-                      label={VARIABLE_DEFINITIONS[id].shortLabel}
-                    />
-                  ))}
-                </SegmentedControl>
-                <Card variant="muted">
-                  <VStack gap={2}>
-                    <Heading level={3}>{variable.label}</Heading>
-                    <Text>{variable.description}</Text>
-                    <Text type="supporting">
-                      Unit: {variable.unit}. {variable.interpretation}
+              <VStack gap={6} id="explore">
+                <Text type="supporting" color="accent" style={{letterSpacing: '0.2em'}}>01 / INVESTIGATION DESK</Text>
+                <Grid columns={{minWidth: 300, max: 2}} gap={8}>
+                  <VStack gap={3}>
+                    <Heading level={2} type="display-2">Build a question.</Heading>
+                    <Text type="large" color="secondary">
+                      Pick what to measure, then choose two places. The same window and unit keep the comparison honest.
                     </Text>
                   </VStack>
-                </Card>
+                  <Section variant="muted" padding={6}>
+                    <VStack gap={4}>
+                      <Text type="supporting" color="accent">VARIABLE / {variable.parameter}</Text>
+                      <SegmentedControl label="Earth science variable" value={variableId} onChange={selectVariable} layout="fill">
+                        {VARIABLE_IDS.map(id => (
+                          <SegmentedControlItem key={id} value={id} label={VARIABLE_DEFINITIONS[id].shortLabel} />
+                        ))}
+                      </SegmentedControl>
+                      <Heading level={3}>{variable.label}</Heading>
+                      <Text>{variable.description}</Text>
+                      <Text type="supporting" color="secondary">{variable.unit} · {variable.interpretation}</Text>
+                    </VStack>
+                  </Section>
+                </Grid>
               </VStack>
 
-              <VStack gap={3} id="regions">
-                <Heading level={2}>2. Choose a region</Heading>
-                <Text color="secondary">
-                  Compare contrasting Earth contexts without pretending that one point represents an entire ecosystem or climate zone.
-                </Text>
-                <Grid columns={{minWidth: 220, max: 3}} gap={3}>
-                  {REGIONS.map(item => (
-                    <Card key={item.id} variant={item.id === regionId ? 'muted' : undefined}>
-                      <VStack gap={2}>
-                        <Badge label={item.subtitle} variant="blue" />
+              <VStack gap={4} id="regions">
+                <HStack gap={4} hAlign="between" wrap="wrap">
+                  <VStack gap={2}>
+                    <Text type="supporting" color="accent" style={{letterSpacing: '0.2em'}}>02 / FIELD INDEX</Text>
+                    <Heading level={2}>Choose the first sample point.</Heading>
+                  </VStack>
+                  <Selector
+                    label="Comparison region"
+                    value={comparedRegionId ?? 'none'}
+                    onChange={selectComparison}
+                    options={[
+                      {value: 'none', label: 'No comparison'},
+                      ...REGIONS.filter(item => item.id !== regionId).map(item => ({value: item.id, label: item.name})),
+                    ]}
+                    presentation="adaptive"
+                  />
+                </HStack>
+                <Text color="secondary">A named region is a way to locate the question. Each result is one coordinate, not a regional average.</Text>
+                <Divider />
+                {REGIONS.map((item, index) => (
+                  <VStack gap={3} key={item.id}>
+                    <HStack gap={4} hAlign="between" vAlign="center" wrap="wrap">
+                      <Text type="supporting" color="accent">{String(index + 1).padStart(2, '0')}</Text>
+                      <VStack gap={1} style={{flex: 1, minWidth: '16rem'}}>
                         <Heading level={3}>{item.name}</Heading>
-                        <Text color="secondary">{item.description}</Text>
-                        <Button
-                          label={item.id === regionId ? 'Selected region' : `Inspect ${item.name}`}
-                          variant={item.id === regionId ? 'primary' : 'secondary'}
-                          onClick={() => selectRegion(item.id)}
-                        />
+                        <Text color="secondary">{item.subtitle} · {item.description}</Text>
                       </VStack>
-                    </Card>
-                  ))}
-                </Grid>
-                <Selector
-                  label="Comparison region"
-                  value={comparedRegionId ?? 'none'}
-                  onChange={selectComparison}
-                  options={[
-                    {value: 'none', label: 'No comparison'},
-                    ...REGIONS.filter(item => item.id !== regionId).map(item => ({value: item.id, label: item.name})),
-                  ]}
-                  presentation="adaptive"
-                />
+                      <Text type="supporting" color="secondary">{item.latitude.toFixed(1)}°, {item.longitude.toFixed(1)}°</Text>
+                      <Button
+                        label={item.id === regionId ? 'Selected region' : `Inspect ${item.name}`}
+                        variant={item.id === regionId ? 'primary' : 'ghost'}
+                        onClick={() => selectRegion(item.id)}
+                      />
+                    </HStack>
+                    <Divider />
+                  </VStack>
+                ))}
               </VStack>
 
               <VStack gap={3} id="analysis">
