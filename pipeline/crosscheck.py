@@ -16,14 +16,11 @@ cell that contains it) and averaged with Bilad's own area weights, so the
 footprint is identical to the reanalysis national series. Only series are
 written here; all statistics run in the shared TypeScript engine.
 
-Usage:
-    python3 -m venv .venv && .venv/bin/pip install -r pipeline/requirements.txt
-    .venv/bin/python pipeline/crosscheck.py --gistemp path/gistemp250_GHCNv4.nc --gpcp path/precip.mon.mean.nc
+Run with ``python -m pipeline crosscheck`` (downloads both products once).
 """
 
 from __future__ import annotations
 
-import argparse
 import datetime as dt
 import json
 from pathlib import Path
@@ -31,9 +28,7 @@ from pathlib import Path
 import netCDF4
 import numpy as np
 
-ROOT = Path(__file__).resolve().parent.parent
-DATA = ROOT / "public" / "data"
-FIRST, LAST = 1981, 2024
+from .variables import FIRST_YEAR as FIRST, LAST_YEAR as LAST
 MIN_MONTHS = 10
 
 
@@ -81,23 +76,18 @@ def national_series(field, ym, lats, lons, cells, lon360: bool, fill_check) -> t
     return out, coverage
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--gistemp", required=True)
-    parser.add_argument("--gpcp", required=True)
-    args = parser.parse_args()
-
-    gis = netCDF4.Dataset(args.gistemp)
+def run(gistemp: Path, gpcp: Path, data: Path) -> None:
+    gis = netCDF4.Dataset(gistemp)
     gis_field = gis.variables["tempanomaly"]
     gis_field.set_auto_mask(True)
     gis_ym = monthly_index(gis.variables["time"])
 
-    gp = netCDF4.Dataset(args.gpcp)
+    gp = netCDF4.Dataset(gpcp)
     gp_field = gp.variables["precip"]
     gp_field.set_auto_mask(True)
     gp_ym = monthly_index(gp.variables["time"])
 
-    index = json.loads((DATA / "index.json").read_text())
+    nations = sorted(p.name for p in (data / "nations").iterdir() if (p / "meta.json").exists())
     result = {
         "generated": dt.date.today().isoformat(),
         "firstYear": FIRST,
@@ -119,9 +109,8 @@ def main() -> None:
         "nations": {},
     }
 
-    for nation in index["nations"]:
-        iso = nation["iso3"]
-        meta = json.loads((DATA / "nations" / iso / "meta.json").read_text())
+    for iso in nations:
+        meta = json.loads((data / "nations" / iso / "meta.json").read_text())
         cells = meta["cells"]
         t_series, t_cov = national_series(
             gis_field, gis_ym, gis.variables["lat"][:], gis.variables["lon"][:], cells, False,
@@ -155,9 +144,5 @@ def main() -> None:
         result["nations"][iso] = entry
         print(f"{iso}: GISTEMP years {sum(v is not None for v in t_series)}, GPCP years {sum(v is not None for v in p_series)}")
 
-    (DATA / "crosscheck.json").write_text(json.dumps(result))
-    print(f"Wrote {DATA / 'crosscheck.json'}")
-
-
-if __name__ == "__main__":
-    main()
+    (data / "crosscheck.json").write_text(json.dumps(result))
+    print(f"Wrote {data / 'crosscheck.json'}")
