@@ -228,7 +228,7 @@ export default function App() {
                 </Text>
                 <Card>
                   <VStack gap={3}>
-                    <TrendChart observations={series} result={result} unit={variable.unit} label={variable.label} />
+                    <TrendChart observations={series} result={result} unit={variable.unit} label={variable.label} regionName={region.name} />
                     <HStack gap={2}>
                       <Button
                         label={isLoading ? 'Loading NASA POWER…' : 'Load NASA POWER data'}
