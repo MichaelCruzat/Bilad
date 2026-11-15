@@ -70,7 +70,9 @@ def national_series(field, ym, lats, lons, cells, lon360: bool, fill_check) -> t
         block = np.ma.filled(field[idx][:, pi, pj].astype(float), np.nan)  # months x pairs
         block[~fill_check(block)] = np.nan
         valid = np.sum(np.isfinite(block), axis=0)
-        annual_pair = np.where(valid >= MIN_MONTHS, np.nanmean(np.where(np.isfinite(block), block, np.nan), axis=0), np.nan)
+        with np.errstate(invalid="ignore"):
+            sums = np.nansum(block, axis=0)
+        annual_pair = np.where(valid >= MIN_MONTHS, sums / np.maximum(valid, 1), np.nan)
         annual_cell = annual_pair[cell_to_pair]
         ok = np.isfinite(annual_cell)
         cov = float(w[ok].sum() / w.sum())
@@ -129,10 +131,28 @@ def main() -> None:
             gp_field, gp_ym, gp.variables["lat"][:], gp.variables["lon"][:], cells, True,
             lambda b: np.isfinite(b) & (b >= 0) & (b < 200),
         )
-        result["nations"][iso] = {
+        entry = {
             "T2M": {"series": t_series, "coverage": t_cov},
             "PRECTOTCORR": {"series": p_series, "coverage": p_cov},
+            "regions": {},
         }
+        for region in meta.get("regions", []):
+            sub = [c for c in cells if region["latMin"] <= c["lat"] <= region["latMax"]]
+            if not sub:
+                continue
+            rt, rtc = national_series(
+                gis_field, gis_ym, gis.variables["lat"][:], gis.variables["lon"][:], sub, False,
+                lambda b: np.isfinite(b) & (np.abs(b) < 50),
+            )
+            rp, rpc = national_series(
+                gp_field, gp_ym, gp.variables["lat"][:], gp.variables["lon"][:], sub, True,
+                lambda b: np.isfinite(b) & (b >= 0) & (b < 200),
+            )
+            entry["regions"][region["id"]] = {
+                "T2M": {"series": rt, "coverage": rtc},
+                "PRECTOTCORR": {"series": rp, "coverage": rpc},
+            }
+        result["nations"][iso] = entry
         print(f"{iso}: GISTEMP years {sum(v is not None for v in t_series)}, GPCP years {sum(v is not None for v in p_series)}")
 
     (DATA / "crosscheck.json").write_text(json.dumps(result))

@@ -384,3 +384,125 @@ export function weightedMean(values: ArrayLike<number>, weights: ArrayLike<numbe
   }
   return wsum ? sum / wsum : NaN;
 }
+
+function ols(t: ArrayLike<number>, y: ArrayLike<number>): {slope: number; intercept: number; rss: number} {
+  const n = y.length;
+  let mt = 0, my = 0;
+  for (let i = 0; i < n; i++) {
+    mt += t[i];
+    my += y[i];
+  }
+  mt /= n;
+  my /= n;
+  let sxy = 0, sxx = 0;
+  for (let i = 0; i < n; i++) {
+    sxy += (t[i] - mt) * (y[i] - my);
+    sxx += (t[i] - mt) ** 2;
+  }
+  const slope = sxx ? sxy / sxx : 0;
+  const intercept = my - slope * mt;
+  let rss = 0;
+  for (let i = 0; i < n; i++) rss += (y[i] - intercept - slope * t[i]) ** 2;
+  return {slope, intercept, rss};
+}
+
+export type StepScreen = {
+  /** First year of the new regime under the best single-step model. */
+  breakAt: number;
+  /** Mean after minus mean before. */
+  step: number;
+  bicTrend: number;
+  bicStep: number;
+  /** BIC(trend) - BIC(step): > 6 is strong evidence the record is a step, not a ramp. */
+  deltaBic: number;
+  /** Corrected Mann–Kendall p of the series after removing the two regime means. */
+  residualTrendP: number;
+  /** True when a step explains the record better than a trend and no trend survives inside the regimes. */
+  stepDominated: boolean;
+};
+
+/**
+ * Integrity screen. A reanalysis record can jump when the observing system
+ * that feeds it changes; such a jump masquerades as a trend. This compares a
+ * straight-line model with a single step (best break, segments >= `minSegment`
+ * years, so late-record acceleration is not mistaken for a jump)
+ * by BIC, and re-tests for trend once the step is removed. Pettitt alone cannot
+ * make this distinction, because any trending series has a "break" mid-record.
+ */
+export function stepScreen(tIn: ArrayLike<number>, yIn: ArrayLike<number>, minSegment = 8): StepScreen | null {
+  const {t, y} = finitePairs(tIn, yIn);
+  const n = y.length;
+  if (n < 2 * minSegment) return null;
+  const trend = ols(t, y);
+  let bestRss = Infinity;
+  let bestK = minSegment;
+  let bestBefore = 0;
+  let bestAfter = 0;
+  for (let k = minSegment; k <= n - minSegment; k++) {
+    let a = 0, b = 0;
+    for (let i = 0; i < k; i++) a += y[i];
+    for (let i = k; i < n; i++) b += y[i];
+    a /= k;
+    b /= n - k;
+    let rss = 0;
+    for (let i = 0; i < n; i++) rss += (y[i] - (i < k ? a : b)) ** 2;
+    if (rss < bestRss) {
+      bestRss = rss;
+      bestK = k;
+      bestBefore = a;
+      bestAfter = b;
+    }
+  }
+  const bic = (rss: number, k: number) => n * Math.log(Math.max(rss, 1e-12) / n) + k * Math.log(n);
+  // Trend: intercept, slope, variance. Step: two means, break location, variance.
+  const bicTrend = bic(trend.rss, 3);
+  const bicStep = bic(bestRss, 4);
+  const residual = y.map((v, i) => v - (i < bestK ? bestBefore : bestAfter));
+  const residualTrendP = trendTest(t, residual).p;
+  const deltaBic = bicTrend - bicStep;
+  return {
+    breakAt: t[bestK],
+    step: bestAfter - bestBefore,
+    bicTrend,
+    bicStep,
+    deltaBic,
+    residualTrendP,
+    stepDominated: deltaBic > 6 && residualTrendP >= 0.05,
+  };
+}
+
+/**
+ * Approximate further years of record needed before a trend of the current
+ * size, against the current interannual noise, would reach 5% significance:
+ * smallest N with |b| / (sigma * sqrt(12 / (N (N^2 - 1)))) >= 1.96 * sqrt(inflation).
+ * Returns 0 when already significant and Infinity for a zero slope.
+ */
+export function yearsToSignificance(slope: number, sigma: number, n: number, inflation = 1): number {
+  if (!Number.isFinite(slope) || !Number.isFinite(sigma) || slope === 0) return Infinity;
+  const target = 12 * ((Z_975 * sigma) / Math.abs(slope)) ** 2 * inflation;
+  let N = Math.max(n, 3);
+  if (N * (N * N - 1) >= target) return 0;
+  while (N * (N * N - 1) < target && N < 10000) N++;
+  return N >= 10000 ? Infinity : N - n;
+}
+
+export type Agreement = 'corroborated' | 'same-direction' | 'weakly-supported' | 'contradicted' | 'no-signal' | 'unsupported';
+
+/**
+ * Compare a reanalysis trend with an independent, observation-based one.
+ *  corroborated      both significant, same sign, 95% intervals overlap
+ *  same-direction    both significant, same sign, intervals do not overlap
+ *  weakly-supported  one significant, the other same sign but not significant
+ *  contradicted      opposite signs, both significant
+ *  unsupported       opposite signs, only one significant
+ *  no-signal         neither is significant
+ */
+export function agreement(a: TrendTest, b: TrendTest, alpha = 0.05): Agreement {
+  const sa = a.p < alpha;
+  const sb = b.p < alpha;
+  const same = Math.sign(a.slope) === Math.sign(b.slope);
+  if (!sa && !sb) return 'no-signal';
+  if (!same) return sa && sb ? 'contradicted' : 'unsupported';
+  if (sa && sb) return a.slopeLow <= b.slopeHigh && b.slopeLow <= a.slopeHigh ? 'corroborated' : 'same-direction';
+  return 'weakly-supported';
+}

@@ -24,6 +24,8 @@ export type VariableDef = {
   /** Number of decimals for a per-decade change in display units. */
   digits: number;
   description: string;
+  /** Map and headline trends as % of the 1991–2020 normal per decade. */
+  relative?: boolean;
   /** Plain words for an increase / decrease. */
   up: string;
   down: string;
@@ -86,7 +88,8 @@ export const VARIABLES = [
     scale: 0.01,
     palette: 'moisture',
     digits: 0,
-    description: 'Rain and snow reaching the surface, MERRA-2 corrected against gauge-based observations. Read as an annual total.',
+    description: 'Rain and snow reaching the surface. MERRA-2 nudges its model precipitation toward gauge analyses (satellite–gauge over Africa), and the correction fades out poleward of about 42°, so trends there rest more on the model.',
+    relative: true,
     up: 'wetter',
     down: 'drier',
   },
@@ -101,7 +104,7 @@ export const VARIABLES = [
     scale: 0.0001,
     palette: 'moisture',
     digits: 2,
-    description: 'How saturated the top metre of soil is, from 0% (dry) to 100% (saturated). It integrates rain, heat and evaporation, so it often shows drought before rainfall does.',
+    description: 'How saturated the root zone (top metre) of soil is, from 0% to 100%. It is modelled by MERRA-2’s land model from the corrected precipitation, so it is not an independent witness to a rainfall trend.',
     up: 'wetter soils',
     down: 'drier soils',
   },

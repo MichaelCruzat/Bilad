@@ -34,7 +34,7 @@ export const NATIONS: NationConfig[] = [
     iso3: 'KEN',
     atlasId: '404',
     name: 'Kenya',
-    rationale: 'Equatorial East Africa, where the long-rains season has behaved differently from what climate models project.',
+    rationale: 'Equatorial East Africa, where the reanalysis sees only about half the warming that weather stations record.',
   },
   {
     iso3: 'MAR',
@@ -46,7 +46,7 @@ export const NATIONS: NationConfig[] = [
     iso3: 'BGD',
     atlasId: '050',
     name: 'Bangladesh',
-    rationale: 'A low-lying monsoon delta where heat and humidity together decide what a hot day means.',
+    rationale: 'A monsoon delta whose reanalysis record jumps in 1997–98: the case that shows why every trend needs an independent witness.',
   },
   {
     iso3: 'ESP',

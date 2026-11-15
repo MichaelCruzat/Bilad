@@ -1,13 +1,16 @@
 import {describe, expect, it} from 'vitest';
 import {
+  agreement,
   annualAnomalies,
   fdrThreshold,
   monthlyClimatology,
   pettitt,
   signalToNoise,
   startYearSensitivity,
+  stepScreen,
   trendTest,
   weightedMean,
+  yearsToSignificance,
 } from '../src/lib/stats';
 
 // Reference values produced by pymannkendall 1.4 (original_test,
@@ -124,5 +127,57 @@ describe('derived measures', () => {
 
   it('weightedMean ignores missing values and renormalises', () => {
     expect(weightedMean([1, NaN, 3], [1, 5, 3])).toBeCloseTo(2.5, 12);
+  });
+});
+
+describe('stepScreen', () => {
+  const t = Array.from({length: 44}, (_, i) => 1981 + i);
+  const wiggle = (i: number) => 0.15 * Math.sin(i * 1.9) + 0.1 * Math.cos(i * 0.7);
+
+  it('flags a record that is a jump, not a ramp', () => {
+    const y = t.map((year, i) => (year < 1998 ? 0.6 : -0.3) + wiggle(i));
+    const s = stepScreen(t, y)!;
+    expect(s.breakAt).toBe(1998);
+    expect(s.step).toBeCloseTo(-0.9, 1);
+    expect(s.deltaBic).toBeGreaterThan(6);
+    expect(s.stepDominated).toBe(true);
+    // The naive test would have called this a significant cooling trend.
+    expect(trendTest(t, y).p).toBeLessThan(0.05);
+  });
+
+  it('leaves a genuine ramp alone', () => {
+    const y = t.map((_, i) => 0.03 * i + wiggle(i));
+    const s = stepScreen(t, y)!;
+    expect(s.stepDominated).toBe(false);
+    expect(s.residualTrendP).toBeLessThan(0.05);
+  });
+});
+
+describe('yearsToSignificance', () => {
+  it('is zero for a strong trend and grows as the signal weakens', () => {
+    expect(yearsToSignificance(0.05, 0.3, 44)).toBe(0);
+    const weak = yearsToSignificance(0.005, 0.3, 20);
+    const weaker = yearsToSignificance(0.0025, 0.3, 20);
+    expect(weak).toBeGreaterThan(0);
+    expect(weaker).toBeGreaterThan(weak);
+    expect(yearsToSignificance(0, 0.3, 20)).toBe(Infinity);
+  });
+
+  it('matches the closed form', () => {
+    // N(N^2-1) >= 12 (1.96 * 0.3 / 0.01)^2 = 41,489  ->  N = 35
+    expect(yearsToSignificance(0.01, 0.3, 30)).toBe(5);
+  });
+});
+
+describe('agreement', () => {
+  const tt = (slope: number, low: number, high: number, p: number) =>
+    ({n: 44, slope, slopeLow: low, slopeHigh: high, intercept: 0, s: 0, tau: 0, p, pRaw: p, inflation: 1});
+  it('classifies the cases Bilad reports', () => {
+    expect(agreement(tt(0.011, 0.004, 0.018, 0.01), tt(0.011, 0.004, 0.018, 0.01))).toBe('corroborated');
+    expect(agreement(tt(0.018, 0.01, 0.025, 0.001), tt(0.034, 0.028, 0.04, 0.001))).toBe('same-direction');
+    expect(agreement(tt(-0.019, -0.036, -0.001, 0.03), tt(0.035, 0.027, 0.042, 0.001))).toBe('contradicted');
+    expect(agreement(tt(0.02, -0.01, 0.05, 0.27), tt(-0.02, -0.06, 0.02, 0.26))).toBe('no-signal');
+    expect(agreement(tt(0.02, 0.01, 0.03, 0.01), tt(0.01, -0.01, 0.03, 0.2))).toBe('weakly-supported');
+    expect(agreement(tt(0.02, 0.01, 0.03, 0.01), tt(-0.01, -0.03, 0.01, 0.3))).toBe('unsupported');
   });
 });
