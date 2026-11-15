@@ -2,7 +2,9 @@
 
 Bilad is an Earth System Trend Detective for NASA Space Apps 2026.
 
-It helps a user select an Earth science variable and region, visualize a long-enough monthly time series, estimate how much the variable changes per year, and screen whether the pattern is statistically meaningful.
+**Live site:** [michaelcruzat.github.io/Bilad](https://michaelcruzat.github.io/Bilad/) · [Six-slide judging demo](https://michaelcruzat.github.io/Bilad/bilad-demo.pdf). Pushes to `main` deploy through GitHub Actions after the project checks pass.
+
+It helps a user compare one Earth-system variable at two locations, inspect 25 years of NASA POWER monthly data, estimate change per year, and check whether the pattern passes a statistical screen. Its first-run series is synthetic demo data, plainly labeled until live data is loaded.
 
 ## NASA challenge
 
@@ -30,17 +32,17 @@ Quality checks:
     python3 -m unittest discover -s tests -p 'test_*.py'
     python3 scripts/bundle_budget.py
 
-The app does not require a secret or backend. It opens with deterministic demo data so the story still works offline. The "Load NASA POWER data" action requests the public NASA POWER monthly endpoint for the selected variable and region.
+The app does not require a secret or backend. Once the page has loaded, the deterministic demo data remains usable if the NASA endpoint is unavailable. A first visit to the hosted site still needs a connection to download the page. "Load NASA POWER data" requests the public monthly endpoint for both selected locations; each result keeps its own live/demo source label.
 
 The browser app uses TypeScript for the interactive analysis. A small, standard-library-only Python check measures the built JavaScript and CSS assets; CI rejects a large size regression. The GitHub Actions YAML runs both sets of checks and deploys the static HTML site. Successful NASA POWER requests are reused during a page session, while failures can be retried.
 
 ## Three-minute demo
 
-1. Start on the default Atacama temperature example.
-2. Read the chart and the four evidence cards: direction, change per year, Mann–Kendall screen, and linear fit.
-3. Switch to another variable, then inspect the Amazon Basin or Canadian Arctic.
-4. Load NASA POWER data to replace the fallback series with the public monthly response.
-5. Open "The detective's method" to see the parameter, coordinate, confidence interval, significance screen, source links, and the limits of the conclusion.
+1. Start with the default surface-temperature question: Atacama Desert versus Canadian Arctic.
+2. Open the investigation desk. The field index shows each point coordinate; the comparison selector changes the second location.
+3. Read the baseline-relative annual chart, open its annual-value table, then switch to absolute values to see the different temperature levels.
+4. Load NASA POWER data. Check each source, complete-year count, NASA product, and exact request before interpreting the slopes, confidence intervals, and Mann–Kendall screens.
+5. Read the method: a point is not a regional average, the five-year baseline is not a climate normal, and a detected trend does not establish its cause.
 
 ## Data and method
 
@@ -48,20 +50,24 @@ The prototype uses three NASA POWER variables:
 
 - **Surface temperature (T2M)** — average air temperature at 2 meters, shown in °C.
 - **Precipitation (PRECTOTCORR)** — bias-corrected average daily precipitation, shown in mm/day.
-- **Solar energy (ALLSKY_SFC_SW_DWN)** — all-sky surface shortwave downward radiation, shown in kWh/m²/day.
+- **Solar energy (ALLSKY_SFC_SW_DWN)** — all-sky surface shortwave downward radiation. NASA POWER returns MJ/m²/day; Bilad divides by 3.6 and shows kWh/m²/day.
 
 The analysis:
 
-1. Fits an ordinary least-squares line to the monthly observations.
-2. Reports the slope per year and an approximate 95% confidence interval.
-3. Applies a Mann–Kendall monotonic-trend screen to annual means so repeating seasonal cycles do not dominate the screen.
-4. Labels the result as a screening analysis, not a causal explanation, forecast, or scientific-grade conclusion.
+1. Fits an ordinary least-squares line to monthly observations from complete 12-month years. A live result needs at least 80% of the requested years. Below that threshold, the affected point uses labeled demo data.
+2. Plots complete-year means either as absolute values or as differences from each location's 2000–2004 annual mean. Gaps remain gaps, and a table exposes every annual value. The five-year reference is a visual baseline, not a climate normal.
+3. Reports the slope per year and an approximate 95% confidence interval. The interval assumes independent monthly residuals, an assumption climate data may violate.
+4. Applies a Mann–Kendall monotonic-trend screen to annual means so repeating seasonal cycles do not dominate the screen. This screen and the slope interval can disagree.
+5. Labels the result as a screening analysis, not a causal explanation, forecast, or scientific-grade conclusion.
 
 If the public endpoint is unavailable, Bilad uses a deterministic, clearly labeled demo series. The fallback is there to keep the investigation judgeable; it is not presented as NASA data.
+
+NASA POWER identifies its solar source products as SRB and SYN1DEG across this window; the [NASA POWER source documentation](https://power.larc.nasa.gov/docs/methodology/communities/) places the transition at January 2001, inside the short reference period. Bilad shows the products reported by each response and a link to the exact request. The transition is a reason to inspect the underlying product before making a scientific claim.
 
 ## NASA and source citations
 
 - [NASA Space Apps 2026 home](https://www.spaceappschallenge.org/2026/)
+- [NASA Space Apps project submission guide](https://www.spaceappschallenge.org/resources/project-submission-guide/)
 - [NASA challenge statement](https://www.spaceappschallenge.org/2026/challenges/earth-system-trend-detective/)
 - [NASA POWER](https://power.larc.nasa.gov/)
 - [NASA POWER monthly API documentation](https://power.larc.nasa.gov/docs/services/api/temporal/monthly/)
@@ -69,15 +75,15 @@ If the public endpoint is unavailable, Bilad uses a deterministic, clearly label
 - [NASA Earthdata](https://www.earthdata.nasa.gov/)
 - [NASA Space Apps terms and conditions](https://www.spaceappschallenge.org/legal/)
 
-Icons are provided by [Heroicons](https://heroicons.com/) and used under the MIT license. The UI system is Astryx as included in the project dependencies.
+The coordinate-field illustration is original SVG artwork. Its sample points reflect catalog coordinates; its curves are schematic, not measured geospatial data. The UI system is Astryx as included in the project dependencies. No artwork or copy was taken from the visual reference site.
 
 ## NASA rubric mapping
 
 - **Impact:** makes Earth-system trend questions legible to students, educators, and the public.
-- **Creativity:** turns statistical analysis into a guided detective workflow with an explicit verdict and limitations.
+- **Creativity:** uses an original field-atlas visual language and lets users compare both absolute values and baseline-relative change.
 - **Validity:** shows the source, parameter, coordinate, time window, sample count, fitted slope, confidence interval, and significance screen.
 - **Relevance:** directly follows the selected NASA challenge questions.
-- **Presentation:** opens with a complete example and remains usable with no network connection.
+- **Presentation:** opens with a complete two-location example and a three-minute field guide; once loaded, it remains usable during a NASA endpoint outage.
 
 ## AI-use disclosure
 

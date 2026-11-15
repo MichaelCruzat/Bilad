@@ -55,11 +55,14 @@ Primary references:
 - A single responsive web experience with a strong briefing state and clear navigation between the explorer, guided example, and method/source views.
 - A typed catalog for NASA POWER surface temperature, precipitation, and solar energy, with plain-language definitions and units.
 - A region catalog covering contrasting contexts including the Atacama, Amazon, Sahel, Arctic, and New York/Chesapeake region.
+- An optional second point for comparing the same variable and window, with independent live/demo provenance labels.
+- An annual chart switch between absolute values and differences from each point's 2000–2004 annual mean; the reference is explicitly not a climate normal.
 - Live NASA POWER monthly retrieval for the selected variable and region, with deterministic local fallback data and an explicit fallback label when the network is unavailable.
 - A trend chart with a fitted line, sample count, time window, slope per year, approximate 95% confidence interval, and a Mann–Kendall significance screen.
 - A verdict view answering what changed, where, how much, and whether the signal passes the prototype significance screen.
 - Method, source, variable-definition, and limitation panels reachable from the main analysis surface.
-- A guided example that walks through a variable, a region, the observed series, the method, and the impact in roughly three minutes.
+- A guided example that walks through a variable, two locations, the series and source labels, the method, and the impact in roughly three minutes.
+- An original field-atlas visual language: coordinate-grid artwork, editorial hierarchy, and a dense explorer rather than a generic card gallery. Decorative paths must never be presented as measured data.
 
 ### Deferred to V2
 
