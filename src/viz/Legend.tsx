@@ -28,7 +28,7 @@ export function Legend({variable, layer, coloring, unit, year}: Props) {
           ? `${year ?? ''} versus the 1991–2020 normal, ${def.relative ? '% of normal' : def.unit}`
           : `1991–2020 normal, ${def.unit}`;
   return (
-    <VStack maxWidth={320}>
+    <VStack maxWidth="24rem">
     <svg viewBox="0 0 240 46" width="100%" role="img" aria-label={`Legend: ${caption}, from ${labels[0]} to ${labels[2]}`}>
       <defs>
         <linearGradient id={`lg-${id}`}>

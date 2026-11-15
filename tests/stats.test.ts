@@ -1,4 +1,5 @@
 import {describe, expect, it} from 'vitest';
+import {overallVerdict, productName, VERDICT_TEXT, type CrossExamination} from '../src/lib/evidence';
 import {
   agreement,
   annualAnomalies,
@@ -179,5 +180,30 @@ describe('agreement', () => {
     expect(agreement(tt(0.02, -0.01, 0.05, 0.27), tt(-0.02, -0.06, 0.02, 0.26))).toBe('no-signal');
     expect(agreement(tt(0.02, 0.01, 0.03, 0.01), tt(0.01, -0.01, 0.03, 0.2))).toBe('weakly-supported');
     expect(agreement(tt(0.02, 0.01, 0.03, 0.01), tt(-0.01, -0.03, 0.01, 0.3))).toBe('unsupported');
+  });
+});
+
+describe('overall verdict wording', () => {
+  const tt = (slope: number, low: number, high: number, p: number) => ({slope, slopeLow: low, slopeHigh: high, p, pRaw: p, tau: 0, n: 44, inflation: 1, intercept: 0, varS: 1, s: 0, z: 0});
+  const exam = (claim: ReturnType<typeof tt>, witness: ReturnType<typeof tt>) =>
+    ({claim, witness, verdict: agreement(claim, witness), claimStep: null, witnessStep: null, artifactSuspected: false}) as CrossExamination;
+
+  it('says which record carries the signal when only one is significant', () => {
+    // India-like: reanalysis flat and not significant, stations clearly warming.
+    const india = exam(tt(0.002, -0.007, 0.009, 0.77), tt(0.022, 0.015, 0.03, 0.0001));
+    const v = overallVerdict(0.77, {kind: 'available', exam: india}, false);
+    expect(v.label).toBe('Only one record significant');
+    expect(v.sentence).toMatch(/understates/);
+    const other = exam(tt(0.02, 0.01, 0.03, 0.01), tt(0.01, -0.01, 0.03, 0.2));
+    expect(overallVerdict(0.01, {kind: 'available', exam: other}, false).sentence).toMatch(/^MERRA-2 shows a significant change/);
+  });
+
+  it('uses the same labels as the map legend', () => {
+    const both = exam(tt(0.02, 0.01, 0.03, 0.01), tt(0.025, 0.015, 0.035, 0.01));
+    expect(overallVerdict(0.01, {kind: 'available', exam: both}, false).label).toBe(VERDICT_TEXT.corroborated.label);
+  });
+
+  it('names no witness for a variable that has none', () => {
+    expect(productName('T2M_MAX')).toBe('The independent record');
   });
 });

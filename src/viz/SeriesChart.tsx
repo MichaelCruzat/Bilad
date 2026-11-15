@@ -1,6 +1,6 @@
 import {getVariable} from '../data/variables';
 import {divergingColor} from './color';
-import {CHROME, ticks} from './chrome';
+import {CHROME, ticks, textScale} from './chrome';
 import {num} from '../lib/format';
 import {useWidth} from './useWidth';
 import type {SeriesAnalysis, StepScreen} from '../lib/stats';
@@ -28,7 +28,8 @@ export function SeriesChart({years, series, analysis, variable, unit, witness, w
   const def = getVariable(variable);
   const [ref, W] = useWidth<SVGSVGElement>(640);
   const H = height;
-  const m = {l: 40, r: 12, t: 30, b: 26};
+  const TS = textScale();
+  const m = {l: 40 * TS, r: 12, t: 30 * TS, b: 26 * TS};
   const vals = Array.from(series).filter(Number.isFinite);
   const wVals = witness ? Array.from(witness).filter(Number.isFinite) : [];
   const all = [...vals, ...wVals, 0];
@@ -62,13 +63,13 @@ export function SeriesChart({years, series, analysis, variable, unit, witness, w
       {yt.map(v => (
         <g key={v}>
           <line x1={m.l} x2={W - m.r} y1={y(v)} y2={y(v)} stroke={v === 0 ? CHROME.axis : CHROME.grid} strokeWidth={v === 0 ? 1 : 0.6} />
-          <text x={m.l - 6} y={y(v) + 3.5} fontSize={10} fill={CHROME.muted} textAnchor="end" fontFamily={CHROME.font}>
+          <text x={m.l - 6} y={y(v) + 3.5 * TS} fontSize={10 * TS} fill={CHROME.muted} textAnchor="end" fontFamily={CHROME.font}>
             {num(v, tickDigits)}
           </text>
         </g>
       ))}
       {xt.map(yr => (
-        <text key={yr} x={x(yr)} y={H - 8} fontSize={10} fill={CHROME.muted} textAnchor="middle" fontFamily={CHROME.font}>
+        <text key={yr} x={x(yr)} y={H - 8} fontSize={10 * TS} fill={CHROME.muted} textAnchor="middle" fontFamily={CHROME.font}>
           {yr}
         </text>
       ))}
@@ -104,15 +105,15 @@ export function SeriesChart({years, series, analysis, variable, unit, witness, w
       {step?.stepDominated && (
         <g>
           <line x1={x(step.breakAt) - bw * 0.64} x2={x(step.breakAt) - bw * 0.64} y1={m.t} y2={H - m.b} stroke={CHROME.accent} strokeDasharray="3 3" />
-          <text x={x(step.breakAt) - bw * 0.64 + 4} y={m.t + 9} fontSize={10} fill={CHROME.accent} fontFamily={CHROME.font}>
+          <text x={x(step.breakAt) - bw * 0.64 + 4} y={m.t + 9 * TS} fontSize={10 * TS} fill={CHROME.accent} fontFamily={CHROME.font}>
             jump in {step.breakAt}
           </text>
         </g>
       )}
-      <text x={4} y={m.t - 4} fontSize={10} fill={CHROME.faint} fontFamily={CHROME.font}>
+      <text x={4} y={m.t - 4} fontSize={10 * TS} fill={CHROME.faint} fontFamily={CHROME.font}>
         {unit}
       </text>
-      <g fontSize={11} fontFamily={CHROME.font}>
+      <g fontSize={11 * TS} fontFamily={CHROME.font}>
         {(() => {
           // Items flow left to right; widths estimated from character count.
           const items: {key: string; label: string; mark: 'bars' | 'trend' | 'witness'}[] = [
@@ -123,18 +124,18 @@ export function SeriesChart({years, series, analysis, variable, unit, witness, w
           let x = m.l;
           return items.map(item => {
             const x0 = x;
-            x += 22 + item.label.length * 5.9 + 14;
+            x += (22 + item.label.length * 5.9 + 14) * TS;
             return (
               <g key={item.key}>
                 {item.mark === 'bars' ? (
                   <>
-                    <rect x={x0} y={5} width={6} height={10} rx={1} fill={divergingColor(def.palette, lim, lim)} />
-                    <rect x={x0 + 8} y={5} width={6} height={10} rx={1} fill={divergingColor(def.palette, -lim, lim)} />
+                    <rect x={x0} y={5 * TS} width={6 * TS} height={10 * TS} rx={1} fill={divergingColor(def.palette, lim, lim)} />
+                    <rect x={x0 + 8 * TS} y={5 * TS} width={6 * TS} height={10 * TS} rx={1} fill={divergingColor(def.palette, -lim, lim)} />
                   </>
                 ) : (
-                  <line x1={x0} x2={x0 + 16} y1={10} y2={10} stroke={item.mark === 'trend' ? CHROME.ink : CHROME.witness} strokeWidth={1.7} strokeDasharray={item.mark === 'trend' && trend.p >= 0.05 ? '5 4' : undefined} />
+                  <line x1={x0} x2={x0 + 16 * TS} y1={10 * TS} y2={10 * TS} stroke={item.mark === 'trend' ? CHROME.ink : CHROME.witness} strokeWidth={1.7} strokeDasharray={item.mark === 'trend' && trend.p >= 0.05 ? '5 4' : undefined} />
                 )}
-                <text x={x0 + 21} y={14} fill={CHROME.muted}>
+                <text x={x0 + 21 * TS} y={14 * TS} fill={CHROME.muted}>
                   {item.label}
                 </text>
               </g>

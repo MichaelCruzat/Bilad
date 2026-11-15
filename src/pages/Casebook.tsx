@@ -13,7 +13,7 @@ import {CASES} from '../data/cases';
 import {VARIABLES, getVariable} from '../data/variables';
 import {cellsInBand, subsetAbsolute} from '../lib/analysis';
 import {agreement, trendTest, type Agreement} from '../lib/stats';
-import {VERDICT_TEXT, witnessSeries, type Crosscheck} from '../lib/evidence';
+import {VERDICT_ORDER, VERDICT_TEXT, witnessSeries, type Crosscheck} from '../lib/evidence';
 import {useAsync, useCrosscheck, useIndex, useNation, useVariable} from '../lib/hooks';
 import {loadBoundary, loadMeta, loadPreview, loadWorld, type DataIndex} from '../lib/nationData';
 import {percent, signed, thousands} from '../lib/format';
@@ -78,7 +78,7 @@ function Hero({crosscheck}: {crosscheck: Crosscheck | null}) {
   const chile = useChileShare(crosscheck);
   return (
     <VStack gap={5}>
-      <Eyebrow>{`${APP_NAME} · v2 · NASA POWER 1981–2024 · Space Apps 2026`}</Eyebrow>
+      <Eyebrow>{`${APP_NAME} · NASA POWER 1981–2024 · NASA Space Apps 2026`}</Eyebrow>
       <HStack gap={10} wrap="wrap" vAlign="end">
         <VStack maxWidth="40rem" width="min(100%, 40rem)">
           <Heading level={1}>
@@ -144,7 +144,7 @@ function Hero({crosscheck}: {crosscheck: Crosscheck | null}) {
         </VStack>
       </AspectRatio>
       <HStack gap={5} wrap="wrap" vAlign="center">
-        {(['Corroborated by stations', 'Same direction, different size', 'Weakly supported', 'Contradicted', 'Not supported', 'No detectable trend'] as const).map((label, i) => (
+        {VERDICT_ORDER.map(v => VERDICT_TEXT[v].label).map((label, i) => (
           <HStack key={label} gap={2} vAlign="center">
             <svg width="12" height="12" aria-hidden="true">
               <rect width="12" height="12" rx="2" fill={VERDICT_COLORS[i]} />
@@ -154,7 +154,7 @@ function Hero({crosscheck}: {crosscheck: Crosscheck | null}) {
         ))}
       </HStack>
       <Text type="supporting">
-        Temperature trend 1981–2024 for every land cell from 60°S to 84°N (NASA POWER, MERRA-2), checked cell by cell against GISTEMP weather stations, on NASA GIBS Blue Marble relief. Scroll to zoom, drag to pan, click a cell to open it.
+        Temperature trend 1981–2024 for every land cell from 60°S to 84°N (NASA POWER, MERRA-2), checked cell by cell against GISTEMP weather stations, on NASA GIBS Blue Marble relief. Click a cell to open it in the World explorer.
       </Text>
     </VStack>
   );
@@ -206,7 +206,7 @@ function ScaleFacts({index}: {index: DataIndex}) {
         <Fact value="2" label="witnesses: GISTEMP stations (independent), GPCP gauges and satellites (partly independent)" />
         <Fact value={String(CASES.length)} label="case files" />
       </Grid>
-      <Text type="supporting">Counts of the dataset shipped with this site (public/data).</Text>
+      <Text type="supporting">Every count is taken from the data this site loads, not typed in by hand.</Text>
     </VStack>
   );
 }
@@ -361,7 +361,7 @@ function Coverage({index, crosscheck}: {index: DataIndex; crosscheck: Crosscheck
     {key: 'merra', header: 'Warming, MERRA-2', align: 'end', width: proportional(1), renderCell: r => <Text hasTabularNumbers>{signed(r.merra, 2)} °C/dec</Text>},
     {key: 'gistemp', header: 'Warming, GISTEMP', align: 'end', width: proportional(1), renderCell: r => <Text hasTabularNumbers>{signed(r.gistemp, 2)} °C/dec</Text>},
     {key: 'verdict', header: 'Temperature verdict', width: proportional(1.4), renderCell: r => verdictCell(r.verdict)},
-    {key: 'rainVerdict', header: 'Rainfall verdict (vs GPCP, partly independent)', width: proportional(1.5), renderCell: r => verdictCell(r.rainVerdict)},
+    {key: 'rainVerdict', header: 'Rainfall verdict (vs GPCP)', width: proportional(1.5), renderCell: r => verdictCell(r.rainVerdict)},
   ];
   return (
     <VStack gap={5}>
@@ -370,7 +370,7 @@ function Coverage({index, crosscheck}: {index: DataIndex; crosscheck: Crosscheck
         {WORDS[rows.length] ?? rows.length} nations in full detail
       </Heading>
       <Text color="secondary">
-        Warming per grid cell since 1981, every nation on the same scale ({signed(-STRIP_LIMIT, 1)} to {signed(STRIP_LIMIT, 1)} °C per decade), dots where the trend survives false-discovery control. The badge is the national verdict against weather stations.
+        Warming per grid cell since 1981, every nation on the same scale here ({signed(-STRIP_LIMIT, 1)} to {signed(STRIP_LIMIT, 1)} °C per decade; each nation’s atlas fits its own scale), dots where the trend stays significant after the map-wide check. The badge is the national verdict against weather stations.
       </Text>
       <Grid columns={{minWidth: 160, max: 7}} gap={5}>
         {rows.map(r => (
@@ -402,13 +402,13 @@ function Footer() {
       <Divider />
       <HStack gap={4} hAlign="between" wrap="wrap">
         <Text type="code" size="xsm">
-          BILAD v2 · BUILT FOR NASA SPACE APPS 2026
+          BILAD · BUILT FOR NASA SPACE APPS 2026
         </Text>
         <Link href={REPO}>Source on GitHub</Link>
       </HStack>
       <Text type="supporting">
         Data: <Link href="https://power.larc.nasa.gov/">NASA POWER</Link> (MERRA-2, NASA GMAO) · <Link href="https://data.giss.nasa.gov/gistemp/">GISTEMP v4</Link> (NASA GISS) ·{' '}
-        <Link href="https://psl.noaa.gov/data/gridded/data.gpcp.html">GPCP v2.3</Link> (via NOAA PSL) · <Link href="https://earthdata.nasa.gov/gibs">NASA GIBS</Link> Blue Marble relief · boundaries from{' '}
+        <Link href="https://psl.noaa.gov/data/gridded/data.gpcp.html">GPCP v2.3</Link> (via the NOAA Physical Sciences Laboratory) · <Link href="https://earthdata.nasa.gov/gibs">NASA GIBS</Link> Blue Marble relief · boundaries from{' '}
         <Link href="https://www.naturalearthdata.com/">Natural Earth</Link>. Built for the{' '}
         <Link href="https://www.spaceappschallenge.org/2026/challenges/earth-system-trend-detective/">Earth System Trend Detective</Link> challenge. Apache 2.0; AI assistance is disclosed in the README.
       </Text>

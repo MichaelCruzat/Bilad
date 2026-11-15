@@ -5,10 +5,19 @@
 import {getVariable} from '../data/variables';
 import {residualSd, yearsToSignificance, type SeriesAnalysis} from './stats';
 import {pPhrase, signed} from './format';
+import {productName, type CrossExamination} from './evidence';
 
 export type Finding = {headline: string; significance: string; emergence: string; record: string};
 
-export function describe(variable: string, unit: string, a: SeriesAnalysis, years: number[], series: ArrayLike<number>): Finding {
+/**
+ * What the cross-examination said, so the plain-language sentences never
+ * contradict the verdict shown next to them.
+ *  doubted            the witness or the integrity screen undermines the trend
+ *  witnessSignificant the witness shows a significant trend of its own
+ */
+export type FindingContext = {doubted?: boolean; witnessSignificant?: boolean; witnessName?: string};
+
+export function describe(variable: string, unit: string, a: SeriesAnalysis, years: number[], series: ArrayLike<number>, context: FindingContext = {}): Finding {
   const def = getVariable(variable);
   const digits = unit === '% of normal' ? 1 : def.digits;
   const t = a.trend;
@@ -26,7 +35,9 @@ export function describe(variable: string, unit: string, a: SeriesAnalysis, year
 
   let significance: string;
   if (t.p < 0.05) {
-    significance = `The ${dir} trend is statistically significant, even allowing for warm or dry years that cluster (${pPhrase(t.p)}).`;
+    significance = context.doubted
+      ? `Taken alone, the ${dir} trend is statistically significant, even allowing for warm or dry years that cluster (${pPhrase(t.p)}).`
+      : `The ${dir} trend is statistically significant, even allowing for warm or dry years that cluster (${pPhrase(t.p)}).`;
   } else {
     const sd = residualSd(years, series, t.slope, t.intercept);
     const more = yearsToSignificance(t.slope, sd, t.n, t.inflation);
@@ -35,13 +46,17 @@ export function describe(variable: string, unit: string, a: SeriesAnalysis, year
       : !Number.isFinite(more) || more > 100
       ? ' Even if it continued at this rate, it would take more than a century of further records to tell apart from chance.'
       : ` If it continued at this rate, with the same year-to-year noise, it would take ${more < 10 ? `about ${more}` : `roughly ${Math.round(more / 10) * 10}`} more years of records to tell apart from chance.`;
-    significance = `This is not yet distinguishable from natural year-to-year swings (corrected ${pPhrase(t.p)}).${wait}`;
+    significance = context.witnessSignificant
+      ? `In this dataset the trend cannot be told apart from natural year-to-year swings (corrected ${pPhrase(t.p)}), but ${context.witnessName ?? 'the independent record'} shows a significant change here, so the reanalysis likely misses part of it.`
+      : `This is not yet distinguishable from natural year-to-year swings (corrected ${pPhrase(t.p)}).${wait}`;
   }
 
   const s = Math.abs(a.snr);
   const emergence = !Number.isFinite(s)
     ? ''
-    : s >= 2
+    : context.doubted && s >= 1
+      ? `On its own the change is ${s.toFixed(1)}× the typical year-to-year swing and would look clear, but the cross-examination below does not back it.`
+      : s >= 2
       ? `The change across the window is ${s.toFixed(1)}× the typical year-to-year swing: it has clearly emerged from the noise.`
       : s >= 1
         ? `The change across the window is ${s.toFixed(1)}× the typical year-to-year swing: it has emerged, but a single unusual year can still hide it.`
@@ -49,4 +64,14 @@ export function describe(variable: string, unit: string, a: SeriesAnalysis, year
 
   const record = `${t.n} annual values; trend tests assume no step change in how the data were produced.`;
   return {headline, significance, emergence, record};
+}
+
+/** The narrative context implied by a cross-examination (null when there is no witness). */
+export function findingContext(exam: CrossExamination | null, variable: string): FindingContext {
+  if (!exam) return {};
+  return {
+    doubted: exam.artifactSuspected || exam.verdict === 'contradicted' || exam.verdict === 'unsupported',
+    witnessSignificant: exam.witness.p < 0.05,
+    witnessName: productName(variable),
+  };
 }

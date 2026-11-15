@@ -2,10 +2,11 @@ import {Badge} from '@astryxdesign/core/Badge';
 import {Button} from '@astryxdesign/core/Button';
 import {Card} from '@astryxdesign/core/Card';
 import {MetadataList, MetadataListItem} from '@astryxdesign/core/MetadataList';
+import {Link} from '@astryxdesign/core/Link';
 import {HStack, VStack} from '@astryxdesign/core/Stack';
 import {Text} from '@astryxdesign/core/Text';
 import {getVariable} from '../data/variables';
-import {overallVerdict, PRODUCTS, VERDICT_TEXT, type WitnessState} from '../lib/evidence';
+import {overallVerdict, productName, VERDICT_TEXT, type WitnessState} from '../lib/evidence';
 import type {SeriesAnalysis, StepScreen} from '../lib/stats';
 import {pPhrase, signed} from '../lib/format';
 
@@ -39,22 +40,39 @@ export function VerdictStrip({place, variable, window, result, unit, witness, st
   const verdict = overallVerdict(t.p, witness, Boolean(step?.stepDominated));
   const direction = !Number.isFinite(t.slope) ? 'no estimate' : t.slope > 0 ? def.up : def.down;
   const sig = t.p < 0.05;
+  const exam = witness.kind === 'available' ? witness.exam : null;
+  const witnessKind = variable === 'PRECTOTCORR' ? 'rain gauges and satellites' : 'weather stations';
   return (
-    <Card variant="muted" padding={4}>
-      <VStack gap={3}>
-        <HStack gap={2} vAlign="center" wrap="wrap">
-          <Text type="code" size="xsm" color="accent">
+    <Card variant="muted" padding={6}>
+      <VStack gap={5}>
+        <HStack gap={3} vAlign="center" wrap="wrap">
+          <Text type="code" color="accent">
             VERDICT
           </Text>
           <Badge variant={TONE[verdict.tone]} label={verdict.label} />
+          <Link href="#/method?s=verdicts">What the verdicts mean</Link>
         </HStack>
-        <Text type="large" weight="semibold">
-          {place}: {direction}, {signed(t.slope * 10, digits)} {unit} per decade (95% range {signed(t.slopeLow * 10, digits)} to {signed(t.slopeHigh * 10, digits)}), {window.from}–{window.to}.
-        </Text>
-        <Text color="secondary">{verdict.sentence}</Text>
+        <HStack gap={10} wrap="wrap" vAlign="end">
+          <Figure value={signed(t.slope * 10, digits)} unit={`${unit} per decade`} caption={`NASA reanalysis (MERRA-2), ${pPhrase(t.p)}`} />
+          {exam && (
+            <Figure
+              value={signed(exam.witness.slope * 10, digits)}
+              unit={`${unit} per decade`}
+              caption={`${productName(variable)}, ${witnessKind}, ${pPhrase(exam.witness.p)}`}
+            />
+          )}
+        </HStack>
+        <VStack gap={1}>
+          <Text type="large" weight="semibold">
+            {place}: {direction}, {signed(t.slope * 10, digits)} {unit} per decade (95% range {signed(t.slopeLow * 10, digits)} to {signed(t.slopeHigh * 10, digits)}), {window.from}–{window.to}.
+          </Text>
+          <Text type="large" color="secondary">
+            {verdict.sentence}
+          </Text>
+        </VStack>
         <HStack gap={2} wrap="wrap">
           <Badge variant={sig ? 'info' : 'neutral'} label={sig ? `Significant, ${pPhrase(t.p)}` : `Not significant, ${pPhrase(t.p)}`} />
-          {fieldSignificant !== undefined && <Badge variant={fieldSignificant ? 'info' : 'neutral'} label={fieldSignificant ? 'Survives map-wide FDR' : 'Does not survive map-wide FDR'} />}
+          {fieldSignificant !== undefined && <Badge variant={fieldSignificant ? 'info' : 'neutral'} label={fieldSignificant ? 'Still significant after the map-wide check' : 'Not significant after the map-wide check'} />}
           <WitnessBadge witness={witness} variable={variable} />
           {step && <Badge variant={step.stepDominated ? 'warning' : 'neutral'} label={step.stepDominated ? `Jump in ${step.breakAt}, not a ramp` : 'Gradual change, not a jump'} />}
         </HStack>
@@ -65,19 +83,36 @@ export function VerdictStrip({place, variable, window, result, unit, witness, st
           </HStack>
         )}
         <MetadataList orientation="horizontal">
-          <MetadataListItem label="Source">NASA POWER (MERRA-2){witness.kind === 'available' ? ` vs ${PRODUCTS[variable].name}` : ''}</MetadataListItem>
+          <MetadataListItem label="Source">NASA POWER (MERRA-2){witness.kind === 'available' ? ` vs ${productName(variable)}` : ''}</MetadataListItem>
           <MetadataListItem label="Period">{`${window.from}–${window.to}, annual means`}</MetadataListItem>
           <MetadataListItem label="Resolution">{resolution}</MetadataListItem>
-          <MetadataListItem label="Test">Theil–Sen, Mann–Kendall (Hamed–Rao)</MetadataListItem>
+          <MetadataListItem label="Test">Theil–Sen slope, Mann–Kendall test (corrected for runs of similar years)</MetadataListItem>
           <MetadataListItem label="Limitation">{limitation}</MetadataListItem>
         </MetadataList>
         {next && (
           <HStack gap={2}>
-            <Button size="sm" variant="primary" label={next.label} href={next.href} onClick={next.onClick} />
+            <Button variant="primary" label={next.label} href={next.href} onClick={next.onClick} />
           </HStack>
         )}
       </VStack>
     </Card>
+  );
+}
+
+/** One headline number, set large, with its unit and where it comes from. */
+function Figure({value, unit, caption}: {value: string; unit: string; caption: string}) {
+  return (
+    <VStack gap={1}>
+      <HStack gap={2} vAlign="end">
+        <Text type="display-1" weight="bold" hasTabularNumbers>
+          {value}
+        </Text>
+        <Text type="large" color="secondary">
+          {unit}
+        </Text>
+      </HStack>
+      <Text color="secondary">{caption}</Text>
+    </VStack>
   );
 }
 
@@ -90,10 +125,10 @@ function WitnessBadge({witness, variable}: {witness: WitnessState; variable: str
     case 'failed':
       return <Badge variant="warning" label="Witness unavailable" />;
     case 'no-coverage':
-      return <Badge variant="neutral" label={`${PRODUCTS[variable].name} has no coverage here`} />;
+      return <Badge variant="neutral" label={`${productName(variable)} has no coverage here`} />;
     case 'too-coarse':
-      return <Badge variant="neutral" label={`${PRODUCTS[variable].name} is too coarse to tell these places apart`} />;
+      return <Badge variant="neutral" label={`${witness.product} is too coarse to tell these places apart`} />;
     default:
-      return <Badge variant={TONE[VERDICT_TEXT[witness.exam.verdict].tone]} label={`${PRODUCTS[variable].name}: ${VERDICT_TEXT[witness.exam.verdict].label.toLowerCase()}`} />;
+      return <Badge variant={TONE[VERDICT_TEXT[witness.exam.verdict].tone]} label={`${productName(variable)}: ${VERDICT_TEXT[witness.exam.verdict].label.toLowerCase()}`} />;
   }
 }

@@ -1,14 +1,15 @@
-import {lazy, Suspense, type ReactNode} from 'react';
+import {Component, lazy, Suspense, type ErrorInfo, type ReactNode} from 'react';
 import {AppShell} from '@astryxdesign/core/AppShell';
 import {Banner} from '@astryxdesign/core/Banner';
 import {Button} from '@astryxdesign/core/Button';
 import {Layout, LayoutContent} from '@astryxdesign/core/Layout';
 import {Link} from '@astryxdesign/core/Link';
-import {HStack} from '@astryxdesign/core/Stack';
+import {HStack, VStack} from '@astryxdesign/core/Stack';
 import {Text} from '@astryxdesign/core/Text';
 import {TopNav} from '@astryxdesign/core/TopNav';
 import {useRoute, type Route} from './router';
 import {APP_NAME, LogoMark} from '../brand/Logo';
+import {Glossary} from '../features/Glossary';
 import {Spinner} from '@astryxdesign/core/Spinner';
 
 // Each page is its own chunk: the casebook does not download the atlas controls.
@@ -19,6 +20,38 @@ const Method = lazy(() => import('../pages/Method').then(m => ({default: m.Metho
 const Brief = lazy(() => import('../pages/Brief').then(m => ({default: m.Brief})));
 const World = lazy(() => import('../pages/World').then(m => ({default: m.World})));
 
+/**
+ * One broken page must not take the site down: the boundary is keyed by the
+ * route, so navigating anywhere else renders normally again.
+ */
+class PageBoundary extends Component<{children: ReactNode}, {error: Error | null}> {
+  state = {error: null as Error | null};
+  static getDerivedStateFromError(error: Error) {
+    return {error};
+  }
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error(error, info.componentStack);
+  }
+  render() {
+    if (!this.state.error) return this.props.children;
+    return (
+      <LayoutContent padding={8}>
+        <Banner
+          status="error"
+          title="Something went wrong on this page"
+          description="The rest of the site still works. Reload to try again, or go back to the casebook."
+          endContent={
+            <HStack gap={2}>
+              <Button label="Reload" variant="secondary" onClick={() => window.location.reload()} />
+              <Button label="Casebook" href="#/" />
+            </HStack>
+          }
+        />
+      </LayoutContent>
+    );
+  }
+}
+
 const CHALLENGE = 'https://www.spaceappschallenge.org/2026/challenges/earth-system-trend-detective/';
 
 function Navigation({route}: {route: Route}) {
@@ -28,41 +61,50 @@ function Navigation({route}: {route: Route}) {
       label="Bilad"
       heading={
         <Link href="#/" label={`${APP_NAME} home`}>
-          <HStack gap={2} vAlign="center">
-            <LogoMark size={30} />
-            <Text type="large" weight="bold">
+          <HStack gap={3} vAlign="center">
+            <LogoMark size="2.9rem" />
+            <Text type="display-3" weight="bold">
               {APP_NAME}
             </Text>
           </HStack>
         </Link>
       }
       startContent={
-        <HStack gap={1}>
-          <Button label="Casebook" size="sm" variant={current === 'home' || current === 'case' ? 'secondary' : 'ghost'} href="#/" />
-          <Button label="World" size="sm" variant={current === 'world' ? 'secondary' : 'ghost'} href="#/world" />
-          <Button label="Nations" size="sm" variant={current === 'atlas' ? 'secondary' : 'ghost'} href="#/atlas/CHL" />
-          <Button label="Method" size="sm" variant={current === 'method' ? 'secondary' : 'ghost'} href="#/method" />
+        <HStack gap={2}>
+          <Button label="Casebook" size="lg" variant={current === 'home' || current === 'case' ? 'secondary' : 'ghost'} href="#/" />
+          <Button label="World" size="lg" variant={current === 'world' ? 'secondary' : 'ghost'} href="#/world" />
+          <Button label="Nations" size="lg" variant={current === 'atlas' ? 'secondary' : 'ghost'} href="#/atlas/CHL" />
+          <Button label="Method" size="lg" variant={current === 'method' ? 'secondary' : 'ghost'} href="#/method" />
         </HStack>
       }
-      endContent={<Button label="NASA challenge" size="sm" variant="ghost" href={CHALLENGE} />}
+      endContent={<Button label="NASA challenge" size="lg" variant="ghost" href={CHALLENGE} />}
     />
+  );
+}
+
+function withGlossary(content: ReactNode): ReactNode {
+  return (
+    <VStack gap={0}>
+      {content}
+      <Glossary />
+    </VStack>
   );
 }
 
 function page(route: Route): ReactNode {
   switch (route.page) {
     case 'home':
-      return <Layout content={<Casebook />} />;
+      return <Layout content={withGlossary(<Casebook />)} />;
     case 'case':
-      return <Layout contentWidth={1152} content={<CaseFile key={route.id} id={route.id} />} />;
+      return <Layout contentWidth={1760} content={withGlossary(<CaseFile key={route.id} id={route.id} />)} />;
     case 'atlas':
       return <Atlas key={route.iso3} iso3={route.iso3} params={route.params} />;
     case 'brief':
-      return <Layout contentWidth={1400} content={<Brief key={route.iso3} iso3={route.iso3} />} />;
+      return <Layout contentWidth={1760} content={withGlossary(<Brief key={route.iso3} iso3={route.iso3} />)} />;
     case 'world':
       return <World params={route.params} />;
     case 'method':
-      return <Layout contentWidth={960} content={<Method section={route.params.get('s')} />} />;
+      return <Layout contentWidth={1200} content={withGlossary(<Method section={route.params.get('s')} />)} />;
     default:
       return (
         <Layout
@@ -90,7 +132,7 @@ export default function App() {
           </LayoutContent>
         }
       >
-        {page(route)}
+        <PageBoundary key={window.location.hash.split('?')[0]}>{page(route)}</PageBoundary>
       </Suspense>
     </AppShell>
   );

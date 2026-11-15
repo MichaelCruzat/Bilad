@@ -1,4 +1,4 @@
-import {CHROME, ticks} from './chrome';
+import {CHROME, ticks, textScale} from './chrome';
 import {num, signed} from '../lib/format';
 import {useWidth} from './useWidth';
 import type {StartYearPoint} from '../lib/stats';
@@ -13,7 +13,8 @@ type Props = {points: StartYearPoint[]; unit: string; digits: number; title: str
 export function SensitivityChart({points, unit, digits, title}: Props) {
   const [ref, W] = useWidth<SVGSVGElement>(640);
   const H = 150;
-  const m = {l: 40, r: 12, t: 10, b: 24};
+  const TS = textScale();
+  const m = {l: 40 * TS, r: 12, t: 10 * TS, b: 24 * TS};
   if (!points.length) return null;
   const lo = Math.min(0, ...points.map(p => p.slopeLow).filter(Number.isFinite));
   const hi = Math.max(0, ...points.map(p => p.slopeHigh).filter(Number.isFinite));
@@ -44,7 +45,7 @@ export function SensitivityChart({points, unit, digits, title}: Props) {
       {ticks(y0, y1, 3).map(v => (
         <g key={v}>
           <line x1={m.l} x2={W - m.r} y1={y(v)} y2={y(v)} stroke={v === 0 ? CHROME.axis : CHROME.grid} strokeWidth={v === 0 ? 1 : 0.6} />
-          <text x={m.l - 6} y={y(v) + 3.5} fontSize={10} fill={CHROME.muted} textAnchor="end" fontFamily={CHROME.font}>
+          <text x={m.l - 6} y={y(v) + 3.5 * TS} fontSize={10 * TS} fill={CHROME.muted} textAnchor="end" fontFamily={CHROME.font}>
             {num(v, digits)}
           </text>
         </g>
@@ -59,7 +60,7 @@ export function SensitivityChart({points, unit, digits, title}: Props) {
       {points
         .filter(p => p.start % 5 === 0 || p.start === first || p.start === last)
         .map(p => (
-          <text key={p.start} x={x(p.start)} y={H - 7} fontSize={10} fill={CHROME.muted} textAnchor="middle" fontFamily={CHROME.font}>
+          <text key={p.start} x={x(p.start)} y={H - 7} fontSize={10 * TS} fill={CHROME.muted} textAnchor="middle" fontFamily={CHROME.font}>
             {p.start}
           </text>
         ))}

@@ -1,3 +1,4 @@
+import {fullName} from './names';
 /**
  * Loaders for the global atlas (public/data/global), written by
  * `make global`. Everything is column-major binary so ~70,000 cells load
@@ -84,7 +85,9 @@ export type GlobalWitness = {boxes: Float32Array[]; cellBox: Uint16Array};
 
 export const loadGlobalMeta = () => once('meta', () => json<GlobalMeta>('meta.json'));
 export const loadGlobalSummary = () => once('summary', () => json<GlobalSummary>('summary.json'));
-export const loadCountries = () => once('countries', () => json<Country[]>('countries.json'));
+
+export const loadCountries = () =>
+  once('countries', async () => (await json<Country[]>('countries.json')).map(c => ({...c, name: fullName(c.name)})));
 export const globalReliefUrl = `${base}relief.jpg`;
 
 export function loadGlobalCells(): Promise<GlobalCells> {

@@ -8,6 +8,7 @@ import type {GlobalCells, GlobalStats} from '../lib/globalData';
 import {getVariable} from '../data/variables';
 import {divergingColor, emergenceRamp, robustLimit, VERDICT_COLORS} from './color';
 import {prefersReducedMotion} from './usePlayback';
+import {rootPx} from './chrome';
 
 export type WorldLayer = 'trend' | 'year' | 'verdict' | 'normal';
 
@@ -28,7 +29,11 @@ type Props = {
   onSelectCell?: (cell: number | null) => void;
   describeCell?: (cell: number) => string[];
   title: string;
+  /** Filled with zoom handles so the page can offer on-screen zoom buttons. */
+  controls?: {current: WorldMapControls | null};
 };
+
+export type WorldMapControls = {zoomBy: (factor: number) => void; reset: () => void};
 
 const BINS = 72;
 const D_LAT = 0.5;
@@ -78,7 +83,7 @@ function binCells(stats: GlobalStats, annual: Float32Array | null, layer: WorldL
   return {bins, palette, limit};
 }
 
-export function WorldMap({cells, stats, annual, layer, year, firstYear, extent, reliefUrl, world, selectedCell, selectedCountry, countryIds, onSelectCell, describeCell, title}: Props) {
+export function WorldMap({cells, stats, annual, layer, year, firstYear, extent, reliefUrl, world, selectedCell, selectedCountry, countryIds, onSelectCell, describeCell, title, controls}: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const zoomer = useRef<ZoomBehavior<HTMLCanvasElement, unknown> | null>(null);
   const [size, setSize] = useState<{w: number; h: number}>({w: 960, h: 420});
@@ -86,6 +91,8 @@ export function WorldMap({cells, stats, annual, layer, year, firstYear, extent, 
   const [hover, setHover] = useState<number | null>(null);
   const [relief, setRelief] = useState<HTMLImageElement | null>(null);
   const reduced = useMemo(() => prefersReducedMotion(), []);
+  // Keyboard focus: a crosshair marks the cell at the centre, which Enter opens.
+  const [keyboard, setKeyboard] = useState(false);
   const [west, south, east, north] = extent;
 
   // Fit the extent into the canvas, letterboxed and centred.
@@ -244,13 +251,25 @@ export function WorldMap({cells, stats, annual, layer, year, firstYear, extent, 
         ctx.lineWidth = 1.6 / zt.k;
         ctx.strokeRect(X(cells.lon[c]) - cw / 2, Y(cells.lat[c]) - ch / 2, cw, ch);
       }
-      // Tooltip in screen space.
+      if (keyboard) {
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.strokeStyle = ink;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(size.w / 2 - 12, size.h / 2);
+        ctx.lineTo(size.w / 2 + 12, size.h / 2);
+        ctx.moveTo(size.w / 2, size.h / 2 - 12);
+        ctx.lineTo(size.w / 2, size.h / 2 + 12);
+        ctx.stroke();
+      }
+      // Tooltip in screen space, sized with the page's text.
       if (hover !== null && describeCell) {
         const lines = describeCell(hover);
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-        ctx.font = '12px "IBM Plex Mono", ui-monospace, monospace';
-        const w = Math.max(...lines.map(l => ctx.measureText(l).width)) + 18;
-        const h = lines.length * 16 + 10;
+        const fs = Math.round(13 * (rootPx() / 16));
+        ctx.font = `${fs}px "IBM Plex Mono", ui-monospace, monospace`;
+        const w = Math.max(...lines.map(l => ctx.measureText(l).width)) + fs * 1.5;
+        const h = lines.length * fs * 1.35 + fs * 0.8;
         const [sx, sy] = zt.apply([X(cells.lon[hover]), Y(cells.lat[hover])]);
         const tx = Math.min(Math.max(6, sx + 12), size.w - w - 6);
         const ty = Math.min(Math.max(6, sy - h - 10), size.h - h - 6);
@@ -263,13 +282,13 @@ export function WorldMap({cells, stats, annual, layer, year, firstYear, extent, 
         ctx.strokeRect(tx + 0.5, ty + 0.5, w - 1, h - 1);
         lines.forEach((l, k) => {
           ctx.fillStyle = k === 0 ? ink : cssVar('--color-text-secondary', '#bbb');
-          ctx.fillText(l, tx + 9, ty + 19 + k * 16);
+          ctx.fillText(l, tx + fs * 0.75, ty + fs * 1.45 + k * fs * 1.35);
         });
       }
     });
     return () => cancelAnimationFrame(frame);
     // X, Y and s are derived from size and extent.
-  }, [size, zt, relief, byBin, coloured, borders, coast, countryShape, hover, selectedCell, layer, stats, cells, describeCell, extent]);
+  }, [size, zt, relief, byBin, coloured, borders, coast, countryShape, hover, selectedCell, layer, stats, cells, describeCell, extent, keyboard]);
 
   const cellAt = (mx: number, my: number): number | null => {
     const [bx, by] = zt.invert([mx, my]);
@@ -283,9 +302,28 @@ export function WorldMap({cells, stats, annual, layer, year, firstYear, extent, 
     const el = canvasRef.current;
     if (el && zoomer.current) select(el).transition().duration(reduced ? 0 : 320).call(zoomer.current.scaleBy, f);
   };
+  const reset = () => {
+    const el = canvasRef.current;
+    if (el && zoomer.current) select(el).transition().duration(reduced ? 0 : 420).call(zoomer.current.transform, zoomIdentity);
+  };
+  if (controls) controls.current = {zoomBy, reset};
+
+  // While the keyboard drives the map, the cell under the crosshair is the hovered one.
+  useEffect(() => {
+    if (keyboard) setHover(cellAt(size.w / 2, size.h / 2));
+    // cellAt reads zt and size, both listed.
+  }, [keyboard, zt, size]);
+
   const onKeyDown = (e: KeyboardEvent<HTMLCanvasElement>) => {
     const el = canvasRef.current;
     if (!el || !zoomer.current) return;
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      setKeyboard(true);
+      onSelectCell?.(cellAt(size.w / 2, size.h / 2));
+      return;
+    }
+    if (e.key.startsWith('Arrow') || e.key === 'Tab') setKeyboard(true);
     const pan: Record<string, [number, number]> = {ArrowLeft: [60, 0], ArrowRight: [-60, 0], ArrowUp: [0, 60], ArrowDown: [0, -60]};
     if (e.key === '+' || e.key === '=') zoomBy(1.6);
     else if (e.key === '-' || e.key === '_') zoomBy(1 / 1.6);
@@ -300,9 +338,15 @@ export function WorldMap({cells, stats, annual, layer, year, firstYear, extent, 
     <canvas
       ref={canvasRef}
       role="application"
-      aria-label={`${title}. Drag or use arrow keys to pan, scroll or plus and minus to zoom, 0 to reset, click a cell to inspect it.`}
+      aria-label={`${title}. Drag or use arrow keys to pan, scroll or plus and minus to zoom, 0 to reset. Click a cell, or press Enter to open the cell under the crosshair.`}
       tabIndex={0}
       onKeyDown={onKeyDown}
+      onFocus={e => setKeyboard(e.currentTarget.matches(':focus-visible'))}
+      onBlur={() => {
+        setKeyboard(false);
+        setHover(null);
+      }}
+      onPointerDown={() => setKeyboard(false)}
       onPointerMove={e => {
         const r = e.currentTarget.getBoundingClientRect();
         const c = cellAt(e.clientX - r.left, e.clientY - r.top);
@@ -313,7 +357,7 @@ export function WorldMap({cells, stats, annual, layer, year, firstYear, extent, 
         const r = e.currentTarget.getBoundingClientRect();
         onSelectCell?.(cellAt(e.clientX - r.left, e.clientY - r.top));
       }}
-      style={{display: 'block', width: '100%', height: '100%', touchAction: 'none', cursor: hover !== null ? 'pointer' : 'grab', outline: 'none'}}
+      style={{display: 'block', width: '100%', height: '100%', touchAction: 'none', cursor: hover !== null ? 'pointer' : 'grab', outline: keyboard ? '3px solid var(--color-text-accent)' : 'none', outlineOffset: 2}}
     >
       {title}
     </canvas>

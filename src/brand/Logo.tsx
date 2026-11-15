@@ -8,7 +8,7 @@ export const APP_NAME = 'Bilad';
 const MARK: number[] = [-0.8, -0.2, 0.5, -0.4, 0.3, 0.9, 0.1, 0.7, 1];
 const SIGNIFICANT = new Set([5, 8]);
 
-export function LogoMark({size = 28}: {size?: number}) {
+export function LogoMark({size = 28}: {size?: number | string}) {
   return (
     <svg width={size} height={size} viewBox="0 0 30 30" aria-hidden="true" style={{display: 'block', flexShrink: 0}}>
       {MARK.map((v, i) => (

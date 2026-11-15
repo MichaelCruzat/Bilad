@@ -2,6 +2,8 @@ import {useMemo, useState} from 'react';
 import {Button} from '@astryxdesign/core/Button';
 import {Divider} from '@astryxdesign/core/Divider';
 import {Layout, LayoutContent, LayoutPanel} from '@astryxdesign/core/Layout';
+import {Link} from '@astryxdesign/core/Link';
+import {Collapsible} from '@astryxdesign/core/Collapsible';
 import {Selector} from '@astryxdesign/core/Selector';
 import {Slider} from '@astryxdesign/core/Slider';
 import {Spinner} from '@astryxdesign/core/Spinner';
@@ -94,6 +96,9 @@ export function Atlas({iso3, params}: Props) {
         }}
         width="100%"
       />
+      <Text type="supporting">
+        These {nations.length} nations have all seven variables. For any other country, <Link href="#/world">open the World map</Link> (temperature and rainfall).
+      </Text>
       <Selector
         label="Variable"
         value={variable}
@@ -153,7 +158,7 @@ export function Atlas({iso3, params}: Props) {
       )}
       <Switch
         label="Stipple significant cells"
-        description="Dots mark cells that survive false-discovery-rate control across the whole map."
+        description="Dots mark cells that stay significant after the map-wide false-discovery check."
         value={stipple}
         onChange={(v: boolean) => set({sig: v ? null : 0})}
       />
@@ -196,7 +201,7 @@ export function Atlas({iso3, params}: Props) {
             {shownYear}
           </Text>
         ) : (
-          <Text type="supporting">Hover a cell for its value · click to inspect it</Text>
+          <Text type="supporting">Point at a cell for its value · click or tap to inspect it</Text>
         )}
       </HStack>
       <StackItem size="fill">
@@ -217,7 +222,7 @@ export function Atlas({iso3, params}: Props) {
                     : layer === 'year'
                       ? `${shownYear}: ${signed(a.annual[c * a.years.length + shownYear - a.window.from], def.relative ? 0 : def.digits)} ${def.relative ? '% vs normal' : def.unit}`
                       : `signal/noise ${num(a.snr[c], 2)}`;
-              return [`${lat(cell.lat)}  ${lon(cell.lon)}`, value, a.significant[c] ? 'significant after FDR' : 'not significant'];
+              return [`${lat(cell.lat)}  ${lon(cell.lon)}`, value, a.significant[c] ? 'significant after the map-wide check' : 'not significant'];
             }}
             analysis={data.data.analysis}
             layer={layer}
@@ -260,9 +265,10 @@ export function Atlas({iso3, params}: Props) {
         content={
           <LayoutContent padding={4}>
             <VStack gap={6}>
-              {controls}
-              <Divider />
               {mapArea}
+              <Collapsible defaultIsOpen={false} trigger={<Text weight="semibold">Change nation, variable, map layer or years</Text>}>
+                {controls}
+              </Collapsible>
               <Divider />
               {evidence}
             </VStack>
@@ -275,7 +281,7 @@ export function Atlas({iso3, params}: Props) {
   return (
     <Layout
       start={
-        <LayoutPanel width={wide ? 320 : 272} padding={5} hasDivider label="Atlas controls" role="region">
+        <LayoutPanel width={wide ? 360 : 300} padding={5} hasDivider label="Atlas controls" role="region">
           {controls}
         </LayoutPanel>
       }
@@ -285,7 +291,7 @@ export function Atlas({iso3, params}: Props) {
         </LayoutContent>
       }
       end={
-        <LayoutPanel width={wide ? 520 : 420} padding={5} hasDivider label="Evidence" role="region">
+        <LayoutPanel width={wide ? 600 : 460} padding={5} hasDivider label="Evidence" role="region">
           {evidence}
         </LayoutPanel>
       }

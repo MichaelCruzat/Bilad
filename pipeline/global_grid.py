@@ -116,7 +116,7 @@ def build_global(root: Path, cache: Path, variables=GLOBAL_VARIABLES, workers: i
         "layout": [["lat", "int16", 0.01], ["lon", "int32", 0.001], ["areaKm2", "float32", 1], ["land", "uint8", 1 / 255]],
         "grid": {"dLat": geometry.D_LAT, "dLon": geometry.D_LON, "latMin": LAT_MIN, "latMax": LAT_MAX, "firstYear": FIRST_YEAR, "lastYear": LAST_YEAR, "months": MONTHS, "missing": MISSING},
         "variables": list(variables),
-        "provenance": {"api": f"NASA POWER Monthly and Annual API v{api}", "sources": sorted(sources), "tiles": len(tiles), "requests": len(requests), "retrieved": dt.date.today().isoformat()},
+        "provenance": {"api": f"NASA POWER Monthly and Annual API v{api.lstrip('v')}", "sources": sorted(sources), "tiles": len(tiles), "requests": len(requests), "retrieved": dt.date.today().isoformat()},
     }
     (public / "meta.json").write_text(json.dumps(meta))
     (out_cache / "requests.json").write_text(json.dumps(requests))

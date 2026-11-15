@@ -84,6 +84,19 @@ try {
     await p.close();
   });
 
+  await check('every case file renders a verdict without errors', async () => {
+    const p = await context.newPage();
+    const caseErrors = [];
+    p.on('pageerror', e => caseErrors.push(e.message));
+    for (const id of ['chile-megadrought', 'chile-coast-andes', 'bangladesh-phantom-cooling', 'kenya-half-the-warming']) {
+      await p.goto(`${BASE}#/case/${id}`);
+      await p.getByText('VERDICT', {exact: true}).first().waitFor({timeout: 20000});
+      await p.getByRole('heading', {level: 2}).first().waitFor({timeout: 20000});
+      if (caseErrors.length) throw new Error(`${id}: ${caseErrors.join(' | ')}`);
+    }
+    await p.close();
+  });
+
   await check('national brief downloads a CSV', async () => {
     const p = await context.newPage();
     await p.goto(`${BASE}#/brief/MEX`);
@@ -99,6 +112,53 @@ try {
     await p.goto(`${BASE}#/world?country=050`);
     await p.getByRole('heading', {level: 2, name: 'Bangladesh'}).waitFor({timeout: 30000});
     await p.getByText('Likely data artefact').first().waitFor({timeout: 30000});
+    await p.close();
+  });
+
+  await check('country search finds India, not a territory, and lists no duplicates', async () => {
+    const p = await context.newPage();
+    await p.goto(`${BASE}#/world`);
+    const box = p.getByRole('button', {name: /Find a country/});
+    await box.waitFor({timeout: 30000});
+    await box.click();
+    await p.keyboard.type('India');
+    await p.getByRole('option').first().waitFor({timeout: 5000});
+    const options = await p.getByRole('option').allTextContents();
+    if (options.some(o => /Siachen|Kosovo|N\. Cyprus/.test(o))) throw new Error(`junk options: ${options.join(', ')}`);
+    if (new Set(options).size !== options.length) throw new Error(`duplicates: ${options.join(', ')}`);
+    await p.getByRole('option', {name: 'India', exact: true}).click();
+    await p.getByRole('heading', {level: 2, name: 'India'}).waitFor({timeout: 30000});
+    await p.close();
+  });
+
+  await check('a country without a brief gets a way forward, not an error', async () => {
+    const p = await context.newPage();
+    await p.goto(`${BASE}#/brief/IND`);
+    await p.getByText('No national brief for “IND”').waitFor({timeout: 10000});
+    await p.getByRole('link', {name: 'Find it on the World map'}).waitFor();
+    await p.close();
+  });
+
+  await check('world map: keyboard focus shows a ring and Enter opens a cell', async () => {
+    const p = await context.newPage();
+    await p.goto(`${BASE}#/world`);
+    const map = p.getByRole('application', {name: /World map/});
+    await map.waitFor({timeout: 30000});
+    await p.getByRole('button', {name: 'Zoom in'}).click();
+    await map.focus();
+    await p.keyboard.press('ArrowLeft');
+    const outline = await map.evaluate(el => getComputedStyle(el).outlineStyle);
+    if (outline === 'none') throw new Error('no focus ring');
+    await p.keyboard.press('Enter');
+    await p.waitForURL(/cell=\d+/, {timeout: 10000});
+    await p.close();
+  });
+
+  await check('brief copy link gives feedback', async () => {
+    const p = await context.newPage();
+    await p.goto(`${BASE}#/brief/KEN`);
+    await p.getByRole('button', {name: 'Copy link to this brief'}).click({timeout: 30000});
+    await p.getByRole('button', {name: 'Link copied'}).waitFor({timeout: 5000});
     await p.close();
   });
 

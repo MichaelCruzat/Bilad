@@ -1,3 +1,4 @@
+import {Glossary} from './Glossary';
 import {useMemo, useState} from 'react';
 import {Button} from '@astryxdesign/core/Button';
 import {Badge} from '@astryxdesign/core/Badge';
@@ -24,7 +25,7 @@ import type {Async} from '../lib/hooks';
 import {copyText, download} from '../lib/download';
 import {VerdictStrip} from './VerdictStrip';
 import type {NationMeta, VariableGrid} from '../lib/nationData';
-import {describe} from '../lib/narrative';
+import {describe, findingContext} from '../lib/narrative';
 import {digitsFor, lat, lon, percent, pPhrase, pValue, signed, num} from '../lib/format';
 import {SeriesChart} from '../viz/SeriesChart';
 import {MonthStrip} from '../viz/MonthStrip';
@@ -87,7 +88,7 @@ export function EvidencePanel({meta, grid, analysis, witnessStatus, selection}: 
   const product = PRODUCTS[analysis.variable];
   const exam = state.kind === 'available' ? state.exam : null;
   const step = exam?.claimStep ?? stepScreen(years, view.series);
-  const finding = describe(analysis.variable, unit, view.result, years, view.series);
+  const finding = describe(analysis.variable, unit, view.result, years, view.series, findingContext(exam, analysis.variable));
   const t = view.result.trend;
 
   const place =
@@ -145,7 +146,7 @@ export function EvidencePanel({meta, grid, analysis, witnessStatus, selection}: 
           label="Download evidence (JSON)"
           onClick={() =>
             download(
-              `bilad-${meta.iso3}-${analysis.variable}-${analysis.window.from}-${analysis.window.to}.json`,
+              `bilad-${meta.iso3}-${selection.kind === 'nation' ? 'nation' : place.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}-${analysis.variable}-${analysis.window.from}-${analysis.window.to}.json`,
               JSON.stringify(
                 {
                   place,
@@ -256,7 +257,7 @@ export function EvidencePanel({meta, grid, analysis, witnessStatus, selection}: 
         <Heading level={3}>Which months are changing?</Heading>
         <MonthStrip trends={view.seasons} variable={analysis.variable} unit={unit} digits={digits} title={`Trend by calendar month, ${place}`} />
         <Text type="supporting">
-          Each bar is the trend for one calendar month, in {unit} per decade{def.relative ? ' of that month’s own normal' : ''}. Outlined bars pass a false-discovery-rate test across all twelve months; the others are exploratory.
+          Each bar is the trend for one calendar month, in {unit} per decade{def.relative ? ' of that month’s own normal' : ''}. Outlined bars stay significant after a false-discovery check across all twelve months; the others are exploratory.
         </Text>
       </VStack>
       <VStack gap={2}>
@@ -289,7 +290,7 @@ export function EvidencePanel({meta, grid, analysis, witnessStatus, selection}: 
           <MetadataListItem label="p, Hamed–Rao corrected">
             <Text hasTabularNumbers>{pValue(t.p)}</Text>
           </MetadataListItem>
-          <MetadataListItem label="Variance inflation n/n*">
+          <MetadataListItem label="Correction for runs of similar years (n/n*)">
             <Text hasTabularNumbers>{num(t.inflation, 2)}</Text>
           </MetadataListItem>
           <MetadataListItem label="Signal ÷ noise">
@@ -298,7 +299,7 @@ export function EvidencePanel({meta, grid, analysis, witnessStatus, selection}: 
         </MetadataList>
         {selection.kind === 'nation' && (
           <Text type="supporting">
-            Field significance: {analysis.counts.tested} cells tested; {analysis.counts.naive} pass p &lt; 0.05 one by one, {analysis.counts.fdr} survive Benjamini–Hochberg false-discovery control (α = 0.10, p* = {pValue(analysis.pStar)}). Neighbouring reanalysis cells are not independent, so treat area shares as descriptive. Significant {def.up}: {percent(analysis.areaUp)} of land; significant {def.down}: {percent(analysis.areaDown)}.
+            Field significance: {analysis.counts.tested} cells tested; {analysis.counts.naive} pass p &lt; 0.05 one by one, {analysis.counts.fdr} stay significant after the map-wide false-discovery check (Benjamini–Hochberg, α = 0.10, p* = {pValue(analysis.pStar)}). Neighbouring reanalysis cells are not independent, so treat area shares as descriptive. Land with a significant trend toward {def.up}: {percent(analysis.areaUp)}; toward {def.down}: {percent(analysis.areaDown)}.
           </Text>
         )}
       </VStack>
@@ -328,6 +329,10 @@ export function EvidencePanel({meta, grid, analysis, witnessStatus, selection}: 
           <Text type="supporting">Neighbouring reanalysis cells are not independent, so shares of significant area are descriptive.</Text>
           <Text type="supporting">Values were quantised to {def.scale} {def.sourceUnit} for shipping; the tests run on the annual means.</Text>
         </VStack>
+      </Collapsible>
+
+      <Collapsible defaultIsOpen={false} trigger={<Text weight="semibold">Terms and abbreviations</Text>}>
+        <Glossary compact />
       </Collapsible>
     </VStack>
   );

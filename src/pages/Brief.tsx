@@ -1,4 +1,5 @@
-import {useMemo} from 'react';
+import {useMemo, useState} from 'react';
+import {Card} from '@astryxdesign/core/Card';
 import {Badge} from '@astryxdesign/core/Badge';
 import {Banner} from '@astryxdesign/core/Banner';
 import {Button} from '@astryxdesign/core/Button';
@@ -11,11 +12,12 @@ import {Heading, Text} from '@astryxdesign/core/Text';
 import {BASELINE, FIRST_YEAR, LAST_YEAR, VARIABLES} from '../data/variables';
 import {analyzeVariable, trendUnit, type VariableAnalysis} from '../lib/analysis';
 import {LIMITATION, loadWitness, overallVerdict, PRODUCTS, toWitnessState, VERDICT_TEXT, witnessForCells, type WitnessState} from '../lib/evidence';
-import {useAsync, useNation} from '../lib/hooks';
+import {useAsync, useMediaQuery, useNation} from '../lib/hooks';
+import {FEATURED} from '../data/featured';
 import {loadGrid} from '../lib/nationData';
 import {stepScreen} from '../lib/stats';
 import {digitsFor, percent, pValue, signed} from '../lib/format';
-import {download, toCsv} from '../lib/download';
+import {copyText, download, toCsv} from '../lib/download';
 import {atlasHref} from '../app/router';
 
 const WINDOW = {from: FIRST_YEAR, to: LAST_YEAR};
@@ -33,6 +35,8 @@ type Row = {
   areaDown: number;
   integrity: string;
   changePoint: string;
+  /** Ramp-or-jump and change point folded into one phrase, one year at most. */
+  shape: string;
   witness: string;
   verdict: string;
   tone: 'success' | 'warning' | 'error' | 'neutral';
@@ -41,6 +45,31 @@ type Row = {
 
 /** National evidence brief: every variable's verdict on one page, downloadable. */
 export function Brief({iso3}: {iso3: string}) {
+  if (!Object.values(FEATURED).includes(iso3)) {
+    return (
+      <LayoutContent padding={8}>
+        <Banner
+          status="info"
+          title={`No national brief for “${iso3}”`}
+          description={`Briefs cover the seven nations with all seven variables: ${FEATURED_NAMES}. Every other country has temperature and rainfall verdicts on the World map, with a link and an evidence download.`}
+          endContent={
+            <HStack gap={2}>
+              <Button label="Find it on the World map" variant="primary" href="#/world" />
+              <Button label="Casebook" variant="secondary" href="#/" />
+            </HStack>
+          }
+        />
+      </LayoutContent>
+    );
+  }
+  return <BriefBody iso3={iso3} />;
+}
+
+const FEATURED_NAMES = 'Bangladesh, Chile, Kenya, Mexico, Morocco, the Philippines and Spain';
+
+function BriefBody({iso3}: {iso3: string}) {
+  const narrow = useMediaQuery('(max-width: 900px)');
+  const [copied, setCopied] = useState(false);
   const nation = useNation(iso3);
   const meta = nation.status === 'ready' ? nation.data.meta : null;
   const analyses = useAsync(async () => {
@@ -74,7 +103,14 @@ export function Brief({iso3}: {iso3: string}) {
         areaUp: a.areaUp,
         areaDown: a.areaDown,
         integrity: step ? (step.stepDominated ? `Jump in ${step.breakAt}` : 'Gradual') : 'n/a',
-        changePoint: cp && cp.p < 0.05 ? `${cp.breakAt} (clue, not a cause)` : 'none',
+        changePoint: cp && cp.p < 0.05 ? String(cp.breakAt) : 'none',
+        shape: step?.stepDominated
+          ? `Jump in ${step.breakAt}`
+          : cp && cp.p < 0.05
+            ? `Gradual; most likely shift ${cp.breakAt} (a clue, not a cause)`
+            : step
+              ? 'Gradual'
+              : 'n/a',
         witness:
           state.kind === 'available'
             ? `${PRODUCTS[a.variable].name}: ${VERDICT_TEXT[state.exam.verdict].label}`
@@ -102,14 +138,13 @@ export function Brief({iso3}: {iso3: string}) {
   }
 
   const columns: TableColumn<Row>[] = [
-    {key: 'variable', header: 'Variable', width: proportional(1.5)},
-    {key: 'slope', header: 'Trend per decade [95% range]', width: proportional(1.7), renderCell: r => <Text hasTabularNumbers>{`${signed(r.slope, r.digits)} [${signed(r.low, r.digits)}, ${signed(r.high, r.digits)}] ${r.unit}`}</Text>},
-    {key: 'p', header: 'Corrected p', align: 'end', width: proportional(0.7), renderCell: r => <Text hasTabularNumbers>{pValue(r.p)}</Text>},
-    {key: 'areaUp', header: 'Significant area up / down', width: proportional(1), renderCell: r => <Text hasTabularNumbers>{`${percent(r.areaUp)} / ${percent(r.areaDown)}`}</Text>},
-    {key: 'integrity', header: 'Ramp or jump', width: proportional(0.9)},
-    {key: 'changePoint', header: 'Change-point clue', width: proportional(1)},
-    {key: 'witness', header: 'Independent record', width: proportional(1.5)},
-    {key: 'verdict', header: 'Verdict', width: proportional(1.4), renderCell: r => <Badge variant={TONE[r.tone]} label={r.verdict} />},
+    {key: 'variable', header: 'Variable', width: proportional(1.1, {minWidth: 150})},
+    {key: 'verdict', header: 'Verdict', width: proportional(1.5, {minWidth: 260}), renderCell: r => <Badge variant={TONE[r.tone]} label={r.verdict} />},
+    {key: 'slope', header: 'Trend per decade [95% range]', width: proportional(1.7, {minWidth: 220}), renderCell: r => <Text hasTabularNumbers>{`${signed(r.slope, r.digits)} [${signed(r.low, r.digits)}, ${signed(r.high, r.digits)}] ${r.unit}`}</Text>},
+    {key: 'p', header: 'p-value', align: 'end', width: proportional(0.5, {minWidth: 80}), renderCell: r => <Text hasTabularNumbers>{pValue(r.p)}</Text>},
+    {key: 'areaUp', header: 'Land up / down', width: proportional(0.8, {minWidth: 120}), renderCell: r => <Text hasTabularNumbers>{`${percent(r.areaUp)} / ${percent(r.areaDown)}`}</Text>},
+    {key: 'witness', header: 'Independent record', width: proportional(1.3, {minWidth: 170})},
+    {key: 'shape', header: 'Ramp or jump', width: proportional(1.3, {minWidth: 170})},
   ];
 
   const receipt = meta
@@ -136,16 +171,33 @@ export function Brief({iso3}: {iso3: string}) {
       <VStack gap={6}>
         <VStack gap={2}>
           <Text type="code" color="accent" size="xsm">
-            NATIONAL EVIDENCE BRIEF · {iso3}
+            NATIONAL EVIDENCE BRIEF
           </Text>
           <Heading level={1} type="display-3">
             {meta?.name ?? iso3}, {WINDOW.from}–{WINDOW.to}
           </Heading>
-          <Text color="secondary">Every variable Bilad tracks for this nation, with its trend, its tests, its independent record where one exists, and one verdict. Each number is computed in your browser from the shipped NASA data.</Text>
+          <Text type="large" color="secondary">Every variable Bilad tracks for this nation: its trend, its tests, its independent record where one exists, and one verdict. Your browser recomputes each number from the NASA data, so the downloads match what you see.</Text>
         </VStack>
         {rows && receipt ? (
           <>
-            <Table data={rows} columns={columns} idKey="id" density="balanced" />
+            {narrow ? (
+              <VStack gap={4}>
+                {rows.map(r => (
+                  <Card key={r.id} variant="muted" padding={4}>
+                    <VStack gap={2}>
+                      <HStack gap={2} vAlign="center" wrap="wrap">
+                        <Text weight="semibold">{r.variable}</Text>
+                        <Badge variant={TONE[r.tone]} label={r.verdict} />
+                      </HStack>
+                      <Text hasTabularNumbers>{`${signed(r.slope, r.digits)} ${r.unit} per decade [${signed(r.low, r.digits)}, ${signed(r.high, r.digits)}], p ${pValue(r.p).startsWith('<') ? pValue(r.p) : `= ${pValue(r.p)}`}`}</Text>
+                      <Text type="supporting">{`Independent record: ${r.witness}. ${r.shape}. Land significant up / down: ${percent(r.areaUp)} / ${percent(r.areaDown)}.`}</Text>
+                    </VStack>
+                  </Card>
+                ))}
+              </VStack>
+            ) : (
+              <Table data={rows} columns={columns} idKey="id" density="balanced" />
+            )}
             <HStack gap={2} wrap="wrap">
               <Button
                 label="Download CSV"
@@ -154,8 +206,8 @@ export function Brief({iso3}: {iso3: string}) {
                   download(
                     `bilad-brief-${iso3}.csv`,
                     toCsv([
-                      ['variable', 'unit', 'trend_per_decade', 'low95', 'high95', 'p_corrected', 'area_up', 'area_down', 'ramp_or_jump', 'change_point_clue', 'independent_record', 'verdict'],
-                      ...rows.map(r => [r.id, `${r.unit} per decade`, r.slope, r.low, r.high, r.p, r.areaUp, r.areaDown, r.integrity, r.changePoint, r.witness, r.verdict]),
+                      ['nation', 'iso3', 'variable', 'variable_label', 'unit', 'trend_per_decade', 'low95', 'high95', 'p_corrected', 'share_of_land_significant_up', 'share_of_land_significant_down', 'ramp_or_jump', 'change_point_clue_year', 'independent_record', 'verdict'],
+                      ...rows.map(r => [receipt.nation, iso3, r.id, r.variable, `${r.unit} per decade`, round(r.slope), round(r.low), round(r.high), round(r.p), round(r.areaUp), round(r.areaDown), r.integrity, r.changePoint, r.witness, r.verdict]),
                       [],
                       ['source', receipt.source],
                       ['retrieved', receipt.retrieved],
@@ -169,15 +221,26 @@ export function Brief({iso3}: {iso3: string}) {
               <Button
                 label="Download JSON"
                 variant="secondary"
-                onClick={() => download(`bilad-brief-${iso3}.json`, JSON.stringify({...receipt, variables: rows.map(r => ({variable: r.id, label: r.variable, unit: `${r.unit} per decade`, trend: r.slope, low95: r.low, high95: r.high, pCorrected: r.p, areaUp: r.areaUp, areaDown: r.areaDown, rampOrJump: r.integrity, changePointClue: r.changePoint, independentRecord: r.witness, verdict: r.verdict}))}, null, 2), 'application/json')}
+                onClick={() => download(`bilad-brief-${iso3}.json`, JSON.stringify({...receipt, variables: rows.map(r => ({variable: r.id, label: r.variable, unit: `${r.unit} per decade`, trend: round(r.slope), low95: round(r.low), high95: round(r.high), pCorrected: round(r.p), areaUp: round(r.areaUp), areaDown: round(r.areaDown), rampOrJump: r.integrity, changePointClue: r.changePoint, independentRecord: r.witness, verdict: r.verdict}))}, null, 2), 'application/json')}
+              />
+              <Button
+                label={copied ? 'Link copied' : 'Copy link to this brief'}
+                variant="secondary"
+                onClick={async () => {
+                  if (await copyText(window.location.href)) {
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2000);
+                  }
+                }}
               />
               <Button label="Open the atlas" variant="ghost" href={atlasHref(iso3)} />
             </HStack>
+            <Text type="supporting">“Land up / down” is the share of the nation’s land with a significant trend in each direction, after the map-wide false-discovery check.</Text>
             <MetadataList columns={2}>
               <MetadataListItem label="Source">{receipt.source}</MetadataListItem>
               <MetadataListItem label="Retrieved">{receipt.retrieved}</MetadataListItem>
               <MetadataListItem label="Grid">{`${receipt.grid} (${receipt.cells} cells)`}</MetadataListItem>
-              <MetadataListItem label="Baseline">{`${BASELINE[0]}–${BASELINE[1]} WMO normal`}</MetadataListItem>
+              <MetadataListItem label="Baseline">{`${BASELINE[0]}–${BASELINE[1]} normal (World Meteorological Organization standard period)`}</MetadataListItem>
               <MetadataListItem label="Method">{receipt.method}</MetadataListItem>
               <MetadataListItem label="Limitations">{receipt.limitations.join(' ')}</MetadataListItem>
             </MetadataList>
@@ -193,3 +256,6 @@ export function Brief({iso3}: {iso3: string}) {
     </LayoutContent>
   );
 }
+
+/** Four significant figures: enough for any downstream use, readable in a spreadsheet. */
+const round = (v: number) => (Number.isFinite(v) ? Number(v.toPrecision(4)) : null);

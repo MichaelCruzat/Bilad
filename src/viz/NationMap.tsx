@@ -9,7 +9,8 @@ import type {VariableAnalysis} from '../lib/analysis';
 import {getVariable} from '../data/variables';
 import {divergingColor, emergenceRamp, robustLimit} from './color';
 import {lat as fmtLat, signed} from '../lib/format';
-import {CHROME} from './chrome';
+import {CHROME, rootPx} from './chrome';
+import {fullName} from '../lib/names';
 
 export type MapLayer = 'change' | 'emergence' | 'normal' | 'year';
 
@@ -162,7 +163,7 @@ type Props = {
 const PAD = 12;
 const PROFILE_W = 150;
 const PROFILE_GAP = 28;
-const LABEL_W = 40;
+const LABEL_W = 58;
 
 export function NationMap({
   meta,
@@ -196,6 +197,9 @@ export function NationMap({
   const zoomer = useRef<ZoomBehavior<SVGGElement, unknown> | null>(null);
   const [zt, setZt] = useState<ZoomTransform>(zoomIdentity);
   const reduced = useMemo(() => prefersReducedMotion(), []);
+  // Screen pixels per SVG unit, so labels and buttons keep a readable,
+  // tappable size however large or small the map is drawn.
+  const [screen, setScreen] = useState(1);
 
   // Zoom and pan on the map only (the latitude profile stays put).
   useEffect(() => {
@@ -233,7 +237,24 @@ export function NationMap({
 
   const profileX0 = geo.width + PROFILE_GAP;
   const totalW = showProfile ? profileX0 + PROFILE_W + LABEL_W : geo.width;
-  const totalH = geo.height + (showProfile ? 34 : 0);
+  const totalH = geo.height + (showProfile ? 40 : 0);
+  useEffect(() => {
+    const el = svgRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const update = () => {
+      const r = el.getBoundingClientRect();
+      if (r.width > 0 && r.height > 0) setScreen(Math.min(r.width / totalW, r.height / totalH));
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [totalW, totalH]);
+  /** SVG units for a size in screen pixels that follows the page's root size. */
+  const u = (screenPx: number) => (screenPx * (rootPx() / 16)) / screen;
+  /** Profile labels: readable, but never wider than the room beside the profile. */
+  const profileFont = Math.min(u(12), 15);
+  const button = Math.min(u(34), geo.width / 8);
   const values = useMemo(() => layerValues(analysis, layer, year), [analysis, layer, year]);
   const pLim = layer === 'normal' ? Math.max(Math.abs(coloring.min), Math.abs(coloring.max)) : coloring.limit;
   const px = (v: number) =>
@@ -393,8 +414,8 @@ export function NationMap({
         <g key={i} pointerEvents="none">
           <path d={n.path} fill="none" stroke={CHROME.faint} strokeOpacity={0.45} strokeWidth={0.7} vectorEffect="non-scaling-stroke" />
           {n.label && (
-            <text x={n.label[0]} y={n.label[1]} fontSize={9 / zt.k} fill={CHROME.faint} fillOpacity={0.75} textAnchor="middle" fontFamily={CHROME.mono} letterSpacing="0.14em">
-              {n.name.toUpperCase()}
+            <text x={n.label[0]} y={n.label[1]} fontSize={Math.min(u(11), 16) / zt.k} fill={CHROME.faint} fillOpacity={0.8} textAnchor="middle" fontFamily={CHROME.mono} letterSpacing="0.14em">
+              {fullName(n.name).toUpperCase()}
             </text>
           )}
         </g>
@@ -438,20 +459,20 @@ export function NationMap({
       </g>
       </g>
       {showZoomControls && (
-        <g fontFamily={CHROME.mono} fontSize={13}>
+        <g fontFamily={CHROME.mono} fontSize={button * 0.6}>
           {([['+', () => zoomBy(1.6), 'Zoom in'], ['−', () => zoomBy(1 / 1.6), 'Zoom out'], ['⟲', zoomReset, 'Reset zoom']] as const).map(([label, act, name], k) => (
             <g
               key={name}
               role="button"
               aria-label={name}
               tabIndex={0}
-              transform={`translate(${geo.width - 30}, ${8 + k * 28})`}
+              transform={`translate(${geo.width - button - 8}, ${8 + k * (button + 6)})`}
               onClick={act}
               onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), act())}
               style={{cursor: 'pointer'}}
             >
-              <rect width={22} height={22} rx={4} fill={CHROME.body} fillOpacity={0.85} stroke={CHROME.axis} />
-              <text x={11} y={15.5} textAnchor="middle" fill={CHROME.ink}>
+              <rect width={button} height={button} rx={button / 6} fill={CHROME.body} fillOpacity={0.85} stroke={CHROME.axis} />
+              <text x={button / 2} y={button * 0.7} textAnchor="middle" fill={CHROME.ink}>
                 {label}
               </text>
             </g>
@@ -462,15 +483,16 @@ export function NationMap({
       {hover !== null && describeCell && (() => {
         const lines = describeCell(hover);
         const [cx, cy] = zt.apply(geo.centers[hover]);
-        const w = Math.max(...lines.map(l => l.length)) * 6.9 + 18;
-        const h = lines.length * 14 + 10;
+        const fs = u(13);
+        const w = Math.max(...lines.map(l => l.length)) * fs * 0.63 + fs * 1.6;
+        const h = lines.length * fs * 1.3 + fs * 0.9;
         const x = Math.min(Math.max(4, cx + 10), geo.width - w - 4);
         const y = Math.min(Math.max(4, cy - h - 8), geo.height - h - 4);
         return (
           <g pointerEvents="none">
             <rect x={x} y={y} width={w} height={h} rx={4} fill={CHROME.body} fillOpacity={0.92} stroke={CHROME.axis} />
             {lines.map((l, k) => (
-              <text key={k} x={x + 8} y={y + 17 + k * 14} fontSize={11} fill={k === 0 ? CHROME.ink : CHROME.muted} fontFamily={CHROME.mono}>
+              <text key={k} x={x + fs * 0.7} y={y + fs * 1.5 + k * fs * 1.3} fontSize={fs} fill={k === 0 ? CHROME.ink : CHROME.muted} fontFamily={CHROME.mono}>
                 {l}
               </text>
             ))}
@@ -496,19 +518,19 @@ export function NationMap({
             <circle cx={px(values[shown])} cy={latToY(meta.cells[shown].lat)} r={3.2} fill="none" stroke={CHROME.ink} strokeWidth={1.2} />
           )}
           {dragY && <rect x={profileX0 - 6} width={PROFILE_W + 12} y={dragY[0]} height={dragY[1] - dragY[0]} fill={CHROME.ink} fillOpacity={0.15} />}
-          <text x={profileX0} y={geo.height + 14} fontSize={9} fill={CHROME.muted}>
+          <text x={profileX0} y={geo.height + profileFont * 1.2} fontSize={profileFont} fill={CHROME.muted}>
             {layer === 'normal' ? 'low' : signed(-pLim, pLim < 1 ? 2 : 1)}
           </text>
-          <text x={profileX0 + PROFILE_W} y={geo.height + 14} fontSize={9} fill={CHROME.muted} textAnchor="end">
+          <text x={profileX0 + PROFILE_W} y={geo.height + profileFont * 1.2} fontSize={profileFont} fill={CHROME.muted} textAnchor="end">
             {layer === 'normal' ? 'high' : signed(pLim, pLim < 1 ? 2 : 1)}
           </text>
-          <text x={profileX0 + PROFILE_W / 2} y={geo.height + 27} fontSize={9} fill={CHROME.faint} textAnchor="middle">
+          <text x={profileX0 + PROFILE_W / 2} y={geo.height + profileFont * 2.5} fontSize={profileFont} fill={CHROME.muted} textAnchor="middle">
             {layer === 'emergence' ? 'signal ÷ noise' : unitLabel ?? ''}
           </text>
           {latTicks(rows.map(r => r.lat)).map(l => (
             <g key={l}>
               <line x1={profileX0 + PROFILE_W + 4} x2={profileX0 + PROFILE_W + 8} y1={latToY(l)} y2={latToY(l)} stroke={CHROME.axis} />
-              <text x={totalW - 2} y={latToY(l) + 3} fontSize={9} fill={CHROME.faint} textAnchor="end">
+              <text x={totalW - 2} y={latToY(l) + profileFont * 0.35} fontSize={profileFont} fill={CHROME.muted} textAnchor="end">
                 {fmtLat(l).replace('.00', '')}
               </text>
             </g>

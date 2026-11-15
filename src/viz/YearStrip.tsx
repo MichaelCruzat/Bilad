@@ -1,6 +1,6 @@
 import {getVariable} from '../data/variables';
 import {divergingColor, robustLimit} from './color';
-import {CHROME} from './chrome';
+import {CHROME, textScale} from './chrome';
 import {signed} from '../lib/format';
 import {useWidth} from './useWidth';
 
@@ -22,8 +22,9 @@ type Props = {
 export function YearStrip({years, series, variable, unit, current, onPick, title}: Props) {
   const def = getVariable(variable);
   const [ref, W] = useWidth<SVGSVGElement>(800);
-  const H = 92;
-  const m = {l: 34, r: 8, t: 14, b: 18};
+  const TS = textScale();
+  const H = Math.round(60 + 32 * TS);
+  const m = {l: 34 * TS, r: 8, t: 14 * TS, b: 18 * TS};
   const lim = robustLimit(series);
   const bw = (W - m.l - m.r) / years.length;
   const y = (v: number) => m.t + ((lim - Math.max(-lim, Math.min(lim, v))) / (2 * lim)) * (H - m.t - m.b);
@@ -44,7 +45,7 @@ export function YearStrip({years, series, variable, unit, current, onPick, title
       aria-valuemax={years[years.length - 1]}
       aria-valuenow={current ?? undefined}
       tabIndex={0}
-      style={{display: 'block', cursor: 'ew-resize', touchAction: 'none'}}
+      style={{display: 'block', cursor: 'ew-resize', touchAction: 'none', userSelect: 'none', WebkitUserSelect: 'none'}}
       onPointerDown={e => {
         e.currentTarget.setPointerCapture(e.pointerId);
         pick(e.clientX, e.currentTarget.getBoundingClientRect());
@@ -60,10 +61,10 @@ export function YearStrip({years, series, variable, unit, current, onPick, title
     >
       <title>{title}</title>
       <line x1={m.l} x2={W - m.r} y1={y(0)} y2={y(0)} stroke={CHROME.axis} />
-      <text x={m.l - 6} y={y(lim) + 4} fontSize={10} fill={CHROME.faint} textAnchor="end" fontFamily={CHROME.font}>
+      <text x={m.l - 6} y={y(lim) + 4 * TS} fontSize={10 * TS} fill={CHROME.faint} textAnchor="end" fontFamily={CHROME.font}>
         {signed(lim, lim < 1 ? 1 : 0)}
       </text>
-      <text x={m.l - 6} y={y(-lim) + 4} fontSize={10} fill={CHROME.faint} textAnchor="end" fontFamily={CHROME.font}>
+      <text x={m.l - 6} y={y(-lim) + 4 * TS} fontSize={10 * TS} fill={CHROME.faint} textAnchor="end" fontFamily={CHROME.font}>
         {signed(-lim, lim < 1 ? 1 : 0)}
       </text>
       {years.map((yr, i) => {
@@ -76,7 +77,7 @@ export function YearStrip({years, series, variable, unit, current, onPick, title
         );
       })}
       {years.filter(yr => yr % 10 === 0 || yr === years[0] || yr === years[years.length - 1]).map(yr => (
-        <text key={yr} x={m.l + (yr - years[0] + 0.5) * bw} y={H - 4} fontSize={10} fill={CHROME.muted} textAnchor="middle" fontFamily={CHROME.font}>
+        <text key={yr} x={m.l + (yr - years[0] + 0.5) * bw} y={H - 4} fontSize={10 * TS} fill={CHROME.muted} textAnchor="middle" fontFamily={CHROME.font}>
           {yr}
         </text>
       ))}

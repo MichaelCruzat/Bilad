@@ -87,14 +87,22 @@ export function crossExamine(years: number[], claimSeries: ArrayLike<number>, wi
   return {claim, witness: w, verdict, claimStep, witnessStep, artifactSuspected};
 }
 
+/**
+ * One vocabulary for the witness comparison, used by every map legend, badge
+ * and table. overallVerdict below reuses these labels and adds one of its own,
+ * "Likely data artefact", when the integrity screen also fails.
+ */
 export const VERDICT_TEXT: Record<Agreement, {label: string; tone: 'success' | 'warning' | 'error' | 'neutral'; plain: string}> = {
   corroborated: {label: 'Corroborated', tone: 'success', plain: 'Both records show a significant change in the same direction, and their 95% ranges overlap.'},
   'same-direction': {label: 'Same direction, different size', tone: 'warning', plain: 'Both records agree on the direction, but not on how fast; their 95% ranges do not overlap.'},
-  'weakly-supported': {label: 'Weakly supported', tone: 'warning', plain: 'One record shows a significant change; the other leans the same way without reaching significance.'},
+  'weakly-supported': {label: 'Only one record significant', tone: 'warning', plain: 'One record shows a significant change; the other leans the same way without reaching significance.'},
   contradicted: {label: 'Contradicted', tone: 'error', plain: 'The two records show significant changes in opposite directions. At least one of them is wrong here.'},
   unsupported: {label: 'Not supported', tone: 'error', plain: 'One record shows a significant change; the other leans the opposite way.'},
   'no-signal': {label: 'No detectable trend', tone: 'neutral', plain: 'Neither record shows a significant change over this window.'},
 };
+
+/** Labels in the order of the map's verdict palette (VERDICT_COLORS). */
+export const VERDICT_ORDER: Agreement[] = ['corroborated', 'same-direction', 'weakly-supported', 'contradicted', 'unsupported', 'no-signal'];
 
 export type CoBreak = {year: number; variables: string[]};
 
@@ -193,6 +201,11 @@ export const INDEPENDENCE: Record<string, string> = {
     'Partly independent: GPCP combines rain gauges and satellites, and MERRA-2’s corrected rainfall also leans on gauge analyses, so the two share some of the same gauges. Agreement rules out a reanalysis artefact, not a problem in the gauges themselves.',
 };
 
+/** Name of the witness for a variable, or a generic phrase when it has none. */
+export function productName(variable: string): string {
+  return PRODUCTS[variable]?.name ?? 'The independent record';
+}
+
 export const PRODUCTS: Record<string, {name: string; long: string; agency: string; url: string}> = {
   T2M: {name: 'GISTEMP v4', long: 'GISTEMP v4 (250 km smoothing, land stations)', agency: 'NASA GISS', url: 'https://data.giss.nasa.gov/gistemp/'},
   PRECTOTCORR: {
@@ -212,7 +225,7 @@ export type WitnessState =
   | {kind: 'loading'}
   | {kind: 'failed'; message: string; retry: () => void}
   | {kind: 'no-coverage'}
-  | {kind: 'too-coarse'}
+  | {kind: 'too-coarse'; product: string}
   | {kind: 'available'; exam: CrossExamination};
 
 /** Build the witness state from the load status and, when ready, the witness series. */
@@ -239,16 +252,22 @@ export function overallVerdict(p: number, witness: WitnessState, stepDominated: 
   if (witness.kind === 'available') {
     const {exam} = witness;
     if (exam.artifactSuspected) return {label: 'Likely data artefact', tone: 'error', sentence: 'The independent record does not show this change, so it most likely comes from how the data were produced.'};
+    const claimSig = exam.claim.p < 0.05;
     switch (exam.verdict) {
       case 'corroborated':
-        return {label: 'Backed by an independent record', tone: 'success', sentence: 'Both records show a significant change in the same direction, and their ranges overlap.'};
+        return {label: 'Corroborated', tone: 'success', sentence: 'An independent record shows a significant change in the same direction, and the two 95% ranges overlap.'};
       case 'same-direction':
-        return {label: 'Real direction, uncertain size', tone: 'warning', sentence: 'Both records agree on the direction but not on how fast.'};
+        return {label: 'Same direction, different size', tone: 'warning', sentence: 'Both records agree on the direction but not on how fast; read the size of the change with caution.'};
       case 'weakly-supported':
-        return {label: 'Weakly supported', tone: 'warning', sentence: 'Only one of the two records shows a significant change; the other leans the same way.'};
+        return claimSig
+          ? {label: 'Only one record significant', tone: 'warning', sentence: 'MERRA-2 shows a significant change; the independent record leans the same way but is not significant.'}
+          : {label: 'Only one record significant', tone: 'warning', sentence: 'The independent record shows a significant change that MERRA-2 barely registers, so the reanalysis likely understates it here.'};
       case 'contradicted':
+        return {label: 'Contradicted', tone: 'error', sentence: 'The two records show significant changes in opposite directions.'};
       case 'unsupported':
-        return {label: 'Not backed by the independent record', tone: 'error', sentence: 'The independent record leans the opposite way.'};
+        return claimSig
+          ? {label: 'Not supported', tone: 'error', sentence: 'MERRA-2 shows a significant change, but the independent record leans the opposite way.'}
+          : {label: 'Not supported', tone: 'error', sentence: 'The independent record shows a significant change in the opposite direction to MERRA-2’s weak trend.'};
       default:
         return {label: 'No detectable trend', tone: 'neutral', sentence: 'Neither record shows a significant change over this window.'};
     }

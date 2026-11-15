@@ -1,4 +1,4 @@
-import {useMemo} from 'react';
+import {useEffect, useMemo, useRef, useState} from 'react';
 import {Badge} from '@astryxdesign/core/Badge';
 import {Banner} from '@astryxdesign/core/Banner';
 import {Button} from '@astryxdesign/core/Button';
@@ -27,16 +27,18 @@ import {
   type GlobalStats,
   type GlobalWitness,
 } from '../lib/globalData';
-import {INDEPENDENCE, LIMITATION, PRODUCTS, toWitnessState, VERDICT_TEXT} from '../lib/evidence';
+import {INDEPENDENCE, LIMITATION, overallVerdict, PRODUCTS, toWitnessState, VERDICT_TEXT, VERDICT_ORDER, type WitnessState} from '../lib/evidence';
+import {copyText, download} from '../lib/download';
 import {VerdictStrip} from '../features/VerdictStrip';
+import {Glossary} from '../features/Glossary';
 import type {Async} from '../lib/hooks';
 import {analyzeSeries, weightedMean} from '../lib/stats';
-import {describe} from '../lib/narrative';
-import {lat as fmtLat, lon as fmtLon, num, percent, pPhrase, signed} from '../lib/format';
+import {describe, findingContext} from '../lib/narrative';
+import {lat as fmtLat, lon as fmtLon, num, percent, pPhrase, signed, thousands} from '../lib/format';
 import {atlasHref, useAtlasParamsAt} from '../app/router';
-import {WorldMap, type WorldLayer} from '../viz/WorldMap';
+import {WorldMap, type WorldLayer, type WorldMapControls} from '../viz/WorldMap';
 import {SeriesChart} from '../viz/SeriesChart';
-import {divergingColor, emergenceRamp, VERDICT_COLORS} from '../viz/color';
+import {divergingColor, emergenceRamp, robustLimit, VERDICT_COLORS} from '../viz/color';
 import {usePlayback} from '../viz/usePlayback';
 import {YearStrip} from '../viz/YearStrip';
 import {AspectRatio} from '@astryxdesign/core/AspectRatio';
@@ -112,16 +114,51 @@ export function World({params}: {params: URLSearchParams}) {
   const countryIndex = useMemo(() => {
     if (countries.status !== 'ready') return null;
     if (countryParam !== null) {
-      const i = countries.data.findIndex(c => c.id === countryParam);
-      if (i >= 0) return i;
+      // Prefer the entry that has land cells when an id is shared.
+      const matches = countries.data.flatMap((c, i) => (c.id === countryParam ? [i] : []));
+      const i = cells ? (matches.find(k => cells.country.includes(k)) ?? matches[0]) : matches[0];
+      if (i !== undefined) return i;
     }
     if (cell !== null && cells && cells.country[cell] !== 65535) return cells.country[cell];
     return null;
   }, [countries, countryParam, cell, cells]);
 
+  // On a phone the result sits below the map and rankings: bring it into view
+  // after a pick, so a tap visibly does something.
+  const resultRef = useRef<HTMLDivElement>(null);
+  const mapControls = useRef<WorldMapControls | null>(null);
+  const picked = cellParam !== null || countryParam !== null;
+  useEffect(() => {
+    if (!narrow || !picked) return;
+    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    const id = window.setTimeout(() => resultRef.current?.scrollIntoView({behavior: reduce ? 'auto' : 'smooth', block: 'start'}), 150);
+    return () => window.clearTimeout(id);
+  }, [narrow, picked, cellParam, countryParam]);
+
+  // Only countries with land cells, so every option has a unique id and a result.
+  const countryOptions = useMemo(() => {
+    if (countries.status !== 'ready' || !cells) return [];
+    const has = new Set<number>();
+    for (let c = 0; c < cells.n; c++) has.add(cells.country[c]);
+    return countries.data
+      .flatMap((c, i) => (has.has(i) ? [{value: c.id, label: c.name}] : []))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [countries, cells]);
+
   const needAnnual = layer === 'year' || cell !== null || countryIndex !== null;
   const annual = useAsync(() => loadGlobalAnnual(variable), [variable], needAnnual);
   const witness = useAsync(() => loadGlobalWitness(variable), [variable], cell !== null || countryIndex !== null);
+
+  // The colour-scale ends, computed the same way the map computes them.
+  const trendLimit = useMemo(() => (bundle.status === 'ready' ? robustLimit(bundle.data.stats.slope) : null), [bundle]);
+  const yearLimit = useMemo(() => (annual.status === 'ready' ? robustLimit(annual.data) : null), [annual]);
+  const normalRange = useMemo(() => {
+    if (bundle.status !== 'ready') return null;
+    let lo = Infinity;
+    let hi = -Infinity;
+    for (const v of bundle.data.stats.normal) if (Number.isFinite(v)) [lo, hi] = [Math.min(lo, v), Math.max(hi, v)];
+    return [lo, hi] as const;
+  }, [bundle]);
 
   const failed = [meta, summary, countries, bundle].find(s => s.status === 'error');
   if (failed && failed.status === 'error') {
@@ -138,7 +175,7 @@ export function World({params}: {params: URLSearchParams}) {
         hasSearch
         placeholder="Any of 223 countries"
         value={countryIndex !== null && countries.status === 'ready' ? countries.data[countryIndex].id : null}
-        options={countries.status === 'ready' ? [...countries.data].sort((a, b) => a.name.localeCompare(b.name)).map(c => ({value: c.id, label: c.name})) : []}
+        options={countryOptions}
         onChange={v => set({country: v || null, cell: null})}
         hasClear
         width="100%"
@@ -164,12 +201,12 @@ export function World({params}: {params: URLSearchParams}) {
           />
         </VStack>
       )}
-      <WorldLegend layer={layer} variable={variable} unit={unit} />
+      <WorldLegend layer={layer} variable={variable} unit={unit} range={layer === 'trend' ? (trendLimit ? [-trendLimit, trendLimit] : null) : layer === 'year' ? (yearLimit ? [-yearLimit, yearLimit] : null) : normalRange} />
       <Text type="supporting">
         {layer === 'verdict'
-          ? `Every land cell’s ${def.short.toLowerCase()} trend since ${first}, checked against ${PRODUCTS[variable].name}. Green: stations agree. Red: stations show a significant opposite trend. Orange: stations lean the opposite way.`
+          ? `Every land cell’s ${def.short.toLowerCase()} trend since ${first}, checked against ${PRODUCTS[variable].name} (${variable === 'PRECTOTCORR' ? 'rain gauges and satellites' : 'weather stations'}). Green: the witness agrees. Red: the witness shows a significant opposite trend. Orange: the witness leans the opposite way.`
           : layer === 'trend'
-            ? `Theil–Sen trend in ${unit} per decade. Zoom in to see dots on cells that pass a worldwide false-discovery test.`
+            ? `Trend in ${unit} per decade. Zoom in to see dots on cells that stay significant after the worldwide false-discovery check.`
             : layer === 'year'
               ? `Each cell’s departure from its 1991–2020 normal in ${playback.year}, on one colour scale for every year.`
               : `The 1991–2020 average, for context.`}
@@ -188,8 +225,13 @@ export function World({params}: {params: URLSearchParams}) {
             {playback.year}
           </Text>
         ) : (
-          <Text type="supporting">Drag to pan, scroll to zoom, click any land cell</Text>
+          <Text type="supporting">Drag to pan, scroll or use the buttons to zoom, click or tap any land cell</Text>
         )}
+        <HStack gap={1}>
+          <Button size="sm" variant="secondary" label="Zoom in" onClick={() => mapControls.current?.zoomBy(1.6)} />
+          <Button size="sm" variant="secondary" label="Zoom out" onClick={() => mapControls.current?.zoomBy(1 / 1.6)} />
+          <Button size="sm" variant="ghost" label="Reset view" onClick={() => mapControls.current?.reset()} />
+        </HStack>
       </HStack>
       <AspectRatio ratio={2.5}>
         <VStack height="100%">
@@ -213,12 +255,20 @@ export function World({params}: {params: URLSearchParams}) {
                 const country = bundle.data.cells.country[c];
                 const name = country !== 65535 ? countries.data[country].name : 'Open water';
                 const a = s.agreement[c];
+                if (layer === 'year' && annual.status === 'ready') {
+                  const v = annual.data[c * s.years + playback.year - first];
+                  return [`${name} · ${fmtLat(bundle.data.cells.lat[c])} ${fmtLon(bundle.data.cells.lon[c])}`, `${playback.year}: ${signed(v, relative ? 0 : 2)} ${relative ? '% versus normal' : `${def.unit} versus the 1991–2020 normal`}`];
+                }
+                if (layer === 'normal') {
+                  return [`${name} · ${fmtLat(bundle.data.cells.lat[c])} ${fmtLon(bundle.data.cells.lon[c])}`, `1991–2020 normal: ${num(s.normal[c], relative ? 0 : 1)} ${def.unit}`];
+                }
                 return [
                   `${name} · ${fmtLat(bundle.data.cells.lat[c])} ${fmtLon(bundle.data.cells.lon[c])}`,
-                  `${signed(s.slope[c], relative ? 1 : 2)} ${unit}/decade${s.flags[c] & 1 ? ', significant' : ''}`,
+                  `${signed(s.slope[c], relative ? 1 : 2)} ${unit} per decade${s.flags[c] & 1 ? ', significant' : ''}`,
                   a === 255 ? 'no witness here' : `vs ${PRODUCTS[variable].name}: ${VERDICT_TEXT[summary.data.agreements[a]].label.toLowerCase()}`,
                 ];
               }}
+              controls={mapControls}
               title={`World map of ${def.short.toLowerCase()}: ${LAYERS.find(l => l.value === layer)!.label.toLowerCase()}`}
             />
           ) : (
@@ -278,15 +328,21 @@ export function World({params}: {params: URLSearchParams}) {
       <GlobalPanel summary={summary.data} variable={variable} first={first} last={last} />
     )
   ) : null;
+  const evidencePanel = (
+    <VStack gap={6}>
+      {evidence}
+      <Glossary compact />
+    </VStack>
+  );
 
   if (narrow) {
-    return <Layout content={<LayoutContent padding={4}><VStack gap={6}>{controls}<Divider />{map}<Divider />{evidence}</VStack></LayoutContent>} />;
+    return <Layout content={<LayoutContent padding={4}><VStack gap={6}>{controls}<Divider />{map}<Divider /><VStack ref={resultRef}>{evidencePanel}</VStack></VStack></LayoutContent>} />;
   }
   return (
     <Layout
-      start={<LayoutPanel width={wide ? 320 : 272} padding={5} hasDivider label="World atlas controls" role="region">{controls}</LayoutPanel>}
+      start={<LayoutPanel width={wide ? 360 : 300} padding={5} hasDivider label="World atlas controls" role="region">{controls}</LayoutPanel>}
       content={<LayoutContent padding={5} isScrollable={false} label="World map">{map}</LayoutContent>}
-      end={<LayoutPanel width={wide ? 500 : 410} padding={5} hasDivider label="Evidence" role="region">{evidence}</LayoutPanel>}
+      end={<LayoutPanel width={wide ? 600 : 460} padding={5} hasDivider label="Evidence" role="region">{evidencePanel}</LayoutPanel>}
     />
   );
 }
@@ -318,7 +374,10 @@ function Rankings({cells, stats, countries, variable, onPick}: {cells: GlobalCel
     });
     return list;
   }, [cells, stats, countries]);
-  const fastest = [...ranks].sort((a, b) => (relative ? Math.abs(b.slope) - Math.abs(a.slope) : b.slope - a.slope)).slice(0, 6);
+  // A ranking of change must not promote records the witness rejects: countries
+  // with more than a quarter of their land flagged as a likely artefact sit out.
+  const trusted = ranks.filter(r => r.flagged <= 0.25);
+  const fastest = [...trusted].sort((a, b) => (relative ? Math.abs(b.slope) - Math.abs(a.slope) : b.slope - a.slope)).slice(0, 6);
   const suspect = [...ranks].sort((a, b) => b.flagged - a.flagged).slice(0, 6);
   const row = (r: Rank, value: string) => (
     <HStack key={r.id} gap={3} hAlign="between" vAlign="center">
@@ -332,24 +391,28 @@ function Rankings({cells, stats, countries, variable, onPick}: {cells: GlobalCel
     <HStack gap={8} wrap="wrap">
       <VStack gap={1} width="min(100%, 24rem)">
         <Text type="code" size="xsm" color="secondary">
-          {relative ? 'LARGEST RAINFALL CHANGE, AVERAGE CELL TREND' : 'FASTEST WARMING, AVERAGE CELL TREND'}
+          {relative ? 'LARGEST RAINFALL CHANGE THE WITNESS DOES NOT REJECT' : 'FASTEST WARMING THE WITNESS DOES NOT REJECT'}
         </Text>
-        {fastest.map(r => row(r, `${signed(r.slope, relative ? 1 : 2)} ${relative ? '%' : '°C'}/decade`))}
+        {fastest.map(r => row(r, `${signed(r.slope, relative ? 1 : 2)} ${relative ? '% of normal' : '°C'} per decade`))}
+        <Text type="supporting">
+          Average of the country’s cell trends. Countries with over a quarter of their land flagged as a likely artefact are left out. Opening a country tests its average series instead, so its figure differs slightly.
+        </Text>
       </VStack>
       <VStack gap={1} width="min(100%, 24rem)">
         <Text type="code" size="xsm" color="secondary">
-          LEAST TRUSTWORTHY RECORD, LAND FLAGGED AGAINST THE WITNESS
+          LEAST TRUSTWORTHY RECORD: SHARE OF LAND FLAGGED AS A LIKELY ARTEFACT
         </Text>
         {suspect.map(r => row(r, `${percent(r.flagged)} flagged`))}
+        <Text type="supporting">A cell is flagged when the witness contradicts its trend, or its record jumps in one year while the witness does not.</Text>
       </VStack>
     </HStack>
   );
 }
 
-function WorldLegend({layer, variable, unit}: {layer: WorldLayer; variable: string; unit: string}) {
+function WorldLegend({layer, variable, unit, range}: {layer: WorldLayer; variable: string; unit: string; range: readonly [number, number] | null}) {
   const def = getVariable(variable);
   if (layer === 'verdict') {
-    const labels = ['Corroborated', 'Same direction, different size', 'Weakly supported', 'Contradicted', 'Not supported', 'No detectable trend'];
+    const labels = VERDICT_ORDER.map(v => VERDICT_TEXT[v].label);
     return (
       <VStack gap={1}>
         {labels.map((l, i) => (
@@ -371,9 +434,20 @@ function WorldLegend({layer, variable, unit}: {layer: WorldLayer; variable: stri
           <rect key={t} x={t * 310} y={0} width={11} height={12} fill={layer === 'normal' ? emergenceRamp(0.08 + 0.92 * t) : divergingColor(def.palette, -1 + 2 * t, 1)} />
         ))}
       </svg>
+      {range && (
+        <HStack gap={2} hAlign="between">
+          <Text type="supporting" hasTabularNumbers>
+            {layer === 'normal' ? num(range[0], 0) : `${signed(range[0], Math.abs(range[0]) < 1 ? 2 : 0)} or less`}
+          </Text>
+          <Text type="supporting">0</Text>
+          <Text type="supporting" hasTabularNumbers>
+            {layer === 'normal' ? num(range[1], 0) : `${signed(range[1], Math.abs(range[1]) < 1 ? 2 : 0)} or more`}
+          </Text>
+        </HStack>
+      )}
       <HStack gap={2} hAlign="between">
         <Text type="supporting">{layer === 'normal' ? 'low' : def.down}</Text>
-        <Text type="supporting">{layer === 'normal' ? def.unit : layer === 'trend' ? `${unit} per decade` : unit}</Text>
+        <Text type="supporting">{layer === 'normal' ? def.unit : layer === 'trend' ? `${unit} per decade` : layer === 'year' ? `${def.relative ? '%' : def.unit} versus the 1991–2020 normal` : unit}</Text>
         <Text type="supporting">{layer === 'normal' ? 'high' : def.up}</Text>
       </HStack>
     </VStack>
@@ -398,8 +472,8 @@ function GlobalPanel({summary, variable, first, last}: {summary: Awaited<ReturnT
         </Text>
       </VStack>
       <MetadataList columns={2}>
-        <MetadataListItem label={`Land with significant ${def.up}`}>{percent(g.areaUp)}</MetadataListItem>
-        <MetadataListItem label={`Land with significant ${def.down}`}>{percent(g.areaDown)}</MetadataListItem>
+        <MetadataListItem label={`Land with a significant trend toward ${def.up}`}>{percent(g.areaUp)}</MetadataListItem>
+        <MetadataListItem label={`Land with a significant trend toward ${def.down}`}>{percent(g.areaDown)}</MetadataListItem>
         <MetadataListItem label="Witness backs the trend">{percent(g.agreement.corroborated + g.agreement['same-direction'])}</MetadataListItem>
         <MetadataListItem label="Flagged as a likely artefact">{percent(g.areaFlagged, 1)}</MetadataListItem>
       </MetadataList>
@@ -473,11 +547,11 @@ function Selection({
   }
   const series = aggregate(cells, stats, annual, ids, relative);
   const result = analyzeSeries(years, series);
-  const finding = describe(variable, unit, result, years, series);
   const state = toWitnessState(variable, witnessStatus, years, series, () =>
     witnessStatus.status === 'ready' ? aggregateWitness(cells, witnessStatus.data, ids, stats.years, first, relative) : null,
   );
   const exam = state.kind === 'available' ? state.exam : null;
+  const finding = describe(variable, unit, result, years, series, findingContext(exam, variable));
   const witnessSeries = exam && witnessStatus.status === 'ready' ? aggregateWitness(cells, witnessStatus.data, ids, stats.years, first, relative) : null;
   const area = ids.reduce((s, c) => s + cells.area[c], 0);
   const share = (pred: (c: number) => boolean) => ids.reduce((s, c) => s + (pred(c) ? cells.area[c] : 0), 0) / area;
@@ -491,7 +565,7 @@ function Selection({
         </Text>
         <Heading level={2}>{countryName ?? `${fmtLat(cells.lat[cell!])}, ${fmtLon(cells.lon[cell!])}`}</Heading>
         <Text type="supporting">
-          {ids.length} grid {ids.length === 1 ? 'cell' : 'cells'}, {num(area, 0)} km² of land{countryName && cell !== null ? `; selected cell ${fmtLat(cells.lat[cell])}, ${fmtLon(cells.lon[cell])}` : ''}.
+          {ids.length} grid {ids.length === 1 ? 'cell' : 'cells'}, {thousands(area)} km² of land{countryName && cell !== null ? `; selected cell ${fmtLat(cells.lat[cell])}, ${fmtLon(cells.lon[cell])}` : ''}.
         </Text>
       </VStack>
       <VerdictStrip
@@ -507,6 +581,23 @@ function Selection({
         limitation={LIMITATION[variable]}
         next={iso3 ? {label: `Open the full ${countryName} atlas`, href: atlasHref(iso3)} : undefined}
       />
+      <SelectionActions
+        name={countryName ?? `cell ${fmtLat(cells.lat[cell!])} ${fmtLon(cells.lon[cell!])}`}
+        variable={variable}
+        unit={unit}
+        years={years}
+        series={series}
+        witness={witnessSeries}
+        result={result}
+        state={state}
+        cells={ids.length}
+        brief={iso3}
+      />
+      {iso3 && countryIndex !== null && (
+        <Text type="supporting">
+          The world map gives each cell to the country that covers most of it. The {countryName} atlas and case files count every cell that overlaps the border, weighted by the share of land inside it, so their cell count and figures differ slightly.
+        </Text>
+      )}
       <VStack gap={2}>
         <Text color="secondary">
           {finding.significance} {finding.emergence}
@@ -519,7 +610,7 @@ function Selection({
         variable={variable}
         unit={relative ? '%' : def.unit}
         witness={witnessSeries}
-        witnessLabel={`${PRODUCTS[variable].name} (independent record)`}
+        witnessLabel={`${PRODUCTS[variable].name} (witness)`}
         step={exam?.claimStep ?? null}
         title={`${countryName ?? 'Cell'}: annual ${def.short.toLowerCase()} anomaly`}
       />
@@ -545,11 +636,71 @@ function Selection({
       )}
       {countryIndex !== null && (
         <MetadataList columns={2}>
-          <MetadataListItem label={`Land with significant ${def.up}`}>{percent(share(c => (stats.flags[c] & 1) !== 0 && stats.slope[c] > 0))}</MetadataListItem>
-          <MetadataListItem label={`Land with significant ${def.down}`}>{percent(share(c => (stats.flags[c] & 1) !== 0 && stats.slope[c] < 0))}</MetadataListItem>
+          <MetadataListItem label={`Land with a significant trend toward ${def.up}`}>{percent(share(c => (stats.flags[c] & 1) !== 0 && stats.slope[c] > 0))}</MetadataListItem>
+          <MetadataListItem label={`Land with a significant trend toward ${def.down}`}>{percent(share(c => (stats.flags[c] & 1) !== 0 && stats.slope[c] < 0))}</MetadataListItem>
           <MetadataListItem label="Cells flagged as artefacts">{percent(share(c => (stats.flags[c] & 4) !== 0))}</MetadataListItem>
         </MetadataList>
       )}
     </VStack>
   );
 }
+
+/** Share or keep what the panel shows: the link, and the evidence as a file. */
+function SelectionActions({name, variable, unit, years, series, witness, result, state, cells, brief}: {
+  name: string;
+  variable: string;
+  unit: string;
+  years: number[];
+  series: Float64Array;
+  witness: Float64Array | null;
+  result: ReturnType<typeof analyzeSeries>;
+  state: WitnessState;
+  cells: number;
+  brief?: string;
+}) {
+  const [copied, setCopied] = useState(false);
+  const t = result.trend;
+  const verdict = overallVerdict(t.p, state, Boolean(state.kind === 'available' && state.exam.claimStep?.stepDominated));
+  const evidence = () => ({
+    place: name,
+    variable,
+    window: {from: years[0], to: years[years.length - 1]},
+    unit: `${unit} per decade`,
+    trend: round(t.slope * 10),
+    low95: round(t.slopeLow * 10),
+    high95: round(t.slopeHigh * 10),
+    pCorrected: round(t.p),
+    verdict: verdict.label,
+    verdictMeaning: verdict.sentence,
+    witness:
+      state.kind === 'available'
+        ? {record: PRODUCTS[variable].long, trend: round(state.exam.witness.slope * 10), pCorrected: round(state.exam.witness.p), comparison: VERDICT_TEXT[state.exam.verdict].label}
+        : state.kind,
+    grid: `${cells} MERRA-2 cells of 0.5° × 0.625° from the global grid, weighted by land area`,
+    source: 'NASA POWER (MERRA-2), monthly; annual means of monthly anomalies against 1991–2020',
+    method: 'Theil–Sen slope with 95% interval; Mann–Kendall test corrected for runs of similar years (Hamed–Rao)',
+    limitation: LIMITATION[variable],
+    series: years.map((y, i) => ({year: y, value: round(series[i]), witness: witness ? round(witness[i]) : null})),
+    view: window.location.href,
+  });
+  const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  return (
+    <HStack gap={2} wrap="wrap">
+      <Button
+        size="sm"
+        variant="secondary"
+        label={copied ? 'Link copied' : 'Copy link to this view'}
+        onClick={async () => {
+          if (await copyText(window.location.href)) {
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+          }
+        }}
+      />
+      <Button size="sm" variant="secondary" label="Download evidence (JSON)" onClick={() => download(`bilad-${slug}-${variable}-${years[0]}-${years[years.length - 1]}.json`, JSON.stringify(evidence(), null, 2), 'application/json')} />
+      {brief && <Button size="sm" variant="ghost" label="National brief, all seven variables" href={`#/brief/${brief}`} />}
+    </HStack>
+  );
+}
+
+const round = (v: number) => (Number.isFinite(v) ? Number(v.toPrecision(4)) : null);

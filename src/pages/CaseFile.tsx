@@ -17,7 +17,7 @@ import {coBreaks, crossExamine, INDEPENDENCE, loadWitness, PRODUCTS, VERDICT_TEX
 import {useAsync, useCrosscheck, useIndex, useNation, useVariable, type NationBundle} from '../lib/hooks';
 import type {DataIndex} from '../lib/nationData';
 import {analyzeSeries, stepScreen, trendTest} from '../lib/stats';
-import {describe} from '../lib/narrative';
+import {describe, findingContext} from '../lib/narrative';
 import {digitsFor, num, percent, pPhrase, pValue, signed} from '../lib/format';
 import {atlasHref} from '../app/router';
 import {NationMap, colorCells} from '../viz/NationMap';
@@ -56,7 +56,7 @@ export function CaseFile({id}: {id: string}) {
           <HStack gap={2} vAlign="center" wrap="wrap">
             <Button label="Casebook" variant="ghost" size="sm" href="#/" />
             <Text type="supporting" color="accent">
-              CASE {def.number} · {def.iso3} · {getVariable(def.variable).label.toUpperCase()}
+              CASE {def.number} · {(nation.status === 'ready' ? nation.data.meta.name : def.iso3).toUpperCase()} · {getVariable(def.variable).label.toUpperCase()}
             </Text>
           </HStack>
           <Heading level={1} type="display-2">
@@ -110,9 +110,9 @@ function CaseBody({def, bundle, analysis, crosscheck, index, witnessGrid}: {def:
   }, [def, meta, analysis]);
 
   const result = analyzeSeries(years, focus.series);
-  const finding = describe(def.variable, unit, result, years, focus.series);
   const witness = def.focus.kind === 'contrast' ? null : witnessSeries(crosscheck, meta.iso3, def.variable, FULL, focus.region);
   const exam = witness ? crossExamine(years, focus.series, witness) : null;
+  const finding = describe(def.variable, unit, result, years, focus.series, findingContext(exam, def.variable));
   const step = exam?.claimStep ?? stepScreen(years, focus.series);
   const product = PRODUCTS[def.variable];
   // Co-breaks only bear on a case when its own variable is one of the jumpers.
@@ -149,7 +149,7 @@ function CaseBody({def, bundle, analysis, crosscheck, index, witnessGrid}: {def:
   }, [def, focus, meta, analysis, years, witness]);
 
   const verdict = exam ? VERDICT_TEXT[exam.verdict] : null;
-  const witnessState: WitnessState = exam ? {kind: 'available', exam} : {kind: 'too-coarse'};
+  const witnessState: WitnessState = exam ? {kind: 'available', exam} : {kind: 'too-coarse', product: PRODUCTS.T2M.name};
 
   return (
     <VStack gap={8}>
@@ -174,7 +174,9 @@ function CaseBody({def, bundle, analysis, crosscheck, index, witnessGrid}: {def:
             THE CLAIM
           </Text>
           {def.context.map(p => (
-            <Text key={p.slice(0, 24)}>{p}</Text>
+            <Text key={p.slice(0, 24)} type="large">
+              {p}
+            </Text>
           ))}
           {deficit && (
             <Text type="large">
@@ -189,7 +191,7 @@ function CaseBody({def, bundle, analysis, crosscheck, index, witnessGrid}: {def:
             </Text>
           )}
         </VStack>
-        <VStack gap={2} height="30rem">
+        <VStack gap={2} height="min(78vh, 46rem)">
           <NationMap
             meta={meta}
             boundary={boundary}
@@ -198,7 +200,7 @@ function CaseBody({def, bundle, analysis, crosscheck, index, witnessGrid}: {def:
             layer="change"
             emphasis={emphasis}
             showProfile
-            maxHeight={520}
+            maxHeight={760}
             unitLabel={`${unit} per decade`}
             outlines={focus.compare ? [{cells: focus.compare.cells, color: CHROME.witness}, {cells: focus.cells!.filter(c => !focus.compare!.cells.includes(c)), color: CHROME.accent}] : []}
             title={`${meta.name}: ${v.short} trend per decade, 1981–2024${focus.cells ? `, ${focus.name} highlighted` : ''}`}
@@ -213,8 +215,8 @@ function CaseBody({def, bundle, analysis, crosscheck, index, witnessGrid}: {def:
         <Text type="supporting" color="accent">
           THE EVIDENCE
         </Text>
-        <Text weight="semibold">{finding.headline.replace(`${v.short}:`, `${focus.name}:`)}</Text>
-        <Text color="secondary">
+        <Heading level={3}>{finding.headline.replace(`${v.short}:`, `${focus.name}:`)}</Heading>
+        <Text type="large" color="secondary">
           {finding.significance} {finding.emergence}
         </Text>
         <SeriesChart
@@ -226,13 +228,13 @@ function CaseBody({def, bundle, analysis, crosscheck, index, witnessGrid}: {def:
           witness={witness ?? focus.compare?.series ?? null}
           witnessLabel={witness ? `${product.name} (independent record)` : focus.compare ? (def.focus as {labels: [string, string]}).labels[0] : undefined}
           step={step}
-          height={240}
+          height={360}
           title={`${focus.name}: annual anomaly, ${chartUnit}, 1981–2024`}
         />
         <Card variant="muted" padding={4}>
           <VStack gap={1}>
             <Text weight="semibold">How to read these numbers</Text>
-            <Text type="supporting">
+            <Text color="secondary">
               The trend is the typical change per decade, estimated so that one extreme year cannot drag it. The 95% range is where the true trend probably lies; if it does not include zero, the direction is clear. The p-value is how often a trend this strong would appear by chance in a record with no real trend; below 0.05 is the usual bar, and Bilad uses a version that allows for dry or warm years clustering together.
             </Text>
           </VStack>
@@ -296,7 +298,7 @@ function CaseBody({def, bundle, analysis, crosscheck, index, witnessGrid}: {def:
           )}
           {breaks.length > 0 && (
             <Text color="secondary">
-              Across {meta.name}’s seven national series, {breaks.map(b => `${b.variables.length} variables jump within a year of ${b.year} (${b.variables.join(', ')})`).join('; ')}. These variables are coupled inside one model, so a shared jump suggests something changed in the data fed to it, though it does not prove it.{exam?.artifactSuspected ? ' The independent record shows no such jump.' : exam && (exam.verdict === 'corroborated' || exam.verdict === 'same-direction') ? ` ${product.name} shows the same change without that jump, so the verdict does not depend on it.` : ''}
+              Across {meta.name}’s seven national series, {breaks.map(b => `${b.variables.length} variables jump within a year of ${b.year} (${b.variables.map(x => getVariable(x).short.toLowerCase()).join(', ')})`).join('; ')}. These variables are coupled inside one model, so a shared jump suggests something changed in the data fed to it, though it does not prove it.{exam?.artifactSuspected ? ' The independent record shows no such jump.' : exam && (exam.verdict === 'corroborated' || exam.verdict === 'same-direction') ? ` ${product.name} shows the same change without that jump, so the verdict does not depend on it.` : ''}
             </Text>
           )}
         </VStack>

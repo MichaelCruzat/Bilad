@@ -74,7 +74,7 @@ def build_nation(nation: Nation, root: Path, cache: Path) -> None:
         "cells": cells,
         "variables": [{"id": v.id, "scale": v.scale} for v in VARIABLES],
         "provenance": {
-            "api": f"NASA POWER Monthly and Annual API v{api}",
+            "api": f"NASA POWER Monthly and Annual API v{api.lstrip('v')}",
             "sources": sorted(sources),
             "community": "AG",
             "retrieved": dt.date.today().isoformat(),

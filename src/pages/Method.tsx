@@ -1,4 +1,6 @@
 import {CodeBlock} from '@astryxdesign/core/CodeBlock';
+import {VERDICT_ORDER, VERDICT_TEXT} from '../lib/evidence';
+import {VERDICT_COLORS} from '../viz/color';
 import {Divider} from '@astryxdesign/core/Divider';
 import {Grid} from '@astryxdesign/core/Grid';
 import {LayoutContent} from '@astryxdesign/core/Layout';
@@ -37,7 +39,7 @@ const BLOCKS: Block[] = [
     body: [
       'The slope is the median of the slopes between every pair of years. It is insensitive to a few extreme years. Its 95% interval follows Gilbert (1987), using the rank-order statistics of the pairwise slopes and the corrected Mann–Kendall variance below.',
     ],
-    formula: 'β = median_{i<j} (x_j − x_i) / (t_j − t_i)\nC = 1.96 √Var*(S);  lower = slope[(N − C)/2],  upper = slope[(N + C)/2 + 1]',
+    formula: 'β = median, over all pairs i < j, of (x_j − x_i) / (t_j − t_i)\nC = 1.96 √Var*(S);  lower = slope[(N − C)/2],  upper = slope[(N + C)/2 + 1]',
   },
   {
     id: 'mann-kendall',
@@ -45,13 +47,13 @@ const BLOCKS: Block[] = [
     body: [
       'Mann–Kendall asks whether later years tend to be higher (or lower) than earlier ones, without assuming a straight line or normal errors. Climate series are persistent: a dry year makes the next one likelier to be dry. That shrinks the effective sample size, and the classic test then finds trends too often. Bilad inflates the variance of S by the Hamed–Rao factor, computed from the autocorrelation of the ranks of the detrended series at significant lags. The factor is never allowed below 1, so the correction can only make the test more cautious. The engine matches the pymannkendall reference implementation to five decimal places.',
     ],
-    formula: 'S = Σ_{i<j} sgn(x_j − x_i)\nVar*(S) = Var(S) · [1 + 2/(n(n−1)(n−2)) Σ_k (n−k)(n−k−1)(n−k−2) ρ_k],  floored at Var(S)',
+    formula: 'S = sum over all pairs i < j of sign(x_j − x_i)\nVar*(S) = Var(S) · [1 + 2/(n(n−1)(n−2)) Σ_k (n−k)(n−k−1)(n−k−2) ρ_k],  floored at Var(S)',
   },
   {
     id: 'fdr',
     title: 'Field significance: false-discovery control',
     body: [
-      'Testing 54,425 cells at 5% would produce thousands of “significant” cells by chance alone. Bilad applies the Benjamini–Hochberg procedure across the map with α_FDR = 0.10, which Wilks (2016) shows controls the field-wide error near the nominal 5% for spatially correlated climate fields. Only cells that survive are stippled. Neighbouring reanalysis cells are not independent, so shares of significant area are descriptive, not independent votes.',
+      'Testing 54,425 cells at 5% would produce thousands of “significant” cells by chance alone. Bilad applies the Benjamini–Hochberg procedure across the map with a false discovery rate α_FDR = 0.10, which Wilks (2016) shows controls the field-wide error near the nominal 5% for spatially correlated climate fields. Only cells that survive are stippled. Neighbouring reanalysis cells are not independent, so shares of significant area are descriptive, not independent votes.',
     ],
     formula: 'p_(1) ≤ … ≤ p_(m);  k* = max{k : p_(k) ≤ (k/m) · α_FDR};  significant ⇔ p ≤ p_(k*)',
   },
@@ -76,7 +78,7 @@ const BLOCKS: Block[] = [
     id: 'witnesses',
     title: 'Cross-examination',
     body: [
-      'Temperature is compared with GISTEMP v4 (250 km smoothing, land stations only); precipitation with GPCP v2.3 (gauges and satellites; originally developed at NASA Goddard, now distributed by NOAA). Witnesses are stored per grid box, so the atlas can cross-examine any selection, from the whole nation down to one cell. Each witness is sampled at the centre of every Bilad cell and averaged with Bilad’s own weights, so the footprint is identical. The verdict compares direction, significance and overlap of the two 95% intervals: corroborated, same direction with a different size, weakly supported, not supported, contradicted, or no detectable trend.',
+      'Temperature is compared with GISTEMP v4 (250 km smoothing, land stations only); precipitation with GPCP v2.3 (gauges and satellites; originally developed at NASA Goddard, now distributed by NOAA). Witnesses are stored per grid box, so the atlas can cross-examine any selection, from the whole nation down to one cell. Each witness is sampled at the centre of every Bilad cell and averaged with Bilad’s own weights, so the footprint is identical. The verdict compares direction, significance and overlap of the two 95% intervals: corroborated, same direction with a different size, only one record significant, not supported, contradicted, or no detectable trend.',
       'The witnesses are coarser (2° and 2.5°) and are themselves estimates. GPCP and MERRA-2’s corrected precipitation both draw on rain gauges, so their agreement rules out a reanalysis artefact but not a problem shared by the gauges.',
     ],
   },
@@ -137,6 +139,43 @@ export function Method({section}: {section?: string | null}) {
             </HStack>
           </VStack>
         </Card>
+        <VStack gap={3}>
+          <Heading level={2} id="method-verdicts">
+            What the verdicts mean
+          </Heading>
+          <Text color="secondary">Each trend is compared with a second, independently built record (the witness). These are the outcomes, and the colour each one takes on the maps.</Text>
+          <Grid columns={{minWidth: 300, max: 2}} gap={4}>
+            {VERDICT_ORDER.map((v, i) => (
+              <HStack key={v} gap={3} vAlign="start">
+                <svg width="16" height="16" aria-hidden="true">
+                  <rect width="16" height="16" rx="3" fill={VERDICT_COLORS[i]} />
+                </svg>
+                <VStack gap={0.5}>
+                  <Text weight="semibold">{VERDICT_TEXT[v].label}</Text>
+                  <Text type="supporting">{VERDICT_TEXT[v].plain}</Text>
+                </VStack>
+              </HStack>
+            ))}
+            <HStack gap={3} vAlign="start">
+              <svg width="16" height="16" aria-hidden="true">
+                <rect width="16" height="16" rx="3" fill={VERDICT_COLORS[3]} />
+              </svg>
+              <VStack gap={0.5}>
+                <Text weight="semibold">Likely data artefact</Text>
+                <Text type="supporting">The witness contradicts the trend, or the record jumps in one year while the witness does not. The change most likely comes from how the data were produced.</Text>
+              </VStack>
+            </HStack>
+            <HStack gap={3} vAlign="start">
+              <svg width="16" height="16" aria-hidden="true">
+                <rect width="16" height="16" rx="3" fill={VERDICT_COLORS[5]} />
+              </svg>
+              <VStack gap={0.5}>
+                <Text weight="semibold">Single dataset, or no verdict at this scale</Text>
+                <Text type="supporting">No witness exists for this variable, or the witness grid is too coarse to tell the places apart. The trend may be real, but it has not been cross-examined.</Text>
+              </VStack>
+            </HStack>
+          </Grid>
+        </VStack>
         <VStack gap={1}>
           {BLOCKS.map((b, i) => (
             <HStack key={b.id} gap={3}>
@@ -163,7 +202,7 @@ export function Method({section}: {section?: string | null}) {
                 {p}
               </Text>
             ))}
-            {b.formula && <CodeBlock code={b.formula} language="text" />}
+            {b.formula && <CodeBlock code={b.formula} language="plaintext" title="Formula" />}
           </VStack>
         ))}
         <VStack gap={3}>

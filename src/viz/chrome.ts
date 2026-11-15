@@ -24,3 +24,17 @@ export function ticks(min: number, max: number, count = 5): number[] {
   for (let v = Math.ceil(min / step) * step; v <= max + step * 1e-9; v += step) out.push(Math.abs(v) < step * 1e-9 ? 0 : v);
   return out;
 }
+
+/** The page's root font size in px (16 by default; larger on wide screens). */
+export function rootPx(): number {
+  if (typeof document === 'undefined') return 16;
+  return parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+}
+
+/**
+ * Multiplier for chart text and margins drawn in real pixels: chart labels
+ * start 30% above the old 10px and grow with the page's root size.
+ */
+export function textScale(): number {
+  return 1.3 * (rootPx() / 16);
+}

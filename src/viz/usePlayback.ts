@@ -17,5 +17,10 @@ export function usePlayback(first: number, last: number, {autoplay = false, step
     const id = window.setTimeout(() => setYear(y => (y >= last ? first : y + 1)), delay);
     return () => window.clearTimeout(id);
   }, [playing, year, first, last, stepMs, holdMs]);
-  return {year: Math.min(last, Math.max(first, year)), setYear, playing, setPlaying};
+  // Pressing play on the last year restarts at once instead of holding there.
+  const play = (next: boolean) => {
+    if (next && year >= last) setYear(first);
+    setPlaying(next);
+  };
+  return {year: Math.min(last, Math.max(first, year)), setYear, playing, setPlaying: play};
 }

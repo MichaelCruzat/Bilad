@@ -3,9 +3,9 @@ import {join} from 'node:path';
 import {describe, expect, it} from 'vitest';
 import {analyzeVariable, cellsInBand, subsetSeries} from '../src/lib/analysis';
 import {witnessForCells, type WitnessGrid} from '../src/lib/evidence';
-import {describe as narrate} from '../src/lib/narrative';
+import {describe as narrate, findingContext} from '../src/lib/narrative';
 import {analyzeSeries} from '../src/lib/stats';
-import {coBreaks, crossExamine, witnessSeries, type Crosscheck} from '../src/lib/evidence';
+import {coBreaks, crossExamine, overallVerdict, witnessSeries, type Crosscheck} from '../src/lib/evidence';
 import {decodeGrid, type DataIndex, type NationMeta} from '../src/lib/nationData';
 
 const DATA = join(__dirname, '..', 'public', 'data');
@@ -103,6 +103,11 @@ describe('case verdicts', () => {
     expect(x.claimStep!.breakAt).toBeLessThanOrEqual(1999);
     const cb = coBreaks(index, 'BGD');
     expect(cb.some(g => g.year >= 1996 && g.year <= 1999 && g.variables.length >= 3)).toBe(true);
+    // The plain-language summary must not endorse a trend the verdict rejects.
+    const text = narrate('T2M', '°C', analyzeSeries(years, a.national.series), years, a.national.series, findingContext(x, 'T2M'));
+    expect(text.emergence).not.toMatch(/clearly emerged/);
+    expect(text.significance).toMatch(/^Taken alone/);
+    expect(overallVerdict(x.claim.p, {kind: 'available', exam: x}, true).label).toBe('Likely data artefact');
   });
 
   it('Chile: national warming agrees with GISTEMP', () => {

@@ -1,6 +1,6 @@
 import {getVariable} from '../data/variables';
 import {divergingColor, robustLimit} from './color';
-import {CHROME} from './chrome';
+import {CHROME, textScale} from './chrome';
 import {fdrThreshold, type TrendTest} from '../lib/stats';
 import {num, signed} from '../lib/format';
 import {useWidth} from './useWidth';
@@ -19,7 +19,8 @@ export function MonthStrip({trends, variable, unit, digits, title}: Props) {
   const def = getVariable(variable);
   const [ref, W] = useWidth<SVGSVGElement>(400);
   const H = 150;
-  const m = {l: 36, r: 8, t: 10, b: 20};
+  const TS = textScale();
+  const m = {l: 36 * TS, r: 8, t: 10 * TS, b: 20 * TS};
   const lim = robustLimit(trends.map(t => t.slope));
   const pStar = fdrThreshold(trends.map(t => t.p), 0.1);
   const bw = (W - m.l - m.r) / 12;
@@ -31,7 +32,7 @@ export function MonthStrip({trends, variable, unit, digits, title}: Props) {
       {[lim, 0, -lim].map(v => (
         <g key={v}>
           <line x1={m.l} x2={W - m.r} y1={y(v)} y2={y(v)} stroke={v === 0 ? CHROME.axis : CHROME.grid} />
-          <text x={m.l - 6} y={y(v) + 3.5} fontSize={10} fill={CHROME.muted} textAnchor="end" fontFamily={CHROME.font}>
+          <text x={m.l - 6} y={y(v) + 3.5 * TS} fontSize={10 * TS} fill={CHROME.muted} textAnchor="end" fontFamily={CHROME.font}>
             {v === 0 ? '0' : signed(v, lim < 1 ? 2 : lim < 10 ? 1 : 0)}
           </text>
         </g>
@@ -53,7 +54,7 @@ export function MonthStrip({trends, variable, unit, digits, title}: Props) {
             >
               <title>{`${NAMES[i]}: ${signed(t.slope, digits)} ${unit}/decade, p = ${num(t.p, 3)}`}</title>
             </rect>
-            <text x={m.l + i * bw + bw / 2} y={H - 5} fontSize={10} fill={sig ? CHROME.ink : CHROME.muted} textAnchor="middle" fontFamily={CHROME.font}>
+            <text x={m.l + i * bw + bw / 2} y={H - 5} fontSize={10 * TS} fill={sig ? CHROME.ink : CHROME.muted} textAnchor="middle" fontFamily={CHROME.font}>
               {MONTHS[i]}
             </text>
           </g>
