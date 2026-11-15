@@ -20,6 +20,10 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
       - name: Set up Node.js
@@ -31,10 +35,14 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Test
         run: pnpm test
+      - name: Test asset checks
+        run: python3 -m unittest discover -s tests -p 'test_*.py'
       - name: Lint
         run: pnpm lint
       - name: Build
         run: pnpm build
+      - name: Check website size
+        run: python3 scripts/bundle_budget.py
 
   deploy:
     needs: verify

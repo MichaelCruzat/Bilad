@@ -3,6 +3,7 @@ import type {MonthlyObservation, Region, VariableDefinition} from '../data/trend
 export const POWER_API_URL = 'https://power.larc.nasa.gov/api/temporal/monthly/point';
 
 type FetchLike = (input: string, init?: RequestInit) => Promise<Response>;
+const liveRequests = new Map<string, Promise<MonthlyObservation[]>>();
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
@@ -73,19 +74,35 @@ export type FetchPowerOptions = {
   fetchImpl?: FetchLike;
 };
 
-export async function fetchPowerSeries(
-  region: Region,
-  variable: VariableDefinition,
-  options: FetchPowerOptions = {},
-): Promise<MonthlyObservation[]> {
-  const response = await (options.fetchImpl ?? fetch)(
-    buildPowerUrl(region, variable, options.startYear, options.endYear),
-    {headers: {Accept: 'application/json'}},
-  );
+async function requestPowerSeries(url: string, fetchImpl: FetchLike, variable: VariableDefinition): Promise<MonthlyObservation[]> {
+  const response = await fetchImpl(url, {headers: {Accept: 'application/json'}});
 
   if (!response.ok) {
     throw new Error(`NASA POWER request failed with status ${response.status}.`);
   }
 
   return normalizePowerResponse(await response.json(), variable);
+}
+
+export function fetchPowerSeries(
+  region: Region,
+  variable: VariableDefinition,
+  options: FetchPowerOptions = {},
+): Promise<MonthlyObservation[]> {
+  const url = buildPowerUrl(region, variable, options.startYear, options.endYear);
+
+  if (options.fetchImpl) {
+    return requestPowerSeries(url, options.fetchImpl, variable);
+  }
+
+  let request = liveRequests.get(url);
+  if (!request) {
+    request = requestPowerSeries(url, fetch, variable).catch(error => {
+      liveRequests.delete(url);
+      throw error;
+    });
+    liveRequests.set(url, request);
+  }
+
+  return request;
 }

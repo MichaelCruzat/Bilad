@@ -17,7 +17,7 @@ The product is designed around the challenge's four questions:
 
 ## Run locally
 
-Requires Node.js 22+ and pnpm 11+.
+Requires Node.js 22+ and pnpm 11+. The optional asset-size checks use Python 3.9+.
 
     pnpm install
     pnpm dev
@@ -27,8 +27,12 @@ Quality checks:
     pnpm test
     pnpm lint
     pnpm build
+    python3 -m unittest discover -s tests -p 'test_*.py'
+    python3 scripts/bundle_budget.py
 
 The app does not require a secret or backend. It opens with deterministic demo data so the story still works offline. The "Load NASA POWER data" action requests the public NASA POWER monthly endpoint for the selected variable and region.
+
+The browser app uses TypeScript for the interactive analysis. A small, standard-library-only Python check measures the built JavaScript and CSS assets; CI rejects a large size regression. The GitHub Actions YAML runs both sets of checks and deploys the static HTML site. Successful NASA POWER requests are reused during a page session, while failures can be retried.
 
 ## Three-minute demo
 
