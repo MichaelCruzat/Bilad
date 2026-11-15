@@ -40,6 +40,7 @@ export function Atlas({iso3, params}: Props) {
   const nation = useNation(iso3);
   const witness = useAsync(() => loadWitness(iso3), [iso3]);
   const narrow = useMediaQuery('(max-width: 1100px)');
+  const wide = useMediaQuery('(min-width: 1600px)');
 
   const variable = VARIABLES.some(v => v.id === params.get('v')) ? params.get('v')! : 'T2M';
   const layer = (LAYERS.find(l => l.value === params.get('layer'))?.value ?? 'change') as MapLayer;
@@ -274,7 +275,7 @@ export function Atlas({iso3, params}: Props) {
   return (
     <Layout
       start={
-        <LayoutPanel width={280} padding={5} hasDivider label="Atlas controls" role="region">
+        <LayoutPanel width={wide ? 320 : 272} padding={5} hasDivider label="Atlas controls" role="region">
           {controls}
         </LayoutPanel>
       }
@@ -284,7 +285,7 @@ export function Atlas({iso3, params}: Props) {
         </LayoutContent>
       }
       end={
-        <LayoutPanel width={460} padding={5} hasDivider label="Evidence" role="region">
+        <LayoutPanel width={wide ? 520 : 420} padding={5} hasDivider label="Evidence" role="region">
           {evidence}
         </LayoutPanel>
       }

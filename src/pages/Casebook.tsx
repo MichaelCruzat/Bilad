@@ -14,7 +14,7 @@ import {VARIABLES, getVariable} from '../data/variables';
 import {cellsInBand, subsetAbsolute, subsetSeries} from '../lib/analysis';
 import {agreement, trendTest, type Agreement} from '../lib/stats';
 import {VERDICT_TEXT, witnessSeries, type Crosscheck} from '../lib/evidence';
-import {useAsync, useCrosscheck, useIndex, useMediaQuery, useNation, useVariable} from '../lib/hooks';
+import {useAsync, useCrosscheck, useIndex, useNation, useVariable} from '../lib/hooks';
 import {loadBoundary, loadMeta, loadPreview, type DataIndex} from '../lib/nationData';
 import {percent, signed, thousands} from '../lib/format';
 import {atlasHref} from '../app/router';
@@ -24,11 +24,13 @@ import {MiniMap, STRIP_LIMIT} from '../viz/MiniMap';
 import {usePlayback} from '../viz/usePlayback';
 import {divergingColor} from '../viz/color';
 import {YearLedger} from '../viz/YearLedger';
+import {Wordmark} from '../brand/Logo';
 
 const FULL = {from: 1981, to: 2024};
 const YEARS = Array.from({length: 44}, (_, i) => 1981 + i);
 const TONE: Record<string, 'success' | 'warning' | 'error' | 'neutral'> = {success: 'success', warning: 'warning', error: 'error', neutral: 'neutral'};
 const REPO = 'https://github.com/MichaelCruzat/Bilad';
+const WORDS: Record<number, string> = {5: 'Five', 6: 'Six', 7: 'Seven', 8: 'Eight', 9: 'Nine', 10: 'Ten'};
 
 function Eyebrow({children}: {children: string}) {
   return (
@@ -67,7 +69,6 @@ export function Casebook() {
 }
 
 function Hero({crosscheck}: {crosscheck: Crosscheck | null}) {
-  const compact = useMediaQuery('(max-width: 720px)');
   const nation = useNation('CHL');
   const meta = nation.status === 'ready' ? nation.data.meta : null;
   const rain = useVariable(meta, 'PRECTOTCORR', FULL);
@@ -92,11 +93,11 @@ function Hero({crosscheck}: {crosscheck: Crosscheck | null}) {
       : 'a quarter to a third';
 
   return (
-    <Grid columns={{minWidth: 340, max: 2}} gap={10}>
-      <VStack gap={5} vAlign="center">
+    <HStack gap={10} wrap="wrap" vAlign="center">
+      <VStack gap={5} vAlign="center" maxWidth="34rem">
         <Eyebrow>Bilad · v2 · NASA POWER 1981–2024 · Space Apps 2026</Eyebrow>
-        <Heading level={1} type={compact ? 'display-2' : 'display-1'}>
-          Bilad
+        <Heading level={1}>
+          <Wordmark />
         </Heading>
         <Text type="large">
           Every nation keeps a record of its climate. Bilad finds where it changed, by how much, and whether the change survives an independent witness.
@@ -110,7 +111,8 @@ function Hero({crosscheck}: {crosscheck: Crosscheck | null}) {
           <Button label="Case 03: the phantom cooling" variant="ghost" href="#/case/bangladesh-phantom-cooling" />
         </HStack>
       </VStack>
-      <VStack gap={2} height="40rem">
+      <StackItem size="fill">
+      <VStack gap={2} height="max(36rem, calc(100dvh - 9rem))">
         <HStack gap={3} vAlign="center" hAlign="between" wrap="wrap">
           <VStack gap={0}>
             <Eyebrow>Chile · rainfall versus the 1991–2020 normal</Eyebrow>
@@ -139,12 +141,23 @@ function Hero({crosscheck}: {crosscheck: Crosscheck | null}) {
                 </VStack>
               </StackItem>
               {share && (
-                <VStack gap={1} width="45%" height="100%">
+                <VStack gap={1} width="min(40%, 26rem)" height="100%">
                   <Text type="code" size="xsm" color="secondary">
                     CENTRAL CHILE, EACH YEAR
                   </Text>
                   <StackItem size="fill">
-                    <YearLedger years={YEARS} series={share.series} variable="PRECTOTCORR" current={playback.year} unit="%" title="Central Chile: rainfall each year as a share of the 1991–2020 normal" />
+                    <YearLedger
+                      years={YEARS}
+                      series={share.series}
+                      variable="PRECTOTCORR"
+                      current={playback.year}
+                      unit="%"
+                      title="Central Chile: rainfall each year as a share of the 1991–2020 normal. Move the pointer or use the arrow keys to pick a year."
+                      onScrub={y => {
+                        playback.setPlaying(false);
+                        playback.setYear(y);
+                      }}
+                    />
                   </StackItem>
                 </VStack>
               )}
@@ -158,10 +171,11 @@ function Hero({crosscheck}: {crosscheck: Crosscheck | null}) {
         </StackItem>
         {rain.status === 'ready' && <Legend variable="PRECTOTCORR" layer="year" year={playback.year} coloring={colorCells(rain.data.analysis, 'year', playback.year)} unit="% of normal" />}
         <Text type="supporting">
-          NASA POWER (MERRA-2) on NASA GIBS Blue Marble relief. Brown is drier than normal, teal wetter. Right: central Chile (30–38°S), one row per year. Watch the 2010s.
+          NASA POWER (MERRA-2) on NASA GIBS Blue Marble relief. Brown is drier than normal, teal wetter. Right: central Chile (30–38°S), one row per year; point at a year to jump to it. Watch the 2010s.
         </Text>
       </VStack>
-    </Grid>
+      </StackItem>
+    </HStack>
   );
 }
 
@@ -350,12 +364,12 @@ function Coverage({index, crosscheck}: {index: DataIndex; crosscheck: Crosscheck
     <VStack gap={5}>
       <Eyebrow>Coverage</Eyebrow>
       <Heading level={2} type="display-3">
-        Six nations, one pipeline
+        {WORDS[rows.length] ?? rows.length} nations in detail, one pipeline
       </Heading>
       <Text color="secondary">
         Warming per grid cell since 1981, every nation on the same scale ({signed(-STRIP_LIMIT, 1)} to {signed(STRIP_LIMIT, 1)} °C per decade), dots where the trend survives false-discovery control. The badge is the national verdict against weather stations.
       </Text>
-      <Grid columns={{minWidth: 170, max: 6}} gap={5}>
+      <Grid columns={{minWidth: 160, max: 7}} gap={5}>
         {rows.map(r => (
           <NationTile key={r.iso3} iso3={r.iso3} name={r.name} verdict={r.verdict} />
         ))}
@@ -370,7 +384,7 @@ function Coverage({index, crosscheck}: {index: DataIndex; crosscheck: Crosscheck
       </HStack>
       <Table data={rows} columns={columns} idKey="iso3" density="balanced" hasHover />
       <Text type="supporting">
-        MERRA-2 matches stations closely in Chile and Mexico. It warms more slowly than stations in Morocco and Spain (ranges still overlap) and in Kenya (they do not), and it reverses sign in Bangladesh, where its record jumps in 1997–98. Rainfall is compared with a record that shares some rain gauges with MERRA-2. Six nations ship today; adding one is a registry line and <Text type="code">make data NATIONS=PER</Text>.
+        MERRA-2 matches stations closely in Chile and Mexico. It warms more slowly than stations in Morocco and Spain (ranges still overlap) and in Kenya (they do not), and it reverses sign in Bangladesh, where its record jumps in 1997–98. Rainfall is compared with a record that shares some rain gauges with MERRA-2. These nations ship with full detail; adding one is a registry line and <Text type="code">make data NATIONS=PER</Text>.
       </Text>
       <HStack gap={2}>
         <Button label="Open the atlas" variant="primary" href={atlasHref('CHL')} />

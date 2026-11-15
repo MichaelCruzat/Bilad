@@ -2,6 +2,7 @@
 
   build CHL KEN ... | --all   fetch NASA POWER and pack nations
   context CHL ... | --all     NASA GIBS relief basemap and neighbouring borders
+  global                      every land cell on Earth (60°S–84°N) for the global atlas
   crosscheck                  sample GISTEMP and GPCP on every nation's cells
   validate                    recompute shipped headlines independently (scipy, pymannkendall)
 """
@@ -49,6 +50,7 @@ def main() -> None:
     ctx = sub.add_parser("context", help="relief basemap and neighbouring borders")
     ctx.add_argument("nations", nargs="*")
     ctx.add_argument("--all", action="store_true")
+    sub.add_parser("global", help="global land grid from NASA POWER")
     cross = sub.add_parser("crosscheck", help="extract independent witness series")
     cross.add_argument("--gistemp", type=Path)
     cross.add_argument("--gpcp", type=Path)
@@ -68,6 +70,10 @@ def main() -> None:
 
         for nation in NATIONS if args.all else [get_nation(n) for n in args.nations]:
             build_context(nation, ROOT)
+    elif args.command == "global":
+        from .global_grid import build_global
+
+        build_global(ROOT, CACHE)
     elif args.command == "crosscheck":
         from .crosscheck import run
 

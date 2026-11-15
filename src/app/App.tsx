@@ -8,6 +8,7 @@ import {HStack} from '@astryxdesign/core/Stack';
 import {Text} from '@astryxdesign/core/Text';
 import {TopNav} from '@astryxdesign/core/TopNav';
 import {useRoute, type Route} from './router';
+import {APP_NAME, LogoMark} from '../brand/Logo';
 import {Spinner} from '@astryxdesign/core/Spinner';
 
 // Each page is its own chunk: the casebook does not download the atlas controls.
@@ -24,8 +25,13 @@ function Navigation({route}: {route: Route}) {
     <TopNav
       label="Bilad"
       heading={
-        <Link href="#/" label="Bilad casebook home">
-          <Text weight="bold">BILAD</Text>
+        <Link href="#/" label={`${APP_NAME} home`}>
+          <HStack gap={2} vAlign="center">
+            <LogoMark size={30} />
+            <Text type="large" weight="bold">
+              {APP_NAME}
+            </Text>
+          </HStack>
         </Link>
       }
       startContent={
@@ -43,7 +49,7 @@ function Navigation({route}: {route: Route}) {
 function page(route: Route): ReactNode {
   switch (route.page) {
     case 'home':
-      return <Layout contentWidth={1216} content={<Casebook />} />;
+      return <Layout content={<Casebook />} />;
     case 'case':
       return <Layout contentWidth={1152} content={<CaseFile key={route.id} id={route.id} />} />;
     case 'atlas':

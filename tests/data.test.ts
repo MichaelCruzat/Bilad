@@ -22,8 +22,8 @@ function load(iso3: string, variable: string) {
 }
 
 describe('shipped data', () => {
-  it('ships six nations with seven variables each', () => {
-    expect(index.nations.map(n => n.iso3).sort()).toEqual(['BGD', 'CHL', 'ESP', 'KEN', 'MAR', 'MEX']);
+  it('ships every registered nation with seven variables', () => {
+    expect(index.nations.map(n => n.iso3).sort()).toEqual(['BGD', 'CHL', 'ESP', 'KEN', 'MAR', 'MEX', 'PHL']);
     index.nations.forEach(n => expect(Object.keys(n.stats)).toHaveLength(7));
   });
 

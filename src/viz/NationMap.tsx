@@ -1,4 +1,8 @@
-import {useId, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent} from 'react';
+import {useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent} from 'react';
+import {select} from 'd3-selection';
+import 'd3-transition';
+import {zoom as d3zoom, zoomIdentity, type ZoomBehavior, type ZoomTransform} from 'd3-zoom';
+import {prefersReducedMotion} from './usePlayback';
 import {geoBounds, geoPath, geoProjection, type GeoProjection} from 'd3-geo';
 import {reliefUrl, type Boundary, type Context, type NationMeta} from '../lib/nationData';
 import type {VariableAnalysis} from '../lib/analysis';
@@ -149,6 +153,8 @@ type Props = {
   describeCell?: (cell: number) => string[];
   /** Year shown by the 'year' layer. */
   year?: number;
+  /** Show +/−/reset buttons on the map. */
+  showZoomControls?: boolean;
   title: string;
 };
 
@@ -177,6 +183,7 @@ export function NationMap({
   context = null,
   describeCell,
   year,
+  showZoomControls = true,
   title,
 }: Props) {
   const clipId = useId().replace(/:/g, '');
@@ -185,6 +192,44 @@ export function NationMap({
   const [hover, setHover] = useState<number | null>(null);
   const [drag, setDrag] = useState<[number, number] | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
+  const zoomRef = useRef<SVGGElement>(null);
+  const zoomer = useRef<ZoomBehavior<SVGGElement, unknown> | null>(null);
+  const [zt, setZt] = useState<ZoomTransform>(zoomIdentity);
+  const reduced = useMemo(() => prefersReducedMotion(), []);
+
+  // Zoom and pan on the map only (the latitude profile stays put).
+  useEffect(() => {
+    const el = zoomRef.current;
+    if (!el) return;
+    const behaviour = d3zoom<SVGGElement, unknown>()
+      .scaleExtent([1, 14])
+      .extent([[0, 0], [geo.width, geo.height]])
+      .translateExtent([[0, 0], [geo.width, geo.height]])
+      .on('zoom', event => setZt(event.transform));
+    zoomer.current = behaviour;
+    select(el).call(behaviour).on('dblclick.zoom', null);
+    select(el).call(behaviour.transform, zoomIdentity);
+    return () => {
+      select(el).on('.zoom', null);
+    };
+  }, [geo]);
+
+  const zoomBy = (factor: number) => {
+    const el = zoomRef.current;
+    if (el && zoomer.current) select(el).transition().duration(reduced ? 0 : 320).call(zoomer.current.scaleBy, factor);
+  };
+  const zoomReset = () => {
+    const el = zoomRef.current;
+    if (el && zoomer.current) select(el).transition().duration(reduced ? 0 : 420).call(zoomer.current.transform, zoomIdentity);
+  };
+  const zoomTo = (cell: number) => {
+    const el = zoomRef.current;
+    if (!el || !zoomer.current) return;
+    const [cx, cy] = geo.centers[cell];
+    const k = Math.max(zt.k, 4);
+    const t = zoomIdentity.translate(geo.width / 2 - cx * k, geo.height / 2 - cy * k).scale(k);
+    select(el).transition().duration(reduced ? 0 : 520).call(zoomer.current.transform, t);
+  };
 
   const profileX0 = geo.width + PROFILE_GAP;
   const totalW = showProfile ? profileX0 + PROFILE_W + LABEL_W : geo.width;
@@ -199,20 +244,21 @@ export function NationMap({
   const inBand = (c: number) => !band || (meta.cells[c].lat >= band[0] && meta.cells[c].lat <= band[1]);
   const dimmed = (c: number) => (emphasis ? !emphasis.has(c) : !inBand(c));
 
+  const fillTransition = useMemo(() => (reduced ? undefined : {transition: 'fill 280ms ease-out'}), [reduced]);
   const cellLayer = useMemo(
     () =>
       geo.cellPaths.map((d, i) => (
-        <path key={i} d={d} data-i={i} fill={coloring.colors[i]} stroke={CHROME.body} strokeWidth={0.4} />
+        <path key={i} d={d} data-i={i} fill={coloring.colors[i]} stroke={CHROME.body} strokeWidth={0.4} vectorEffect="non-scaling-stroke" style={fillTransition} />
       )),
-    [geo, coloring],
+    [geo, coloring, fillTransition],
   );
 
   const stipple = useMemo(() => {
     if (!showSignificance || layer === 'normal' || layer === 'year') return null;
     return geo.centers.map(([x, y], i) =>
-      analysis.significant[i] ? <circle key={i} cx={x} cy={y} r={1.3} fill={CHROME.ink} fillOpacity={0.85} pointerEvents="none" /> : null,
+      analysis.significant[i] ? <circle key={i} cx={x} cy={y} r={1.5 / zt.k} fill={CHROME.ink} fillOpacity={0.85} pointerEvents="none" /> : null,
     );
-  }, [geo, analysis, showSignificance, layer]);
+  }, [geo, analysis, showSignificance, layer, zt.k]);
 
   // The profile is a pure latitude axis (along the central meridian), so dots,
   // the zonal line and the brush all agree even where parallels curve on the map.
@@ -248,6 +294,10 @@ export function NationMap({
   };
 
   const onKeyDown = (e: KeyboardEvent<SVGSVGElement>) => {
+    if (e.key === '+' || e.key === '=') return zoomBy(1.6);
+    if (e.key === '-' || e.key === '_') return zoomBy(1 / 1.6);
+    if (e.key === '0') return zoomReset();
+    if (e.key === 'Enter' && selected !== null) return zoomTo(selected);
     if (!onSelect) return;
     const moves: Record<string, [number, number]> = {ArrowUp: [1, 0], ArrowDown: [-1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1]};
     if (e.key === 'Escape') {
@@ -280,7 +330,7 @@ export function NationMap({
       width="100%"
       height="100%"
       role="application"
-      aria-label={`${title}. Use arrow keys to move between grid cells, Escape to clear.`}
+      aria-label={`${title}. Arrow keys move between grid cells, Enter zooms to the selected cell, plus and minus zoom, 0 resets, Escape clears.`}
       tabIndex={onSelect ? 0 : -1}
       onKeyDown={onKeyDown}
       style={{display: 'block', maxHeight: '100%', touchAction: 'none', outline: 'none'}}
@@ -324,6 +374,12 @@ export function NationMap({
       <mask id={`fade2-${clipId}`} maskContentUnits="userSpaceOnUse">
         <rect x={0} y={0} width={geo.width} height={geo.height} fill={`url(#fadey-${clipId})`} />
       </mask>
+      <clipPath id={`frame-${clipId}`}>
+        <rect x={0} y={0} width={geo.width} height={geo.height} />
+      </clipPath>
+      <g ref={zoomRef} clipPath={`url(#frame-${clipId})`} style={{cursor: onSelect ? 'pointer' : 'grab'}}>
+      <rect x={0} y={0} width={geo.width} height={geo.height} fill="transparent" />
+      <g transform={zt.toString()}>
       {geo.image ? (
         <g mask={`url(#fade-${clipId})`}>
           <g mask={`url(#fade2-${clipId})`}>
@@ -335,9 +391,9 @@ export function NationMap({
       )}
       {geo.neighbours.map((n, i) => (
         <g key={i} pointerEvents="none">
-          <path d={n.path} fill="none" stroke={CHROME.faint} strokeOpacity={0.45} strokeWidth={0.7} />
+          <path d={n.path} fill="none" stroke={CHROME.faint} strokeOpacity={0.45} strokeWidth={0.7} vectorEffect="non-scaling-stroke" />
           {n.label && (
-            <text x={n.label[0]} y={n.label[1]} fontSize={9} fill={CHROME.faint} fillOpacity={0.75} textAnchor="middle" fontFamily={CHROME.mono} letterSpacing="0.14em">
+            <text x={n.label[0]} y={n.label[1]} fontSize={9 / zt.k} fill={CHROME.faint} fillOpacity={0.75} textAnchor="middle" fontFamily={CHROME.mono} letterSpacing="0.14em">
               {n.name.toUpperCase()}
             </text>
           )}
@@ -360,7 +416,10 @@ export function NationMap({
           const c = eventCell(e as unknown as PointerEvent<SVGElement>);
           if (c !== null && onSelect) onSelect(c === selected ? null : c);
         }}
-        style={{cursor: onSelect ? 'pointer' : 'default'}}
+        onDoubleClick={e => {
+          const c = eventCell(e as unknown as PointerEvent<SVGElement>);
+          if (c !== null) zoomTo(c);
+        }}
       >
         <g filter={`url(#glow-${clipId})`} opacity={0.94}>
           {cellLayer}
@@ -369,18 +428,41 @@ export function NationMap({
           geo.cellPaths.map((d, i) => (dimmed(i) ? <path key={i} d={d} fill={CHROME.body} fillOpacity={0.62} pointerEvents="none" /> : null))}
         {stipple}
       </g>
-      <path d={geo.boundaryPath} fill="none" stroke={CHROME.ink} strokeOpacity={0.7} strokeWidth={0.9} pointerEvents="none" />
+      <path d={geo.boundaryPath} fill="none" stroke={CHROME.ink} strokeOpacity={0.7} strokeWidth={0.9} vectorEffect="non-scaling-stroke" pointerEvents="none" />
       {outlines.map(group =>
-        group.cells.map(c => <path key={`${group.color}-${c}`} d={geo.cellPaths[c]} fill="none" stroke={group.color} strokeWidth={1.4} pointerEvents="none" />),
+        group.cells.map(c => <path key={`${group.color}-${c}`} d={geo.cellPaths[c]} fill="none" stroke={group.color} strokeWidth={1.4} vectorEffect="non-scaling-stroke" pointerEvents="none" />),
       )}
       {shown !== null && (
-        <path d={geo.cellPaths[shown]} fill="none" stroke={CHROME.ink} strokeWidth={1.6} pointerEvents="none" />
+        <path d={geo.cellPaths[shown]} fill="none" stroke={CHROME.ink} strokeWidth={1.8} vectorEffect="non-scaling-stroke" pointerEvents="none" />
+      )}
+      </g>
+      </g>
+      {showZoomControls && (
+        <g fontFamily={CHROME.mono} fontSize={13}>
+          {([['+', () => zoomBy(1.6), 'Zoom in'], ['−', () => zoomBy(1 / 1.6), 'Zoom out'], ['⟲', zoomReset, 'Reset zoom']] as const).map(([label, act, name], k) => (
+            <g
+              key={name}
+              role="button"
+              aria-label={name}
+              tabIndex={0}
+              transform={`translate(${geo.width - 30}, ${8 + k * 28})`}
+              onClick={act}
+              onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), act())}
+              style={{cursor: 'pointer'}}
+            >
+              <rect width={22} height={22} rx={4} fill={CHROME.body} fillOpacity={0.85} stroke={CHROME.axis} />
+              <text x={11} y={15.5} textAnchor="middle" fill={CHROME.ink}>
+                {label}
+              </text>
+            </g>
+          ))}
+        </g>
       )}
 
       {hover !== null && describeCell && (() => {
         const lines = describeCell(hover);
-        const [cx, cy] = geo.centers[hover];
-        const w = Math.max(...lines.map(l => l.length)) * 6.2 + 16;
+        const [cx, cy] = zt.apply(geo.centers[hover]);
+        const w = Math.max(...lines.map(l => l.length)) * 6.9 + 18;
         const h = lines.length * 14 + 10;
         const x = Math.min(Math.max(4, cx + 10), geo.width - w - 4);
         const y = Math.min(Math.max(4, cy - h - 8), geo.height - h - 4);

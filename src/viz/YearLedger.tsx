@@ -12,6 +12,8 @@ type Props = {
   current: number;
   unit: string;
   title: string;
+  /** Called with the year under the pointer or chosen with the keyboard. */
+  onScrub?: (year: number) => void;
 };
 
 /**
@@ -19,7 +21,7 @@ type Props = {
  * right for above. Designed to stand beside a tall map and fill in as a
  * timeline plays, so a regime change reads as a block of colour.
  */
-export function YearLedger({years, series, variable, current, unit, title}: Props) {
+export function YearLedger({years, series, variable, current, unit, title, onScrub}: Props) {
   const def = getVariable(variable);
   const [ref, W] = useWidth<SVGSVGElement>(220);
   const H = 600;
@@ -31,7 +33,33 @@ export function YearLedger({years, series, variable, current, unit, title}: Prop
   const x = (v: number) => mid + (Math.max(-lim, Math.min(lim, v)) / lim) * half;
   const ci = years.indexOf(current);
   return (
-    <svg ref={ref} viewBox={`0 0 ${W} ${H}`} width="100%" height="100%" preserveAspectRatio="none" role="img" aria-label={`${title}. Values through ${current} shown in full.`} style={{display: 'block'}}>
+    <svg
+      ref={ref}
+      viewBox={`0 0 ${W} ${H}`}
+      width="100%"
+      height="100%"
+      preserveAspectRatio="none"
+      role={onScrub ? 'slider' : 'img'}
+      aria-label={title}
+      aria-valuemin={onScrub ? years[0] : undefined}
+      aria-valuemax={onScrub ? years[years.length - 1] : undefined}
+      aria-valuenow={onScrub ? current : undefined}
+      tabIndex={onScrub ? 0 : undefined}
+      style={{display: 'block', cursor: onScrub ? 'ns-resize' : 'default', touchAction: 'none'}}
+      onPointerMove={e => {
+        if (!onScrub) return;
+        const r = e.currentTarget.getBoundingClientRect();
+        const i = Math.floor((((e.clientY - r.top) / r.height) * H - top) / rowH);
+        if (i >= 0 && i < years.length && years[i] !== current) onScrub(years[i]);
+      }}
+      onKeyDown={e => {
+        if (!onScrub) return;
+        const step = e.key === 'ArrowDown' || e.key === 'ArrowRight' ? 1 : e.key === 'ArrowUp' || e.key === 'ArrowLeft' ? -1 : 0;
+        if (!step) return;
+        e.preventDefault();
+        onScrub(Math.min(years[years.length - 1], Math.max(years[0], current + step)));
+      }}
+    >
       <title>{title}</title>
       <line x1={mid} x2={mid} y1={top} y2={H - 18} stroke={CHROME.axis} />
       {years.map((yr, i) => {
