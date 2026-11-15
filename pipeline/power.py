@@ -8,13 +8,13 @@ import math
 import time
 import urllib.error
 import urllib.parse
-import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
 
 from .geometry import D_LAT, D_LON
+from .net import urlopen
 from .variables import FIRST_YEAR, LAST_YEAR, MONTHS
 
 ENDPOINT = "https://power.larc.nasa.gov/api/temporal/monthly/regional"
@@ -84,7 +84,7 @@ def fetch(url: str, cache: Path, attempts: int = 4) -> dict:
         return json.loads(path.read_text())
     for attempt in range(1, attempts + 1):
         try:
-            with urllib.request.urlopen(url, timeout=180) as response:
+            with urlopen(url, timeout=180) as response:
                 body = response.read().decode()
             data = json.loads(body)
             if "features" not in data:

@@ -179,6 +179,18 @@ export function Atlas({iso3, params}: Props) {
           <NationMap
             meta={nation.data.meta}
             boundary={nation.data.boundary}
+            context={nation.data.context}
+            describeCell={c => {
+              const a = data.data.analysis;
+              const cell = nation.data.meta.cells[c];
+              const value =
+                layer === 'normal'
+                  ? `${num(a.normal[c], def.digits)} ${def.unit} normal`
+                  : layer === 'change'
+                    ? `${signed(a.slope[c], unit === '% of normal' ? 1 : def.digits)} ${unit}/decade`
+                    : `signal/noise ${num(a.snr[c], 2)}`;
+              return [`${lat(cell.lat)}  ${lon(cell.lon)}`, value, a.significant[c] ? 'significant after FDR' : 'not significant'];
+            }}
             analysis={data.data.analysis}
             layer={layer}
             showSignificance={stipple}

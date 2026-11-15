@@ -102,6 +102,7 @@ function Hero({crosscheck}: {crosscheck: Crosscheck | null}) {
           <NationMap
             meta={nation.data.meta}
             boundary={nation.data.boundary}
+            context={nation.data.context}
             analysis={rain.data.analysis}
             layer="change"
             emphasis={share?.cells ?? null}

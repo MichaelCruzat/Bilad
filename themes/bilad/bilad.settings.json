@@ -4,16 +4,6 @@
   "mode": "dark-only",
   "settings": [
     {
-      "thing": "accent",
-      "value": "#e0a84f",
-      "source": "dial"
-    },
-    {
-      "thing": "neutral",
-      "value": "#31445a",
-      "source": "dial"
-    },
-    {
       "thing": "type",
       "value": "editorial",
       "source": "dial"
@@ -22,8 +12,53 @@
       "thing": "--color-text-disabled",
       "value": "#9fb1c8",
       "source": "token"
+    },
+    {
+      "thing": "font",
+      "value": "ibm-plex-sans",
+      "source": "dial",
+      "on": "body"
+    },
+    {
+      "thing": "font",
+      "value": "ibm-plex-mono",
+      "source": "dial",
+      "on": "code"
+    },
+    {
+      "thing": "neutral",
+      "value": "#15181b",
+      "source": "dial"
+    },
+    {
+      "thing": "accent",
+      "value": "#4fcfae",
+      "source": "dial"
+    },
+    {
+      "thing": "--color-text-primary",
+      "value": "#efeadf",
+      "source": "token"
+    },
+    {
+      "thing": "font",
+      "value": "space-grotesk",
+      "source": "dial",
+      "on": "heading"
+    },
+    {
+      "thing": "headings",
+      "value": "bold",
+      "source": "dial",
+      "axis": "weight"
+    },
+    {
+      "thing": "headings",
+      "value": "tight",
+      "source": "dial",
+      "axis": "tracking"
     }
   ],
   "lifted": [],
-  "palette": "29cb16a90c9c9ba88c1106bdc3d793dcf26393ab4b5e197444ae75085b8a9e7e"
+  "palette": "58cdfe5e3c2db671982d5c6f42f33cef585009a1d84dd2aa7c894b1ecd213e13"
 }

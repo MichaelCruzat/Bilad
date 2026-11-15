@@ -1,6 +1,6 @@
 import {useId, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent} from 'react';
-import {geoAzimuthalEqualArea, geoCentroid, geoPath, type GeoProjection} from 'd3-geo';
-import type {Boundary, NationMeta} from '../lib/nationData';
+import {geoBounds, geoPath, geoProjection, type GeoProjection} from 'd3-geo';
+import {reliefUrl, type Boundary, type Context, type NationMeta} from '../lib/nationData';
 import type {VariableAnalysis} from '../lib/analysis';
 import {getVariable} from '../data/variables';
 import {divergingColor, emergenceRamp, robustLimit} from './color';
@@ -16,18 +16,37 @@ export type MapGeometry = {
   boundaryPath: string;
   cellPaths: string[];
   centers: [number, number][];
+  /** Where relief.jpg sits, in SVG units. */
+  image: {x: number; y: number; width: number; height: number} | null;
+  neighbours: {path: string; name: string; label: [number, number] | null}[];
 };
 
-const PAD = 12;
+/**
+ * Cylindrical projection with its standard parallel at the middle of the
+ * extent: linear in longitude and latitude, so NASA GIBS imagery (EPSG:4326)
+ * sits under the grid cells without resampling, and true to scale along the
+ * central parallel. Statistics never depend on the projection; every cell
+ * carries its true area.
+ */
+function nationProjection(lon0: number, lat0: number): GeoProjection {
+  const k = Math.cos((lat0 * Math.PI) / 180);
+  const raw = Object.assign((x: number, y: number): [number, number] => [x * k, y], {
+    invert: (x: number, y: number): [number, number] => [x / k, y],
+  });
+  return geoProjection(raw).rotate([-lon0, 0]);
+}
 
-export function useMapGeometry(meta: NationMeta, boundary: Boundary, maxW: number, maxH: number): MapGeometry {
+export function useMapGeometry(meta: NationMeta, boundary: Boundary, maxW: number, maxH: number, context?: Context | null): MapGeometry {
   return useMemo(() => {
-    const [lon0, lat0] = geoCentroid(boundary);
-    const projection = geoAzimuthalEqualArea().rotate([-lon0, -lat0]).fitExtent([[0, 0], [maxW, maxH]], boundary);
-    const path = geoPath(projection);
-    const [[x0, y0], [x1, y1]] = path.bounds(boundary);
+    const [bw, bs, be, bn] = geoBounds(boundary).flat() as number[];
+    const [w, s, e, n] = meta.extent ?? [bw - 0.5, bs - 0.5, be + 0.5, bn + 0.5];
+    const projection = nationProjection((w + e) / 2, (s + n) / 2);
+    projection.fitExtent([[0, 0], [maxW, maxH]], {type: 'MultiPoint', coordinates: [[w, s], [e, s], [e, n], [w, n]]});
+    const [x0, y0] = projection([w, n])!;
+    const [x1, y1] = projection([e, s])!;
     const [tx, ty] = projection.translate();
-    projection.translate([tx - x0 + PAD, ty - y0 + PAD]);
+    projection.translate([tx - x0, ty - y0]);
+    const path = geoPath(projection);
     const {dLat, dLon} = meta.grid;
     const cellPaths: string[] = [];
     const centers: [number, number][] = [];
@@ -42,15 +61,24 @@ export function useMapGeometry(meta: NationMeta, boundary: Boundary, maxW: numbe
       cellPaths.push(`M${pts.map(p => `${p[0].toFixed(1)},${p[1].toFixed(1)}`).join('L')}Z`);
       centers.push(projection([c.lon, c.lat])!);
     }
+    const width = x1 - x0;
+    const height = y1 - y0;
+    const neighbours = (context?.features ?? []).map(f => {
+      const centre = f.properties.label ? projection(f.properties.label) : null;
+      const inside = centre && centre[0] > 40 && centre[0] < width - 40 && centre[1] > 16 && centre[1] < height - 16;
+      return {path: path(f) ?? '', name: f.properties.name, label: f.properties.share > 0.04 && inside ? (centre as [number, number]) : null};
+    });
     return {
       projection,
-      width: x1 - x0 + 2 * PAD,
-      height: y1 - y0 + 2 * PAD,
-      boundaryPath: geoPath(projection)(boundary) ?? '',
+      width,
+      height,
+      boundaryPath: path(boundary) ?? '',
       cellPaths,
       centers,
+      image: meta.extent ? {x: 0, y: 0, width, height} : null,
+      neighbours,
     };
-  }, [meta, boundary, maxW, maxH]);
+  }, [meta, boundary, maxW, maxH, context]);
 }
 
 export type CellColoring = {colors: string[]; limit: number; kind: 'diverging' | 'sequential'; min: number; max: number};
@@ -93,9 +121,15 @@ type Props = {
   unitLabel?: string;
   /** Cell groups drawn with a coloured outline (for contrasts). */
   outlines?: {cells: number[]; color: string}[];
+  /** Neighbouring borders for context. */
+  context?: Context | null;
+  /** Lines for the floating hover tooltip. */
+  describeCell?: (cell: number) => string[];
   title: string;
 };
 
+/** Inset for the profile's vertical extent. */
+const PAD = 12;
 const PROFILE_W = 150;
 const PROFILE_GAP = 28;
 const LABEL_W = 40;
@@ -116,10 +150,12 @@ export function NationMap({
   maxHeight = 620,
   unitLabel,
   outlines = [],
+  context = null,
+  describeCell,
   title,
 }: Props) {
   const clipId = useId().replace(/:/g, '');
-  const geo = useMapGeometry(meta, boundary, 560, maxHeight);
+  const geo = useMapGeometry(meta, boundary, 560, maxHeight, context);
   const coloring = useMemo(() => colorCells(analysis, layer), [analysis, layer]);
   const [hover, setHover] = useState<number | null>(null);
   const [drag, setDrag] = useState<[number, number] | null>(null);
@@ -230,7 +266,58 @@ export function NationMap({
           <path d={geo.boundaryPath} />
         </clipPath>
       </defs>
-      <path d={geo.boundaryPath} fill={CHROME.land} />
+      <filter id={`relief-${clipId}`} colorInterpolationFilters="sRGB">
+        <feColorMatrix type="saturate" values="0.45" />
+        <feComponentTransfer>
+          <feFuncR type="linear" slope="0.42" />
+          <feFuncG type="linear" slope="0.44" />
+          <feFuncB type="linear" slope="0.5" />
+        </feComponentTransfer>
+      </filter>
+      <filter id={`glow-${clipId}`} x="-10%" y="-10%" width="120%" height="120%">
+        <feGaussianBlur stdDeviation="3" result="blur" />
+        <feMerge>
+          <feMergeNode in="blur" />
+          <feMergeNode in="SourceGraphic" />
+        </feMerge>
+      </filter>
+      <linearGradient id={`fadex-${clipId}`} x1="0" x2="1" y1="0" y2="0">
+        <stop offset="0" stopColor="#fff" stopOpacity="0" />
+        <stop offset="0.06" stopColor="#fff" stopOpacity="1" />
+        <stop offset="0.94" stopColor="#fff" stopOpacity="1" />
+        <stop offset="1" stopColor="#fff" stopOpacity="0" />
+      </linearGradient>
+      <linearGradient id={`fadey-${clipId}`} x1="0" x2="0" y1="0" y2="1">
+        <stop offset="0" stopColor="#fff" stopOpacity="0" />
+        <stop offset="0.05" stopColor="#fff" stopOpacity="1" />
+        <stop offset="0.95" stopColor="#fff" stopOpacity="1" />
+        <stop offset="1" stopColor="#fff" stopOpacity="0" />
+      </linearGradient>
+      <mask id={`fade-${clipId}`} maskContentUnits="userSpaceOnUse">
+        <rect x={0} y={0} width={geo.width} height={geo.height} fill={`url(#fadex-${clipId})`} />
+      </mask>
+      <mask id={`fade2-${clipId}`} maskContentUnits="userSpaceOnUse">
+        <rect x={0} y={0} width={geo.width} height={geo.height} fill={`url(#fadey-${clipId})`} />
+      </mask>
+      {geo.image ? (
+        <g mask={`url(#fade-${clipId})`}>
+          <g mask={`url(#fade2-${clipId})`}>
+            <image href={reliefUrl(meta.iso3)} x={geo.image.x} y={geo.image.y} width={geo.image.width} height={geo.image.height} preserveAspectRatio="none" filter={`url(#relief-${clipId})`} />
+          </g>
+        </g>
+      ) : (
+        <path d={geo.boundaryPath} fill={CHROME.land} />
+      )}
+      {geo.neighbours.map((n, i) => (
+        <g key={i} pointerEvents="none">
+          <path d={n.path} fill="none" stroke={CHROME.faint} strokeOpacity={0.45} strokeWidth={0.7} />
+          {n.label && (
+            <text x={n.label[0]} y={n.label[1]} fontSize={9} fill={CHROME.faint} fillOpacity={0.75} textAnchor="middle" fontFamily={CHROME.mono} letterSpacing="0.14em">
+              {n.name.toUpperCase()}
+            </text>
+          )}
+        </g>
+      ))}
       <g
         clipPath={`url(#clip-${clipId})`}
         onPointerMove={e => {
@@ -250,12 +337,14 @@ export function NationMap({
         }}
         style={{cursor: onSelect ? 'pointer' : 'default'}}
       >
-        {cellLayer}
+        <g filter={`url(#glow-${clipId})`} opacity={0.94}>
+          {cellLayer}
+        </g>
         {(band || emphasis) &&
           geo.cellPaths.map((d, i) => (dimmed(i) ? <path key={i} d={d} fill={CHROME.body} fillOpacity={0.62} pointerEvents="none" /> : null))}
         {stipple}
       </g>
-      <path d={geo.boundaryPath} fill="none" stroke={CHROME.muted} strokeOpacity={0.55} strokeWidth={0.8} pointerEvents="none" />
+      <path d={geo.boundaryPath} fill="none" stroke={CHROME.ink} strokeOpacity={0.7} strokeWidth={0.9} pointerEvents="none" />
       {outlines.map(group =>
         group.cells.map(c => <path key={`${group.color}-${c}`} d={geo.cellPaths[c]} fill="none" stroke={group.color} strokeWidth={1.4} pointerEvents="none" />),
       )}
@@ -263,6 +352,24 @@ export function NationMap({
         <path d={geo.cellPaths[shown]} fill="none" stroke={CHROME.ink} strokeWidth={1.6} pointerEvents="none" />
       )}
 
+      {hover !== null && describeCell && (() => {
+        const lines = describeCell(hover);
+        const [cx, cy] = geo.centers[hover];
+        const w = Math.max(...lines.map(l => l.length)) * 6.2 + 16;
+        const h = lines.length * 14 + 10;
+        const x = Math.min(Math.max(4, cx + 10), geo.width - w - 4);
+        const y = Math.min(Math.max(4, cy - h - 8), geo.height - h - 4);
+        return (
+          <g pointerEvents="none">
+            <rect x={x} y={y} width={w} height={h} rx={4} fill={CHROME.body} fillOpacity={0.92} stroke={CHROME.axis} />
+            {lines.map((l, k) => (
+              <text key={k} x={x + 8} y={y + 17 + k * 14} fontSize={11} fill={k === 0 ? CHROME.ink : CHROME.muted} fontFamily={CHROME.mono}>
+                {l}
+              </text>
+            ))}
+          </g>
+        );
+      })()}
       {showProfile && (
         <g aria-hidden="true">
           <line x1={px(layer === 'normal' ? coloring.min : 0)} x2={px(layer === 'normal' ? coloring.min : 0)} y1={PAD} y2={geo.height - PAD} stroke={CHROME.axis} strokeWidth={0.8} />

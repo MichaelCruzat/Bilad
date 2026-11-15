@@ -8,7 +8,6 @@ import "@astryxdesign/theme-neutral/theme.css";
 import "@astryxdesign/theme-neutral/fonts.css";
 import {biladTheme as _astryxTheme1} from "./themes/bilad/bilad.js";
 import "./themes/bilad/bilad.css";
-import "./themes/bilad/bilad.fonts.css";
 
 export const themes = {
   "neutral": _astryxTheme0,

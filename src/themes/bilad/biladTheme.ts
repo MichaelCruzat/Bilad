@@ -1,2 +1,2 @@
-// Written by `astryx experimental theme editor` after every build of themes/bilad/; do not edit it here. Change the theme with the editor.
+// Written by `astryx experimental theme editor` after every build of themes/bilad/; do not edit it here. Change the theme with the editor. 
 export {biladTheme} from './bilad';

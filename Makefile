@@ -19,6 +19,7 @@ install:
 
 data:
 	$(PY) -m pipeline build $(if $(NATIONS),$(NATIONS),--all)
+	$(PY) -m pipeline context $(if $(NATIONS),$(NATIONS),--all)
 	$(MAKE) summary crosscheck
 
 summary:

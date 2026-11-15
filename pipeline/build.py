@@ -81,4 +81,8 @@ def build_nation(nation: Nation, root: Path, cache: Path) -> None:
             "requests": requests,
         },
     }
+    previous = out / "meta.json"
+    if previous.exists():  # keep the basemap written by `python -m pipeline context`
+        old = json.loads(previous.read_text())
+        meta.update({k: old[k] for k in ("extent", "basemap") if k in old})
     (out / "meta.json").write_text(json.dumps(meta, separators=(",", ":"), ensure_ascii=False))

@@ -175,6 +175,7 @@ function CaseBody({def, bundle, analysis, crosscheck, index, witnessGrid}: {def:
           <NationMap
             meta={meta}
             boundary={boundary}
+            context={bundle.context}
             analysis={analysis}
             layer="change"
             emphasis={emphasis}

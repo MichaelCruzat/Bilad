@@ -2,7 +2,7 @@
  * Browser loaders for pipeline output in public/data. Every fetch is
  * memoised for the session; a failed fetch is evicted so it can be retried.
  */
-import type {Feature, MultiPolygon} from 'geojson';
+import type {Feature, LineString, MultiLineString, MultiPolygon} from 'geojson';
 import {getVariable} from '../data/variables';
 
 export type Cell = {lat: number; lon: number; land: number; areaKm2: number};
@@ -15,6 +15,9 @@ export type NationMeta = {
   grid: {dLat: number; dLon: number; firstYear: number; lastYear: number; months: number; missing: number};
   cells: Cell[];
   variables: {id: string; scale: number}[];
+  /** Map extent [west, south, east, north] matching relief.jpg. */
+  extent?: [number, number, number, number];
+  basemap?: {source: string; url: string; width: number; height: number};
   provenance: {api: string; sources: string[]; community: string; retrieved: string; requests: {variable: string; url: string}[]};
 };
 
@@ -73,6 +76,13 @@ export const loadIndex = () => once('index', () => getJson<DataIndex>('index.jso
 export const loadMeta = (iso3: string) => once(`meta:${iso3}`, () => getJson<NationMeta>(`nations/${iso3}/meta.json`));
 export const loadBoundary = (iso3: string) => once(`boundary:${iso3}`, () => getJson<Boundary>(`nations/${iso3}/boundary.json`));
 export const loadWorld = () => once('world', () => getJson<unknown>('world-110m.json'));
+/** Neighbouring borders as lines, with a label point inside each clipped country. */
+export type Context = {
+  type: 'FeatureCollection';
+  features: Feature<LineString | MultiLineString, {name: string; label: [number, number] | null; share: number}>[];
+};
+export const loadContext = (iso3: string) => once(`context:${iso3}`, () => getJson<Context>(`nations/${iso3}/context.json`).catch(() => ({type: 'FeatureCollection', features: []}) as Context));
+export const reliefUrl = (iso3: string) => `${base}nations/${iso3}/relief.jpg`;
 
 export function decodeGrid(buffer: ArrayBuffer, scale: number, missing: number, months: number, variable: string): VariableGrid {
   const raw = new Int16Array(buffer);

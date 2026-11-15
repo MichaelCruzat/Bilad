@@ -1,6 +1,6 @@
 import {useEffect, useMemo, useState} from 'react';
 import {analyzeVariable, type VariableAnalysis, type Window} from './analysis';
-import {loadBoundary, loadGrid, loadIndex, loadMeta, type Boundary, type DataIndex, type NationMeta, type VariableGrid} from './nationData';
+import {loadBoundary, loadContext, loadGrid, loadIndex, loadMeta, type Boundary, type Context, type DataIndex, type NationMeta, type VariableGrid} from './nationData';
 import {loadCrosscheck, type Crosscheck} from './evidence';
 
 export type Async<T> = {status: 'loading'} | {status: 'error'; error: Error; retry: () => void} | {status: 'ready'; data: T};
@@ -35,12 +35,12 @@ export function useAsync<T>(load: () => Promise<T>, deps: unknown[], enabled = t
 export const useIndex = () => useAsync<DataIndex>(loadIndex, []);
 export const useCrosscheck = () => useAsync<Crosscheck>(loadCrosscheck, []);
 
-export type NationBundle = {meta: NationMeta; boundary: Boundary};
+export type NationBundle = {meta: NationMeta; boundary: Boundary; context: Context};
 
 export function useNation(iso3: string): Async<NationBundle> {
   return useAsync(async () => {
-    const [meta, boundary] = await Promise.all([loadMeta(iso3), loadBoundary(iso3)]);
-    return {meta, boundary};
+    const [meta, boundary, context] = await Promise.all([loadMeta(iso3), loadBoundary(iso3), loadContext(iso3)]);
+    return {meta, boundary, context};
   }, [iso3]);
 }
 
