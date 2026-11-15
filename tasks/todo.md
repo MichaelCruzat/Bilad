@@ -2,12 +2,12 @@
 
 ## Phase 1: Foundation
 
-- [ ] Task 1: Bootstrap the Vite/React/TypeScript project and initialize Astryx.
+- [x] Task 1: Bootstrap the Vite/React/TypeScript project and initialize Astryx.
   - Acceptance: The app runs locally with the target commands; the first page comes from an Astryx template; TypeScript and linting are configured.
   - Verify: `pnpm install`, `pnpm lint`, `pnpm build`; open the page in a browser and confirm the shell renders.
   - Dependencies: None.
   - Files likely touched: `package.json`, `vite.config.ts`, `tsconfig*.json`, `src/main.tsx`, `src/app/App.tsx`.
-  - Estimated scope: Medium.
+  - Estimated scope: Medium. Completed in the foundation slice.
 
 - [ ] Task 2: Add typed candidate/profile/source data and deterministic scoring utilities with tests.
   - Acceptance: Six analog candidates and Moon/Mars profiles are typed; score normalization and ranking are deterministic; source IDs resolve to a registry entry.
