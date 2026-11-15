@@ -49,6 +49,8 @@ jobs:
         run: pnpm build
       - name: Check website size
         run: python3 scripts/bundle_budget.py
+      - name: Browser acceptance (home, case, atlas, brief, world, phone width, reduced motion, witness failure)
+        run: pnpm smoke
 
   deploy:
     needs: verify

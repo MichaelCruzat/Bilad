@@ -12,7 +12,7 @@ PY      ?= python3
 NODE    ?= node --experimental-strip-types --no-warnings
 NATIONS ?=
 
-.PHONY: install data global summary crosscheck validate test lint build budget check dev
+.PHONY: install data global summary crosscheck validate test lint build budget smoke check dev
 
 install:
 	pnpm install
@@ -51,7 +51,10 @@ build:
 budget: build
 	$(PY) scripts/bundle_budget.py
 
-check: test lint budget validate
+smoke: build
+	pnpm smoke
+
+check: test lint budget validate smoke
 
 dev:
 	pnpm dev
