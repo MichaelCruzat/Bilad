@@ -49,7 +49,7 @@ function page(route: Route): ReactNode {
     case 'atlas':
       return <Atlas key={route.iso3} iso3={route.iso3} params={route.params} />;
     case 'method':
-      return <Layout contentWidth={960} content={<Method />} />;
+      return <Layout contentWidth={960} content={<Method section={route.params.get('s')} />} />;
     default:
       return (
         <Layout

@@ -3,7 +3,7 @@
  *   #/                         casebook
  *   #/case/<id>                case file
  *   #/atlas/<ISO3>?v=&layer=&cell=&from=&to=&band=
- *   #/method
+ *   #/method?s=<section>
  * Using the hash keeps deep links working on GitHub Pages with no server.
  */
 import {useCallback, useEffect, useState} from 'react';
@@ -12,7 +12,7 @@ export type Route =
   | {page: 'home'}
   | {page: 'case'; id: string}
   | {page: 'atlas'; iso3: string; params: URLSearchParams}
-  | {page: 'method'}
+  | {page: 'method'; params: URLSearchParams}
   | {page: 'missing'; path: string};
 
 export function parseHash(hash: string): Route {
@@ -22,7 +22,7 @@ export function parseHash(hash: string): Route {
   if (parts.length === 0) return {page: 'home'};
   if (parts[0] === 'case' && parts[1]) return {page: 'case', id: parts[1]};
   if (parts[0] === 'atlas') return {page: 'atlas', iso3: (parts[1] ?? 'CHL').toUpperCase(), params: new URLSearchParams(query)};
-  if (parts[0] === 'method') return {page: 'method'};
+  if (parts[0] === 'method') return {page: 'method', params: new URLSearchParams(query)};
   return {page: 'missing', path};
 }
 

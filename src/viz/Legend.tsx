@@ -6,9 +6,9 @@ import {CHROME} from './chrome';
 import {num, signed} from '../lib/format';
 import type {MapLayer, CellColoring} from './NationMap';
 
-type Props = {variable: string; layer: MapLayer; coloring: CellColoring; unit: string};
+type Props = {variable: string; layer: MapLayer; coloring: CellColoring; unit: string; year?: number};
 
-export function Legend({variable, layer, coloring, unit}: Props) {
+export function Legend({variable, layer, coloring, unit, year}: Props) {
   const id = useId().replace(/:/g, '');
   const def = getVariable(variable);
   const stops = Array.from({length: 24}, (_, i) => i / 23);
@@ -20,7 +20,13 @@ export function Legend({variable, layer, coloring, unit}: Props) {
       ? [num(coloring.min, def.digits > 1 ? 1 : 0), '', num(coloring.max, def.digits > 1 ? 1 : 0)]
       : [signed(-coloring.limit, digits), '0', signed(coloring.limit, digits)];
   const caption =
-    layer === 'change' ? `${unit} per decade` : layer === 'emergence' ? 'signal ÷ year-to-year noise' : `1991–2020 normal, ${def.unit}`;
+    layer === 'change'
+      ? `${unit} per decade`
+      : layer === 'emergence'
+        ? 'signal ÷ year-to-year noise'
+        : layer === 'year'
+          ? `${year ?? ''} versus the 1991–2020 normal, ${def.relative ? '% of normal' : def.unit}`
+          : `1991–2020 normal, ${def.unit}`;
   return (
     <VStack maxWidth={320}>
     <svg viewBox="0 0 240 46" width="100%" role="img" aria-label={`Legend: ${caption}, from ${labels[0]} to ${labels[2]}`}>

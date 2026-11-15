@@ -23,10 +23,11 @@ Case 03 is the reason Bilad exists. A tool that stopped at a significant Mann–
 
 ## The product
 
-- **Casebook** (`#/`): opens on two claims from the same reanalysis ("Central Chile has had 23–34% less rain since 2010. Bangladesh did not cool.") beside a live map of Chile's rainfall trend, then lists the case files, the testing chain and a six-nation table of verdicts.
+- **Home** (`#/`): an animated hero that plays Chile's rainfall year by year on NASA relief, with a one-row-per-year ledger of central Chile beside it, so the post-2010 drought builds up as you watch. Then the scale of the shipped data, how Bilad works, validation receipts, the case files and the six nations on one colour scale. It opens on two claims from the same reanalysis ("Central Chile has had 23–34% less rain since 2010. Bangladesh did not cool.") beside a live map of Chile's rainfall trend, then lists the case files, the testing chain and a six-nation table of verdicts.
 - **Case files** (`#/case/<id>`): claim → evidence → cross-examination → integrity screen → verdict, with sources. Every number is computed in the browser from the shipped data.
 - **Atlas** (`#/atlas/<ISO3>`): any shipped nation and any of seven variables.
-  - Each grid cell coloured by its trend, its signal-to-noise ratio, or its 1991–2020 normal.
+  - Every map sits on NASA GIBS Blue Marble shaded relief with neighbouring borders.
+  - Each grid cell coloured by its trend, by one year's anomaly (with a play button), by its signal-to-noise ratio, or by its 1991–2020 normal.
   - Cells that survive false-discovery control are stippled.
   - A latitude profile beside the map shares its vertical axis; drag on it to define a band.
   - The evidence panel shows the whole nation, a band, or a single cell. It includes the annual series with its Theil–Sen trend, the independent witness for that exact selection (temperature and rainfall), the ramp-or-jump screen, a month-by-month "season clock", start-year sensitivity, the full test record and every NASA POWER request URL.
@@ -98,7 +99,7 @@ The pipeline tiles the boundary into NASA POWER requests (cached on disk), keeps
 | Relative humidity at 2 m | `RH2M` | % |
 | Wind speed at 2 m | `WS2M` | m/s |
 
-Values are MERRA-2 (NASA GMAO) served by NASA POWER at native resolution, quantised to Int16 for shipping. Every request URL is listed in the atlas's provenance panel and in each `meta.json`. Boundaries are Natural Earth 1:50m via world-atlas.
+Values are MERRA-2 (NASA GMAO) served by NASA POWER at native resolution, quantised to Int16 for shipping. Every request URL is listed in the atlas's provenance panel and in each `meta.json`. Boundaries are Natural Earth 1:50m via world-atlas. Basemaps are NASA GIBS `BlueMarble_ShadedRelief_Bathymetry` (EPSG:4326), fetched by `python -m pipeline context` and drawn under a cylindrical projection centred on each nation, so the imagery lines up with the grid cells without resampling.
 
 ## Limitations
 
@@ -117,7 +118,8 @@ Values are MERRA-2 (NASA GMAO) served by NASA POWER at native resolution, quanti
 - Central Chile megadrought: Garreaud et al. (2017), [doi:10.5194/hess-21-6307-2017](https://doi.org/10.5194/hess-21-6307-2017); Garreaud et al. (2020), [doi:10.1002/joc.6219](https://doi.org/10.1002/joc.6219)
 - Coastal cooling in Chile: Falvey & Garreaud (2009), [doi:10.1029/2008JD010519](https://doi.org/10.1029/2008JD010519)
 - Methods: Mann (1945); Sen (1968); Gilbert (1987); Hamed & Rao (1998); Benjamini & Hochberg (1995); Wilks (2016); Hawkins & Sutton (2012). Full links are on the in-app Method page.
-- [Natural Earth](https://www.naturalearthdata.com/) boundaries via [world-atlas](https://github.com/topojson/world-atlas). UI built with Astryx.
+- [NASA GIBS](https://www.earthdata.nasa.gov/engage/open-data-services-software/earthdata-developer-portal/gibs-api) Blue Marble relief imagery.
+- [Natural Earth](https://www.naturalearthdata.com/) boundaries via [world-atlas](https://github.com/topojson/world-atlas). UI built with Astryx; type set in Space Grotesk, IBM Plex Sans and IBM Plex Mono.
 
 ## Judging criteria
 

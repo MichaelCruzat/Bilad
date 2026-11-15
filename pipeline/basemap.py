@@ -39,11 +39,11 @@ def extent_for(shape) -> tuple[float, float, float, float]:
     return (snap(west - pad_lon, False), snap(max(-89.5, south - pad_lat), False), snap(east + pad_lon, True), snap(min(89.5, north + pad_lat), True))
 
 
-def relief_url(extent: tuple[float, float, float, float]) -> tuple[str, int, int]:
+def relief_url(extent: tuple[float, float, float, float], long_side: int = LONG_SIDE_PX) -> tuple[str, int, int]:
     west, south, east, north = extent
     lat0 = math.radians((south + north) / 2)
     ratio = (east - west) * math.cos(lat0) / (north - south)  # displayed width / height
-    width, height = (LONG_SIDE_PX, round(LONG_SIDE_PX / ratio)) if ratio >= 1 else (round(LONG_SIDE_PX * ratio), LONG_SIDE_PX)
+    width, height = (long_side, round(long_side / ratio)) if ratio >= 1 else (round(long_side * ratio), long_side)
     query = urllib.parse.urlencode({
         "SERVICE": "WMS", "REQUEST": "GetMap", "VERSION": "1.3.0", "LAYERS": LAYER, "STYLES": "",
         "CRS": "EPSG:4326", "BBOX": f"{south},{west},{north},{east}",  # WMS 1.3 EPSG:4326 axis order is lat,lon
@@ -67,6 +67,12 @@ def neighbours(world_atlas: Path, nation: Nation, extent) -> dict:
         if str(g.get("id")) == nation.atlas_id or "arcs" not in g:
             continue
         shape = geometry.decode_topojson(topology, str(g.get("id")))
+        # Polygons crossing the antimeridian (Fiji, the Aleutians) wrap the
+        # whole globe on a plane; drop them instead of drawing a false border.
+        parts = [p for p in shape.geoms if p.bounds[2] - p.bounds[0] < 180]
+        if not parts:
+            continue
+        shape = shapely.MultiPolygon(parts)
         if not shape.intersects(frame):
             continue
         clipped = shapely.clip_by_rect(shape, *extent)
@@ -97,6 +103,9 @@ def build_context(nation: Nation, root: Path) -> None:
         if not response.headers.get("Content-Type", "").startswith("image/"):
             raise RuntimeError(f"GIBS returned {response.headers.get('Content-Type')} for {nation.iso3}")
         (out / "relief.jpg").write_bytes(response.read())
+    thumb_url, _, _ = relief_url(extent, 480)
+    with urlopen(thumb_url, timeout=120) as response:
+        (out / "relief-thumb.jpg").write_bytes(response.read())
     (out / "context.json").write_text(json.dumps(neighbours(world_atlas, nation, extent), separators=(",", ":"), ensure_ascii=False))
     meta_path = out / "meta.json"
     meta = json.loads(meta_path.read_text())

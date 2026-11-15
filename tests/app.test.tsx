@@ -49,7 +49,8 @@ describe('router', () => {
       expect(atlas.iso3).toBe('CHL');
       expect(atlas.params.get('v')).toBe('PRECTOTCORR');
     }
-    expect(parseHash('#/method')).toEqual({page: 'method'});
+    const method = parseHash('#/method?s=fdr');
+    expect(method.page === 'method' && method.params.get('s')).toBe('fdr');
     const bare = parseHash('#/atlas');
     expect(bare.page === 'atlas' && bare.iso3).toBe('CHL');
     expect(parseHash('#/nope').page).toBe('missing');
@@ -59,15 +60,17 @@ describe('router', () => {
 describe('casebook', () => {
   it('opens on a data-derived claim and lists every case', async () => {
     renderAt('#/');
-    expect(await screen.findByRole('heading', {level: 1, name: /Central Chile has had \d+–\d+% less rain since 2010\. Bangladesh did not cool\./}, {timeout: 5000})).toBeInTheDocument();
+    expect(await screen.findByRole('heading', {level: 1, name: 'Bilad'})).toBeInTheDocument();
+    expect(await screen.findByText(/Central Chile has had \d+–\d+% less rain since 2010\. Bangladesh did not cool/, {}, {timeout: 5000})).toBeInTheDocument();
     for (const c of CASES) expect(screen.getByRole('link', {name: c.title})).toHaveAttribute('href', `#/case/${c.id}`);
-    expect(await screen.findByRole('application', {name: /Chile: rainfall trend per decade/})).toBeInTheDocument();
+    expect(await screen.findByRole('application', {name: /Chile: rainfall in \d{4} as a share of the 1991–2020 normal/}, {timeout: 5000})).toBeInTheDocument();
   });
 
   it('shows the six-nation ledger with verdicts', async () => {
     renderAt('#/');
-    const link = await screen.findByRole('link', {name: 'Bangladesh'});
-    const table = link.closest('table')!;
+    const links = await screen.findAllByRole('link', {name: 'Bangladesh'});
+    expect(links.length).toBe(2); // nation strip and ledger table
+    const table = links.map(l => l.closest('table')).find(Boolean)!;
     expect(within(table).getAllByText('Contradicted').length).toBeGreaterThan(0);
   });
 });

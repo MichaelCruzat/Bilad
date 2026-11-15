@@ -82,7 +82,9 @@ export type Context = {
   features: Feature<LineString | MultiLineString, {name: string; label: [number, number] | null; share: number}>[];
 };
 export const loadContext = (iso3: string) => once(`context:${iso3}`, () => getJson<Context>(`nations/${iso3}/context.json`).catch(() => ({type: 'FeatureCollection', features: []}) as Context));
-export const reliefUrl = (iso3: string) => `${base}nations/${iso3}/relief.jpg`;
+export const reliefUrl = (iso3: string, thumb = false) => `${base}nations/${iso3}/relief${thumb ? '-thumb' : ''}.jpg`;
+export type Preview = {variable: string; slope: number[]; significant: number[]};
+export const loadPreview = (iso3: string) => once(`preview:${iso3}`, () => getJson<Preview>(`nations/${iso3}/preview.json`));
 
 export function decodeGrid(buffer: ArrayBuffer, scale: number, missing: number, months: number, variable: string): VariableGrid {
   const raw = new Int16Array(buffer);

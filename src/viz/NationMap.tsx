@@ -7,7 +7,7 @@ import {divergingColor, emergenceRamp, robustLimit} from './color';
 import {lat as fmtLat, signed} from '../lib/format';
 import {CHROME} from './chrome';
 
-export type MapLayer = 'change' | 'emergence' | 'normal';
+export type MapLayer = 'change' | 'emergence' | 'normal' | 'year';
 
 export type MapGeometry = {
   projection: GeoProjection;
@@ -83,8 +83,30 @@ export function useMapGeometry(meta: NationMeta, boundary: Boundary, maxW: numbe
 
 export type CellColoring = {colors: string[]; limit: number; kind: 'diverging' | 'sequential'; min: number; max: number};
 
-export function colorCells(analysis: VariableAnalysis, layer: MapLayer): CellColoring {
+const yearLimits = new WeakMap<VariableAnalysis, number>();
+
+/** Values shown for a layer: per-cell trend, S/N, normal, or one year's anomaly. */
+export function layerValues(analysis: VariableAnalysis, layer: MapLayer, year?: number): ArrayLike<number> {
+  if (layer === 'normal') return analysis.normal;
+  if (layer === 'change') return analysis.slope;
+  if (layer === 'emergence') return analysis.snr;
+  const ny = analysis.years.length;
+  const yi = Math.max(0, Math.min(ny - 1, (year ?? analysis.window.to) - analysis.window.from));
+  return Float32Array.from({length: analysis.normal.length}, (_, c) => analysis.annual[c * ny + yi]);
+}
+
+export function colorCells(analysis: VariableAnalysis, layer: MapLayer, year?: number): CellColoring {
   const def = getVariable(analysis.variable);
+  if (layer === 'year') {
+    // One colour scale for every year, so an animation compares like with like.
+    let limit = yearLimits.get(analysis);
+    if (limit === undefined) {
+      limit = robustLimit(analysis.annual);
+      yearLimits.set(analysis, limit);
+    }
+    const values = layerValues(analysis, 'year', year);
+    return {colors: Array.from(values, v => divergingColor(def.palette, v, limit)), limit, kind: 'diverging', min: -limit, max: limit};
+  }
   if (layer === 'normal') {
     let min = Infinity;
     let max = -Infinity;
@@ -125,6 +147,8 @@ type Props = {
   context?: Context | null;
   /** Lines for the floating hover tooltip. */
   describeCell?: (cell: number) => string[];
+  /** Year shown by the 'year' layer. */
+  year?: number;
   title: string;
 };
 
@@ -152,11 +176,12 @@ export function NationMap({
   outlines = [],
   context = null,
   describeCell,
+  year,
   title,
 }: Props) {
   const clipId = useId().replace(/:/g, '');
   const geo = useMapGeometry(meta, boundary, 560, maxHeight, context);
-  const coloring = useMemo(() => colorCells(analysis, layer), [analysis, layer]);
+  const coloring = useMemo(() => colorCells(analysis, layer, year), [analysis, layer, year]);
   const [hover, setHover] = useState<number | null>(null);
   const [drag, setDrag] = useState<[number, number] | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
@@ -164,7 +189,7 @@ export function NationMap({
   const profileX0 = geo.width + PROFILE_GAP;
   const totalW = showProfile ? profileX0 + PROFILE_W + LABEL_W : geo.width;
   const totalH = geo.height + (showProfile ? 34 : 0);
-  const values = layer === 'normal' ? analysis.normal : layer === 'change' ? analysis.slope : analysis.snr;
+  const values = useMemo(() => layerValues(analysis, layer, year), [analysis, layer, year]);
   const pLim = layer === 'normal' ? Math.max(Math.abs(coloring.min), Math.abs(coloring.max)) : coloring.limit;
   const px = (v: number) =>
     layer === 'normal'
@@ -183,7 +208,7 @@ export function NationMap({
   );
 
   const stipple = useMemo(() => {
-    if (!showSignificance || layer === 'normal') return null;
+    if (!showSignificance || layer === 'normal' || layer === 'year') return null;
     return geo.centers.map(([x, y], i) =>
       analysis.significant[i] ? <circle key={i} cx={x} cy={y} r={1.3} fill={CHROME.ink} fillOpacity={0.85} pointerEvents="none" /> : null,
     );

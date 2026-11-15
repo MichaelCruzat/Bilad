@@ -4,7 +4,7 @@ import {Collapsible} from '@astryxdesign/core/Collapsible';
 import {Divider} from '@astryxdesign/core/Divider';
 import {Link} from '@astryxdesign/core/Link';
 import {MetadataList, MetadataListItem} from '@astryxdesign/core/MetadataList';
-import {HStack, StackItem, VStack} from '@astryxdesign/core/Stack';
+import {HStack, VStack} from '@astryxdesign/core/Stack';
 import {Heading, Text} from '@astryxdesign/core/Text';
 import {getVariable} from '../data/variables';
 import {
@@ -23,7 +23,7 @@ import type {NationMeta, VariableGrid} from '../lib/nationData';
 import {describe} from '../lib/narrative';
 import {digitsFor, lat, lon, percent, pPhrase, pValue, signed, num} from '../lib/format';
 import {SeriesChart} from '../viz/SeriesChart';
-import {SeasonClock} from '../viz/SeasonClock';
+import {MonthStrip} from '../viz/MonthStrip';
 import {SensitivityChart} from '../viz/SensitivityChart';
 
 export type Selection = {kind: 'nation'} | {kind: 'cell'; cell: number} | {kind: 'band'; band: [number, number]; regionId?: string; name?: string};
@@ -193,14 +193,10 @@ export function EvidencePanel({meta, grid, analysis, witnessGrid, selection}: Pr
       <VStack gap={2}>
         <Divider />
         <Heading level={3}>Which months are changing?</Heading>
-        <HStack gap={4} vAlign="center" wrap="wrap">
-          <SeasonClock trends={view.seasons} variable={analysis.variable} unit={unit} title={`Trend by calendar month, ${place}`} />
-          <StackItem size="fill">
-            <Text type="supporting">
-              Each wedge is the trend for one calendar month, in {unit} per decade{def.relative ? ' of that month’s own normal' : ''}. Outlined wedges pass a false-discovery-rate test across all twelve months; the others are exploratory.
-            </Text>
-          </StackItem>
-        </HStack>
+        <MonthStrip trends={view.seasons} variable={analysis.variable} unit={unit} digits={digits} title={`Trend by calendar month, ${place}`} />
+        <Text type="supporting">
+          Each bar is the trend for one calendar month, in {unit} per decade{def.relative ? ' of that month’s own normal' : ''}. Outlined bars pass a false-discovery-rate test across all twelve months; the others are exploratory.
+        </Text>
       </VStack>
 
       <VStack gap={2}>

@@ -2,7 +2,6 @@ import {useMemo, useState} from 'react';
 import {Button} from '@astryxdesign/core/Button';
 import {Divider} from '@astryxdesign/core/Divider';
 import {Layout, LayoutContent, LayoutPanel} from '@astryxdesign/core/Layout';
-import {SegmentedControl, SegmentedControlItem} from '@astryxdesign/core/SegmentedControl';
 import {Selector} from '@astryxdesign/core/Selector';
 import {Slider} from '@astryxdesign/core/Slider';
 import {Spinner} from '@astryxdesign/core/Spinner';
@@ -18,14 +17,16 @@ import {useAtlasParams} from '../app/router';
 import {lat, lon, signed, num} from '../lib/format';
 import {NationMap, colorCells, type MapLayer} from '../viz/NationMap';
 import {Legend} from '../viz/Legend';
+import {usePlayback} from '../viz/usePlayback';
 import {EvidencePanel, type Selection} from '../features/EvidencePanel';
 
 type Props = {iso3: string; params: URLSearchParams};
 
-const LAYERS: {value: MapLayer; label: string}[] = [
-  {value: 'change', label: 'Trend'},
-  {value: 'emergence', label: 'S/N'},
-  {value: 'normal', label: 'Normal'},
+const LAYERS: {value: MapLayer; label: string; description: string}[] = [
+  {value: 'change', label: 'Trend per decade', description: 'Theil–Sen slope, stippled where significant'},
+  {value: 'year', label: 'One year at a time', description: 'Each year against the 1991–2020 normal, playable'},
+  {value: 'emergence', label: 'Signal ÷ noise', description: 'Has the change emerged from natural swings?'},
+  {value: 'normal', label: '1991–2020 normal', description: 'The baseline climate, for context'},
 ];
 
 function intParam(params: URLSearchParams, key: string, fallback: number): number {
@@ -49,13 +50,14 @@ export function Atlas({iso3, params}: Props) {
   const bandParam = params.get('band')?.split(',').map(Number);
   const regionParam = params.get('region');
   const [windowDraft, setWindowDraft] = useState<[number, number] | null>(null);
-  const [hover, setHover] = useState<number | null>(null);
 
   const meta = nation.status === 'ready' ? nation.data.meta : null;
   const span = useMemo(() => ({from, to}), [from, to]);
   const data = useVariable(meta, variable, span);
   const def = getVariable(variable);
   const unit = trendUnit(variable);
+  const playback = usePlayback(from, to, {initial: intParam(params, 'year', to)});
+  const shownYear = Math.min(to, Math.max(from, playback.year));
 
   const region = meta?.regions.find(r => r.id === regionParam);
   const band: [number, number] | null = region
@@ -104,21 +106,49 @@ export function Atlas({iso3, params}: Props) {
       />
       <Text type="supporting">{def.description}</Text>
       <VStack gap={2}>
-        <SegmentedControl label="Map layer" value={layer} onChange={v => set({layer: v === 'change' ? null : v})} layout="fill">
-          {LAYERS.map(l => (
-            <SegmentedControlItem key={l.value} value={l.value} label={l.label} />
-          ))}
-        </SegmentedControl>
+        <Selector
+          label="Map layer"
+          value={layer}
+          options={LAYERS.map(l => ({value: l.value, label: l.label, description: l.description}))}
+          onChange={v => v && set({layer: v === 'change' ? null : v})}
+          width="100%"
+        />
         <Text type="supporting">
           {layer === 'change'
             ? `Theil–Sen trend in ${unit} per decade.`
             : layer === 'emergence'
               ? 'Signal-to-noise: change across the window divided by the typical year-to-year swing. Beyond ±1 the signal has emerged; beyond ±2 it is clear.'
-              : `The 1991–2020 average, for context: where the ${def.short.toLowerCase()} is high or low to begin with.`}
+              : layer === 'year'
+                ? `Each cell’s departure from its 1991–2020 normal in a single year, on one colour scale for every year. Press play to watch ${from}–${to} unfold.`
+                : `The 1991–2020 average, for context: where the ${def.short.toLowerCase()} is high or low to begin with.`}
         </Text>
+        {layer === 'year' && (
+          <HStack gap={2} vAlign="center">
+            <Button
+              size="sm"
+              variant="primary"
+              label={playback.playing ? 'Pause' : 'Play'}
+              onClick={() => playback.setPlaying(!playback.playing)}
+            />
+            <Slider
+              label="Year"
+              isLabelHidden
+              value={shownYear}
+              min={from}
+              max={to}
+              valueDisplay="text"
+              formatValue={v => String(v)}
+              onChange={(v: number) => {
+                playback.setPlaying(false);
+                playback.setYear(v);
+              }}
+              width="100%"
+            />
+          </HStack>
+        )}
       </VStack>
       {data.status === 'ready' && (
-        <Legend variable={variable} layer={layer} coloring={colorCells(data.data.analysis, layer)} unit={unit} />
+        <Legend variable={variable} layer={layer} coloring={colorCells(data.data.analysis, layer, shownYear)} unit={unit} year={shownYear} />
       )}
       <Switch
         label="Stipple significant cells"
@@ -154,24 +184,19 @@ export function Atlas({iso3, params}: Props) {
     </VStack>
   );
 
-  const hoverCell = hover !== null && meta && data.status === 'ready' ? hover : null;
   const mapArea = (
     <VStack gap={2} height="100%">
       <HStack gap={3} hAlign="between" vAlign="center" wrap="wrap">
         <Heading level={1}>
           {meta?.name ?? iso3} <Text color="secondary" type="large">· {def.short.toLowerCase()}, {from}–{to}</Text>
         </Heading>
-        <Text type="supporting" hasTabularNumbers aria-live="polite">
-          {hoverCell !== null && data.status === 'ready'
-            ? `${lat(meta!.cells[hoverCell].lat)} ${lon(meta!.cells[hoverCell].lon)} · ${
-                layer === 'normal'
-                  ? `${num(data.data.analysis.normal[hoverCell], def.digits)} ${def.unit}`
-                  : layer === 'change'
-                    ? `${signed(data.data.analysis.slope[hoverCell], unit === '% of normal' ? 1 : def.digits)} ${unit}/decade`
-                    : `S/N ${num(data.data.analysis.snr[hoverCell], 2)}`
-              }${data.data.analysis.significant[hoverCell] ? ' · significant' : ''}`
-            : 'Hover a cell to read its value'}
-        </Text>
+        {layer === 'year' ? (
+          <Text type="display-3" hasTabularNumbers aria-live="polite">
+            {shownYear}
+          </Text>
+        ) : (
+          <Text type="supporting">Hover a cell for its value · click to inspect it</Text>
+        )}
       </HStack>
       <StackItem size="fill">
         <VStack height={narrow ? '28rem' : '100%'}>
@@ -188,19 +213,21 @@ export function Atlas({iso3, params}: Props) {
                   ? `${num(a.normal[c], def.digits)} ${def.unit} normal`
                   : layer === 'change'
                     ? `${signed(a.slope[c], unit === '% of normal' ? 1 : def.digits)} ${unit}/decade`
-                    : `signal/noise ${num(a.snr[c], 2)}`;
+                    : layer === 'year'
+                      ? `${shownYear}: ${signed(a.annual[c * a.years.length + shownYear - a.window.from], def.relative ? 0 : def.digits)} ${def.relative ? '% vs normal' : def.unit}`
+                      : `signal/noise ${num(a.snr[c], 2)}`;
               return [`${lat(cell.lat)}  ${lon(cell.lon)}`, value, a.significant[c] ? 'significant after FDR' : 'not significant'];
             }}
             analysis={data.data.analysis}
             layer={layer}
+            year={shownYear}
             showSignificance={stipple}
             selected={cell}
             onSelect={c => set({cell: c})}
-            onHover={setHover}
             band={band}
-            unitLabel={`${unit} per decade`}
+            unitLabel={layer === 'year' ? `${shownYear} anomaly, ${def.relative ? '% of normal' : def.unit}` : `${unit} per decade`}
             onBand={b => set({band: b ? b.join(',') : null, region: null, cell: null})}
-            title={`${meta!.name}: ${def.short} ${layer === 'normal' ? '1991–2020 normal' : layer === 'change' ? `trend per decade, ${from}–${to}` : `signal-to-noise, ${from}–${to}`}`}
+            title={`${meta!.name}: ${def.short} ${layer === 'normal' ? '1991–2020 normal' : layer === 'change' ? `trend per decade, ${from}–${to}` : layer === 'year' ? `anomaly in ${shownYear}` : `signal-to-noise, ${from}–${to}`}`}
           />
         ) : data.status === 'error' ? (
           <Banner status="error" title="Could not load this variable" description={data.error.message} endContent={<Button label="Retry" onClick={data.retry} />} />
