@@ -11,12 +11,13 @@ import {CASES} from '../src/data/cases';
 const DATA = join(__dirname, '..', 'public', 'data');
 
 /** Serve public/data from disk so pages render with the real shipped data. */
-function serveData() {
+function serveData(fail: RegExp | null = null) {
   vi.stubGlobal(
     'fetch',
     vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
       const path = url.slice(url.indexOf('data/') + 5);
+      if (fail && fail.test(path)) return new Response('unavailable', {status: 503});
       try {
         const buf = readFileSync(join(DATA, path));
         return new Response(path.endsWith('.i16') ? buf : buf.toString('utf8'), {status: 200});
@@ -36,7 +37,7 @@ function renderAt(hash: string) {
   );
 }
 
-beforeEach(serveData);
+beforeEach(() => serveData());
 afterEach(() => vi.unstubAllGlobals());
 
 describe('router', () => {
@@ -62,12 +63,12 @@ describe('casebook', () => {
     renderAt('#/');
     expect(await screen.findByRole('heading', {level: 1, name: 'Bilad'})).toBeInTheDocument();
     expect(await screen.findByText(/of the world’s land has warmed beyond chance/, {}, {timeout: 8000})).toBeInTheDocument();
-    expect(await screen.findByText(/Central Chile has had \d+–\d+% less rain since 2010/, {}, {timeout: 8000})).toBeInTheDocument();
+    expect(await screen.findByText(/central Chile has had \d+–\d+% less rain since 2010/i, {}, {timeout: 8000})).toBeInTheDocument();
     for (const c of CASES) expect(screen.getByRole('link', {name: c.title})).toHaveAttribute('href', `#/case/${c.id}`);
     expect(await screen.findByRole('application', {name: /World map: is each land cell’s warming trend backed by weather stations/}, {timeout: 8000})).toBeInTheDocument();
   });
 
-  it('shows the six-nation ledger with verdicts', async () => {
+  it('shows the featured-nation ledger with verdicts', async () => {
     renderAt('#/');
     const links = await screen.findAllByRole('link', {name: 'Bangladesh'});
     expect(links.length).toBe(2); // nation strip and ledger table
@@ -93,10 +94,10 @@ describe('case file', () => {
 describe('navigation between cases', () => {
   it('moves from a nation without regions to a regional case without crashing', async () => {
     renderAt('#/case/kenya-half-the-warming');
-    expect(await screen.findByRole('heading', {name: /Real direction, uncertain size/}, {timeout: 5000})).toBeInTheDocument();
+    expect(await screen.findByRole('heading', {name: /Both records show the change; they disagree on how fast/}, {timeout: 5000})).toBeInTheDocument();
     window.location.hash = '#/case/chile-megadrought';
     window.dispatchEvent(new HashChangeEvent('hashchange'));
-    expect(await screen.findByRole('heading', {name: /Supported: a partly independent/}, {timeout: 5000})).toBeInTheDocument();
+    expect(await screen.findByRole('heading', {name: /Corroborated by a partly independent/}, {timeout: 5000})).toBeInTheDocument();
   });
 
   it('never shows an error banner while a nation is still loading', async () => {
@@ -117,6 +118,36 @@ describe('world atlas', () => {
     renderAt('#/world');
     expect(await screen.findByRole('heading', {name: /The world since 1981/}, {timeout: 10000})).toBeInTheDocument();
     expect(screen.getByText(/land cells, temperature has changed by/)).toBeInTheDocument();
+  });
+});
+
+describe('verdicts and witness states', () => {
+  it('leads each case with a verdict strip', async () => {
+    renderAt('#/case/bangladesh-phantom-cooling');
+    expect(await screen.findByText('Likely data artefact', {}, {timeout: 10000})).toBeInTheDocument();
+    expect(screen.getByText(/Jump in 199\d, not a ramp/)).toBeInTheDocument();
+  });
+
+  it('labels a variable without a witness as a single-dataset claim', async () => {
+    renderAt('#/atlas/CHL?v=WS2M');
+    expect(await screen.findByText('Single dataset: no witness in this release', {}, {timeout: 10000})).toBeInTheDocument();
+  });
+
+  it('shows a failed witness download as unavailable, with retry, not as absence', async () => {
+    vi.unstubAllGlobals();
+    serveData(/witness\.json$/);
+    // A nation no other test loads, so the session cache cannot hide the failure.
+    renderAt('#/atlas/PHL?v=T2M');
+    expect(await screen.findByText('Witness unavailable', {}, {timeout: 10000})).toBeInTheDocument();
+    expect(screen.getByRole('button', {name: 'Retry'})).toBeInTheDocument();
+    expect(screen.getByText('Verdict pending')).toBeInTheDocument();
+  });
+
+  it('builds a national brief for all seven variables', async () => {
+    renderAt('#/brief/CHL');
+    expect(await screen.findByRole('heading', {level: 1, name: /Chile, 1981–2024/}, {timeout: 15000})).toBeInTheDocument();
+    expect(await screen.findByRole('button', {name: 'Download CSV'}, {timeout: 15000})).toBeInTheDocument();
+    for (const label of ['Air temperature at 2 m', 'Wind speed at 2 m', 'Root-zone soil wetness']) expect(screen.getByText(label)).toBeInTheDocument();
   });
 });
 

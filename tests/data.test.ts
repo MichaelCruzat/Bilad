@@ -37,6 +37,24 @@ describe('shipped data', () => {
   });
 });
 
+describe('release truth', () => {
+  const NUMBER_WORDS = ['three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
+  const docs = ['README.md', 'docs/SUBMISSION.md'].map(f => readFileSync(join(__dirname, '..', f), 'utf8'));
+
+  it('names every shipped nation in the README and submission notes', () => {
+    for (const n of index.nations) docs.forEach(d => expect(d).toContain(n.name));
+  });
+
+  it('never states a nation count that differs from the shipped data', () => {
+    const shipped = NUMBER_WORDS[index.nations.length - 3];
+    for (const d of docs) {
+      for (const w of NUMBER_WORDS.filter(x => x !== shipped)) {
+        expect(d.toLowerCase()).not.toMatch(new RegExp(`\\b${w}[ -](featured )?nations?\\b`));
+      }
+    }
+  });
+});
+
 describe('consistency', () => {
   it('a subset covering every cell reproduces the national series, for rainfall too', () => {
     const {meta, grid} = load('CHL', 'PRECTOTCORR');

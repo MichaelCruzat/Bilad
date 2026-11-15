@@ -4,21 +4,25 @@
 
 - **Final project:** [Bilad live site](https://michaelcruzat.github.io/Bilad/)
 - **Code:** [Bilad on GitHub](https://github.com/MichaelCruzat/Bilad)
-- **Demo:** the six-slide PDF in `public/bilad-demo.pdf` shows the previous version and needs re-recording before submission. The three-minute walkthrough below is the script.
+- **Demo:** `public/bilad-demo.pdf`, captured from the current build (data window 1981–2024). The three-minute walkthrough below is the script.
 
 Complete the remaining fields in the team's Project tab using the [2026 Project Submission Guide](https://www.spaceappschallenge.org/resources/project-submission-guide/).
 
 ## One-paragraph summary
 
-Bilad is a global Earth-system trend detective: it covers every land cell from 60°S to 84°N, with seven nations in full detail. It maps 44 years of NASA POWER (MERRA-2) data across a country, cell by cell, and tests every trend with methods built for autocorrelated climate records: Theil–Sen slopes, Hamed–Rao-corrected Mann–Kendall tests, and false-discovery control across the map. It then asks a fifth question the challenge implies: is the change real? Each trend faces a ramp-or-jump integrity screen and is cross-examined against an independent NASA record (GISTEMP v4 stations, GPCP v2.3 precipitation) on the same footprint. The casebook shows four verdicts. Central Chile's post-2010 rainfall loss is corroborated. Chile's coast and Andes diverge at a scale no witness can resolve. Kenya's warming is real but underestimated. Bangladesh's statistically significant "cooling" is contradicted by stations and flagged as a dataset artefact. The Python pipeline is nation-agnostic: one registry line and one command add a country.
+Bilad is a global Earth-system trend detective: it covers every land cell from 60°S to 84°N, with seven nations in full detail. It maps 44 years of NASA POWER (MERRA-2) data across the globe, cell by cell, and tests every trend with methods built for autocorrelated climate records: Theil–Sen slopes, Hamed–Rao-corrected Mann–Kendall tests, and false-discovery control across the map. It then checks whether each change is real: each trend faces a ramp-or-jump integrity screen and is cross-examined against an independent NASA record (GISTEMP v4 stations, GPCP v2.3 precipitation) on the same footprint. The casebook shows four outcomes. Central Chile's post-2010 rainfall loss is corroborated. Chile's coast and Andes diverge at a scale no witness can resolve. Kenya's warming is real but underestimated. Bangladesh's statistically significant "cooling" is contradicted by stations and flagged as a dataset artefact. The Python pipeline is nation-agnostic: one registry line and one command add a country.
 
 ## Three-minute walkthrough
 
 1. **Home (0:00–0:30).** The world map opens at full width: green where weather stations back each cell's warming trend, red where they contradict it. South Asia stands out. Hover a cell, then click one to open it. Point at the map: Chile's rainfall trend, central Chile highlighted, stippled where it survives false-discovery control.
 2. **Case 01 (0:30–1:15).** Claim, evidence, then cross-examination: GPCP, a partly independent gauge-and-satellite record, agrees (−11.2% versus −17.1% of normal per decade; 23% versus 34% less rain in 2010–19). Verdict: supported.
-3. **Case 03 (1:15–2:00).** The reanalysis cools Bangladesh by −0.19 °C per decade, p = 0.03. The integrity screen shows a jump in 1997 rather than a ramp, with several variables jumping together, and GISTEMP shows +0.35 °C per decade. Verdict: a likely artefact, which a single-dataset tool would have reported as cooling.
+3. **Case 03 (1:15–2:00).** The reanalysis cools Bangladesh by −0.19 °C per decade, p = 0.03. The integrity screen shows a jump in 1997 rather than a ramp, with several variables jumping together, and GISTEMP shows +0.35 °C per decade. Verdict: a likely artefact.
 4. **Atlas (2:00–2:40).** Switch to Mexico, then rainfall. Drag on the latitude profile to define a band; click a cell; show the season clock and the start-year sensitivity chart. Every URL is shareable.
-5. **Any nation (2:40–3:00).** Show the six-nation table and `make data NATIONS=…`. Close on the method page and the CI check that recomputes every headline in a second language.
+5. **Any nation (2:40–3:00).** Show the seven featured nations and `make data NATIONS=…`. Close on the method page and the CI check that recomputes every headline in a second language.
+
+## Coverage
+
+Every land cell from 60°S to 84°N (54,425 cells, 223 countries) for temperature and rainfall, plus seven featured nations with all seven variables: Bangladesh, Chile, Kenya, Mexico, Morocco, the Philippines and Spain.
 
 ## Challenge alignment
 

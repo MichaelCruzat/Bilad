@@ -5,6 +5,7 @@
  *   #/atlas/<ISO3>?v=&layer=&cell=&from=&to=&band=
  *   #/method?s=<section>
  *   #/world?v=&layer=&year=&cell=&country=
+ *   #/brief/<ISO3>
  * Using the hash keeps deep links working on GitHub Pages with no server.
  */
 import {useCallback, useEffect, useState} from 'react';
@@ -15,6 +16,7 @@ export type Route =
   | {page: 'atlas'; iso3: string; params: URLSearchParams}
   | {page: 'method'; params: URLSearchParams}
   | {page: 'world'; params: URLSearchParams}
+  | {page: 'brief'; iso3: string}
   | {page: 'missing'; path: string};
 
 export function parseHash(hash: string): Route {
@@ -24,6 +26,7 @@ export function parseHash(hash: string): Route {
   if (parts.length === 0) return {page: 'home'};
   if (parts[0] === 'case' && parts[1]) return {page: 'case', id: parts[1]};
   if (parts[0] === 'atlas') return {page: 'atlas', iso3: (parts[1] ?? 'CHL').toUpperCase(), params: new URLSearchParams(query)};
+  if (parts[0] === 'brief' && parts[1]) return {page: 'brief', iso3: parts[1].toUpperCase()};
   if (parts[0] === 'world') return {page: 'world', params: new URLSearchParams(query)};
   if (parts[0] === 'method') return {page: 'method', params: new URLSearchParams(query)};
   return {page: 'missing', path};

@@ -6,6 +6,8 @@ import {Link} from '@astryxdesign/core/Link';
 import {VStack} from '@astryxdesign/core/Stack';
 import {Heading, Text} from '@astryxdesign/core/Text';
 import {useEffect} from 'react';
+import {Button} from '@astryxdesign/core/Button';
+import {Card} from '@astryxdesign/core/Card';
 import {HStack} from '@astryxdesign/core/Stack';
 import {VARIABLES} from '../data/variables';
 
@@ -49,7 +51,7 @@ const BLOCKS: Block[] = [
     id: 'fdr',
     title: 'Field significance: false-discovery control',
     body: [
-      'Testing several hundred cells at 5% produces dozens of “significant” cells by chance alone. Bilad applies the Benjamini–Hochberg procedure across the map with α_FDR = 0.10, which Wilks (2016) shows controls the field-wide error near the nominal 5% for spatially correlated climate fields. Only cells that survive are stippled. Neighbouring reanalysis cells are not independent, so shares of significant area are descriptive, not independent votes.',
+      'Testing 54,425 cells at 5% would produce thousands of “significant” cells by chance alone. Bilad applies the Benjamini–Hochberg procedure across the map with α_FDR = 0.10, which Wilks (2016) shows controls the field-wide error near the nominal 5% for spatially correlated climate fields. Only cells that survive are stippled. Neighbouring reanalysis cells are not independent, so shares of significant area are descriptive, not independent votes.',
     ],
     formula: 'p_(1) ≤ … ≤ p_(m);  k* = max{k : p_(k) ≤ (k/m) · α_FDR};  significant ⇔ p ≤ p_(k*)',
   },
@@ -112,6 +114,29 @@ export function Method({section}: {section?: string | null}) {
             All statistics run in one TypeScript module that both the offline pipeline and your browser use, so the shipped figures and the ones you recompute agree. It is open source and unit-tested against a reference implementation.
           </Text>
         </VStack>
+        <Card variant="muted" padding={5}>
+          <VStack gap={2}>
+            <Heading level={2}>How to read a verdict</Heading>
+            <Text>
+              <Text weight="semibold">Trend</Text>: the typical change per decade, measured so one extreme year cannot drag it. The 95% range is where the true trend probably lies; if it excludes zero, the direction is clear.
+            </Text>
+            <Text>
+              <Text weight="semibold">Significant</Text>: a trend this strong would rarely appear by chance in a record with no real trend (p below 0.05), even allowing for warm or dry years that cluster.
+            </Text>
+            <Text>
+              <Text weight="semibold">Witness</Text>: a second NASA record built differently (weather stations for temperature, gauges and satellites for rainfall). If it agrees, the trend is corroborated; if it points the other way, the first record is suspect.
+            </Text>
+            <Text>
+              <Text weight="semibold">Integrity screen</Text>: does the record drift steadily, or drop all at once? A sudden jump that the witness does not share usually means the data changed, not the climate.
+            </Text>
+            <Text color="secondary">
+              Worked example: Bangladesh’s reanalysis shows a significant cooling, but the record drops 0.74 °C in a single year (1997) and weather stations show warming of +0.35 °C per decade. Verdict: a likely data artefact.
+            </Text>
+            <HStack gap={2}>
+              <Button size="sm" variant="secondary" label="Open case 03" href="#/case/bangladesh-phantom-cooling" />
+            </HStack>
+          </VStack>
+        </Card>
         <VStack gap={1}>
           {BLOCKS.map((b, i) => (
             <HStack key={b.id} gap={3}>
@@ -159,7 +184,7 @@ export function Method({section}: {section?: string | null}) {
           <Divider />
           <Heading level={2}>What Bilad does not claim</Heading>
           <Text color="secondary">
-            A detected trend says what changed, where and by how much. It does not say why. Bilad does not attribute causes, forecast, or downscale below the reanalysis grid; a 0.5° cell averages over valleys and peaks. Trends near the poleward edge of MERRA-2’s precipitation correction (beyond about 42°) rest more on the model. Every result is a screening analysis meant to point people to the right questions and the right datasets.
+            A detected trend says what changed, where and by how much. It does not say why. Bilad does not attribute causes, forecast, or downscale below the reanalysis grid; a 0.5° cell averages over valleys and peaks. Trends near the poleward edge of MERRA-2’s precipitation correction (beyond about 42°) rest more on the model. Treat each result as a screen: it shows which places and datasets deserve a closer look.
           </Text>
         </VStack>
         <VStack gap={2}>

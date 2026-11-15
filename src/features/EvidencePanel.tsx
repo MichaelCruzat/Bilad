@@ -1,4 +1,5 @@
-import {useMemo} from 'react';
+import {useMemo, useState} from 'react';
+import {Button} from '@astryxdesign/core/Button';
 import {Badge} from '@astryxdesign/core/Badge';
 import {Collapsible} from '@astryxdesign/core/Collapsible';
 import {Divider} from '@astryxdesign/core/Divider';
@@ -18,7 +19,10 @@ import {
   type VariableAnalysis,
 } from '../lib/analysis';
 import {analyzeSeries, stepScreen, startYearSensitivity} from '../lib/stats';
-import {crossExamine, INDEPENDENCE, PRODUCTS, VERDICT_TEXT, witnessBoxes, witnessForCells, type WitnessGrid} from '../lib/evidence';
+import {INDEPENDENCE, LIMITATION, PRODUCTS, toWitnessState, VERDICT_TEXT, witnessBoxes, witnessForCells, type WitnessGrid} from '../lib/evidence';
+import type {Async} from '../lib/hooks';
+import {copyText, download} from '../lib/download';
+import {VerdictStrip} from './VerdictStrip';
 import type {NationMeta, VariableGrid} from '../lib/nationData';
 import {describe} from '../lib/narrative';
 import {digitsFor, lat, lon, percent, pPhrase, pValue, signed, num} from '../lib/format';
@@ -32,13 +36,15 @@ type Props = {
   meta: NationMeta;
   grid: VariableGrid;
   analysis: VariableAnalysis;
-  witnessGrid: WitnessGrid | null;
+  witnessStatus: Async<WitnessGrid>;
   selection: Selection;
 };
 
 const BADGE: Record<string, 'success' | 'warning' | 'error' | 'neutral'> = {success: 'success', warning: 'warning', error: 'error', neutral: 'neutral'};
 
-export function EvidencePanel({meta, grid, analysis, witnessGrid, selection}: Props) {
+export function EvidencePanel({meta, grid, analysis, witnessStatus, selection}: Props) {
+  const [copied, setCopied] = useState(false);
+  const witnessGrid = witnessStatus.status === 'ready' ? witnessStatus.data : null;
   const def = getVariable(analysis.variable);
   const unit = trendUnit(analysis.variable);
   const digits = digitsFor(unit, def.digits);
@@ -73,10 +79,13 @@ export function EvidencePanel({meta, grid, analysis, witnessGrid, selection}: Pr
   const selectedCells =
     selection.kind === 'cell' ? [selection.cell] : selection.kind === 'band' ? (view.cells ?? []) : meta.cells.map((_, i) => i);
   const weights = useMemo(() => meta.cells.map(c => c.areaKm2), [meta]);
-  const witness = witnessGrid ? witnessForCells(witnessGrid, analysis.variable, weights, selectedCells, analysis.window) : null;
+  const state = toWitnessState(analysis.variable, witnessStatus, years, view.series, () =>
+    witnessGrid ? witnessForCells(witnessGrid, analysis.variable, weights, selectedCells, analysis.window) : null,
+  );
+  const witness = state.kind === 'available' && witnessGrid ? witnessForCells(witnessGrid, analysis.variable, weights, selectedCells, analysis.window) : null;
   const boxes = witness && witnessGrid ? witnessBoxes(witnessGrid, analysis.variable, selectedCells) : 0;
   const product = PRODUCTS[analysis.variable];
-  const exam = witness ? crossExamine(years, view.series, witness) : null;
+  const exam = state.kind === 'available' ? state.exam : null;
   const step = exam?.claimStep ?? stepScreen(years, view.series);
   const finding = describe(analysis.variable, unit, view.result, years, view.series);
   const t = view.result.trend;
@@ -105,8 +114,68 @@ export function EvidencePanel({meta, grid, analysis, witnessGrid, selection}: Pr
         {selection.kind === 'band' && <Text type="supporting">{view.cells?.length ?? 0} grid cells, area-weighted.</Text>}
       </VStack>
 
+      <VerdictStrip
+        place={place}
+        variable={analysis.variable}
+        window={analysis.window}
+        result={view.result}
+        unit={unit}
+        witness={state}
+        step={step}
+        fieldSignificant={selection.kind === 'cell' ? analysis.significant[selection.cell] === 1 : undefined}
+        resolution={selection.kind === 'cell' ? '0.5° × 0.625° cell' : `${selectedCells.length} cells of 0.5° × 0.625°, area-weighted`}
+        limitation={LIMITATION[analysis.variable]}
+        next={{label: `Open the ${meta.name} brief: all seven variables`, href: `#/brief/${meta.iso3}`}}
+      />
+      <HStack gap={2} wrap="wrap">
+        <Button
+          size="sm"
+          variant="secondary"
+          label={copied ? 'Link copied' : 'Copy link to this view'}
+          onClick={async () => {
+            if (await copyText(window.location.href)) {
+              setCopied(true);
+              setTimeout(() => setCopied(false), 1800);
+            }
+          }}
+        />
+        <Button
+          size="sm"
+          variant="secondary"
+          label="Download evidence (JSON)"
+          onClick={() =>
+            download(
+              `bilad-${meta.iso3}-${analysis.variable}-${analysis.window.from}-${analysis.window.to}.json`,
+              JSON.stringify(
+                {
+                  place,
+                  nation: meta.iso3,
+                  variable: analysis.variable,
+                  unit: `${unit} per decade`,
+                  window: analysis.window,
+                  baseline: '1991–2020',
+                  resolution: '0.5° × 0.625° MERRA-2 cells, area-weighted',
+                  cells: selectedCells.length,
+                  trend: {perDecade: t.slope * 10, low95: t.slopeLow * 10, high95: t.slopeHigh * 10, pCorrected: t.p, pClassic: t.pRaw, tau: t.tau, signalToNoise: view.result.snr},
+                  integrity: step ? {stepDominated: step.stepDominated, breakAt: step.breakAt, deltaBic: step.deltaBic, residualTrendP: step.residualTrendP} : null,
+                  witness:
+                    state.kind === 'available'
+                      ? {product: product.long, verdict: state.exam.verdict, perDecade: state.exam.witness.slope * 10, pCorrected: state.exam.witness.p, artefactSuspected: state.exam.artifactSuspected}
+                      : {status: state.kind},
+                  series: Array.from(view.series, (v, i) => ({year: years[i], value: Number.isFinite(v) ? v : null})),
+                  limitation: LIMITATION[analysis.variable],
+                  source: {api: meta.provenance.api, retrieved: meta.provenance.retrieved, requests: meta.provenance.requests.filter(r => r.variable === analysis.variable).map(r => r.url)},
+                  view: window.location.href,
+                },
+                null,
+                2,
+              ),
+              'application/json',
+            )
+          }
+        />
+      </HStack>
       <VStack gap={2}>
-        <Text weight="semibold">{finding.headline}</Text>
         <Text color="secondary">{finding.significance}</Text>
         {finding.emergence && <Text color="secondary">{finding.emergence}</Text>}
       </VStack>
@@ -158,19 +227,10 @@ export function EvidencePanel({meta, grid, analysis, witnessGrid, selection}: Pr
         </VStack>
       )}
 
-      {!exam && (
-        <VStack gap={2}>
-          <Divider />
-          <Heading level={3}>Cross-examination</Heading>
-          <Text color="secondary">
-            No independent record is wired in for {def.short.toLowerCase()} yet: Bilad’s witnesses cover temperature (GISTEMP) and rainfall (GPCP). Read this trend as a single-dataset claim.
-          </Text>
-        </VStack>
-      )}
 
+      <Divider />
+      <Collapsible defaultIsOpen={false} trigger={<Text weight="semibold">Inspect integrity: a steady ramp or a single jump?</Text>}>
       <VStack gap={2}>
-        <Divider />
-        <Heading level={3}>Ramp or jump?</Heading>
         {step ? (
           <Text color="secondary">
             {step.stepDominated
@@ -189,28 +249,27 @@ export function EvidencePanel({meta, grid, analysis, witnessGrid, selection}: Pr
           <Text color="secondary">Window too short to screen for a step change.</Text>
         )}
       </VStack>
+      </Collapsible>
 
+      <Collapsible defaultIsOpen={false} trigger={<Text weight="semibold">Inspect robustness: which months, and does the start year matter?</Text>}>
       <VStack gap={2}>
-        <Divider />
         <Heading level={3}>Which months are changing?</Heading>
         <MonthStrip trends={view.seasons} variable={analysis.variable} unit={unit} digits={digits} title={`Trend by calendar month, ${place}`} />
         <Text type="supporting">
           Each bar is the trend for one calendar month, in {unit} per decade{def.relative ? ' of that month’s own normal' : ''}. Outlined bars pass a false-discovery-rate test across all twelve months; the others are exploratory.
         </Text>
       </VStack>
-
       <VStack gap={2}>
-        <Divider />
         <Heading level={3}>Does the start year matter?</Heading>
         <SensitivityChart points={view.sensitivity} unit={unit} digits={digits} title={`Trend per decade by first year of record, ${place}`} />
         <Text type="supporting">
           The trend re-estimated for every start year that leaves at least {Math.min(20, Math.max(10, years.length - 5))} years. Filled dots are significant. {robustness(view.sensitivity)}
         </Text>
       </VStack>
+      </Collapsible>
 
+      <Collapsible defaultIsOpen={false} trigger={<Text weight="semibold">Inspect the test record</Text>}>
       <VStack gap={2}>
-        <Divider />
-        <Heading level={3}>Test record</Heading>
         <MetadataList columns={2}>
           <MetadataListItem label="Window">{`${years[0]}–${years[years.length - 1]} (${t.n} years)`}</MetadataListItem>
           <MetadataListItem label={`Sen slope, ${unit}/decade`}>
@@ -243,8 +302,9 @@ export function EvidencePanel({meta, grid, analysis, witnessGrid, selection}: Pr
           </Text>
         )}
       </VStack>
+      </Collapsible>
 
-      <Collapsible defaultIsOpen={false} trigger={<Text weight="semibold">{`Provenance: ${meta.provenance.requests.filter(r => r.variable === analysis.variable).length} NASA POWER requests`}</Text>}>
+      <Collapsible defaultIsOpen={false} trigger={<Text weight="semibold">{`Inspect provenance: ${meta.provenance.requests.filter(r => r.variable === analysis.variable).length} NASA POWER requests`}</Text>}>
         <VStack gap={2}>
           <Text type="supporting">
             {meta.provenance.api}, sources {meta.provenance.sources.join(', ')}, retrieved {meta.provenance.retrieved}. Values were quantised to {def.scale} {def.sourceUnit} for shipping.
@@ -258,6 +318,15 @@ export function EvidencePanel({meta, grid, analysis, witnessGrid, selection}: Pr
                 </Text>
               </Link>
             ))}
+        </VStack>
+      </Collapsible>
+
+      <Collapsible defaultIsOpen={false} trigger={<Text weight="semibold">Read limitations</Text>}>
+        <VStack gap={1}>
+          <Text type="supporting">{LIMITATION[analysis.variable]}</Text>
+          <Text type="supporting">A trend says what changed, where and by how much. It does not say why, and it is not a forecast.</Text>
+          <Text type="supporting">Neighbouring reanalysis cells are not independent, so shares of significant area are descriptive.</Text>
+          <Text type="supporting">Values were quantised to {def.scale} {def.sourceUnit} for shipping; the tests run on the annual means.</Text>
         </VStack>
       </Collapsible>
     </VStack>
@@ -275,5 +344,5 @@ function robustness(points: {slope: number; p: number}[]): string {
   const same = points.filter(p => Math.sign(p.slope) === sign).length;
   if (sig === points.length) return 'Significant whichever start year you pick.';
   if (sig === 0) return 'Not significant for any start year.';
-  return `Significant for ${sig} of ${points.length} start years, with the same sign in ${same}. A claim that only works from one start year is weak.`;
+  return `Significant for ${sig} of ${points.length} start years, with the same sign in ${same}.${sig <= 2 ? ' A claim that only works from one or two start years is weak.' : ''}`;
 }

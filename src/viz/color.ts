@@ -91,21 +91,10 @@ export function paletteStops(palette: PaletteName, n = 32): string[] {
   return Array.from({length: n}, (_, i) => divergingColor(palette, -1 + (2 * i) / (n - 1), 1));
 }
 
-/** Sequential scale for change-point years: early = deep, late = bright. */
-export const yearRamp = ramp(['#2a2550', '#4b3f8f', '#6f68c4', '#8fa6e0', '#b6e3e8', '#f1f7d2']);
 
 /** Sequential scale for |S/N|. */
 export const emergenceRamp = ramp(['#202329', '#2f3b4f', '#3d6080', '#4f93a8', '#86cbb8', '#e9f5c9']);
 
-/**
- * 3 × 3 bivariate scheme (Stevens 2015 style): rows = heat signal class,
- * columns = drying signal class. [0][0] is neither, [2][2] both strong.
- */
-export const BIVARIATE: string[][] = [
-  ['#24272d', '#5b4a2a', '#b58a3c'],
-  ['#4c2a33', '#7a4430', '#c2733a'],
-  ['#8e2f45', '#b3413e', '#ff7b43'],
-];
 
 /** Round a max-abs value up to a "nice" legend limit. */
 export function niceLimit(value: number): number {

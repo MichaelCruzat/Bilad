@@ -27,7 +27,9 @@ import {
   type GlobalStats,
   type GlobalWitness,
 } from '../lib/globalData';
-import {crossExamine, INDEPENDENCE, PRODUCTS, VERDICT_TEXT} from '../lib/evidence';
+import {INDEPENDENCE, LIMITATION, PRODUCTS, toWitnessState, VERDICT_TEXT} from '../lib/evidence';
+import {VerdictStrip} from '../features/VerdictStrip';
+import type {Async} from '../lib/hooks';
 import {analyzeSeries, weightedMean} from '../lib/stats';
 import {describe} from '../lib/narrative';
 import {lat as fmtLat, lon as fmtLon, num, percent, pPhrase, signed} from '../lib/format';
@@ -165,7 +167,7 @@ export function World({params}: {params: URLSearchParams}) {
       <WorldLegend layer={layer} variable={variable} unit={unit} />
       <Text type="supporting">
         {layer === 'verdict'
-          ? `Every land cell’s ${def.short.toLowerCase()} trend since ${first}, checked against ${PRODUCTS[variable].name}. Green: both records agree. Red: they point in opposite directions, so the reanalysis trend is not trustworthy there.`
+          ? `Every land cell’s ${def.short.toLowerCase()} trend since ${first}, checked against ${PRODUCTS[variable].name}. Green: stations agree. Red: stations show a significant opposite trend. Orange: stations lean the opposite way.`
           : layer === 'trend'
             ? `Theil–Sen trend in ${unit} per decade. Zoom in to see dots on cells that pass a worldwide false-discovery test.`
             : layer === 'year'
@@ -264,7 +266,7 @@ export function World({params}: {params: URLSearchParams}) {
       <Selection
         bundle={bundle.data}
         annual={annual.status === 'ready' ? annual.data : null}
-        witness={witness.status === 'ready' ? witness.data : null}
+        witnessStatus={witness}
         countryIndex={countryIndex}
         countryName={countryIndex !== null ? countries.data[countryIndex].name : null}
         countryId={countryIndex !== null ? countries.data[countryIndex].id : null}
@@ -432,7 +434,7 @@ function GlobalPanel({summary, variable, first, last}: {summary: Awaited<ReturnT
 function Selection({
   bundle,
   annual,
-  witness,
+  witnessStatus,
   countryIndex,
   countryName,
   countryId,
@@ -442,7 +444,7 @@ function Selection({
 }: {
   bundle: Bundle;
   annual: Float32Array | null;
-  witness: GlobalWitness | null;
+  witnessStatus: Async<GlobalWitness>;
   countryIndex: number | null;
   countryName: string | null;
   countryId: string | null;
@@ -472,8 +474,11 @@ function Selection({
   const series = aggregate(cells, stats, annual, ids, relative);
   const result = analyzeSeries(years, series);
   const finding = describe(variable, unit, result, years, series);
-  const witnessSeries = witness ? aggregateWitness(cells, witness, ids, stats.years, first, relative) : null;
-  const exam = witnessSeries ? crossExamine(years, series, witnessSeries) : null;
+  const state = toWitnessState(variable, witnessStatus, years, series, () =>
+    witnessStatus.status === 'ready' ? aggregateWitness(cells, witnessStatus.data, ids, stats.years, first, relative) : null,
+  );
+  const exam = state.kind === 'available' ? state.exam : null;
+  const witnessSeries = exam && witnessStatus.status === 'ready' ? aggregateWitness(cells, witnessStatus.data, ids, stats.years, first, relative) : null;
   const area = ids.reduce((s, c) => s + cells.area[c], 0);
   const share = (pred: (c: number) => boolean) => ids.reduce((s, c) => s + (pred(c) ? cells.area[c] : 0), 0) / area;
   const iso3 = countryId ? FEATURED[countryId] : undefined;
@@ -489,8 +494,20 @@ function Selection({
           {ids.length} grid {ids.length === 1 ? 'cell' : 'cells'}, {num(area, 0)} km² of land{countryName && cell !== null ? `; selected cell ${fmtLat(cells.lat[cell])}, ${fmtLon(cells.lon[cell])}` : ''}.
         </Text>
       </VStack>
+      <VerdictStrip
+        place={countryName ?? 'This cell'}
+        variable={variable}
+        window={{from: first, to: first + stats.years - 1}}
+        result={result}
+        unit={unit}
+        witness={state}
+        step={exam?.claimStep ?? null}
+        fieldSignificant={countryIndex === null && cell !== null ? (stats.flags[cell] & 1) !== 0 : undefined}
+        resolution={`${ids.length} cells of 0.5° × 0.625° (global grid), area-weighted`}
+        limitation={LIMITATION[variable]}
+        next={iso3 ? {label: `Open the full ${countryName} atlas`, href: atlasHref(iso3)} : undefined}
+      />
       <VStack gap={2}>
-        <Text weight="semibold">{finding.headline.replace(`${def.short}:`, `${countryName ?? 'This cell'}:`)}</Text>
         <Text color="secondary">
           {finding.significance} {finding.emergence}
         </Text>
@@ -529,10 +546,10 @@ function Selection({
       {countryIndex !== null && (
         <MetadataList columns={2}>
           <MetadataListItem label={`Land with significant ${def.up}`}>{percent(share(c => (stats.flags[c] & 1) !== 0 && stats.slope[c] > 0))}</MetadataListItem>
+          <MetadataListItem label={`Land with significant ${def.down}`}>{percent(share(c => (stats.flags[c] & 1) !== 0 && stats.slope[c] < 0))}</MetadataListItem>
           <MetadataListItem label="Cells flagged as artefacts">{percent(share(c => (stats.flags[c] & 4) !== 0))}</MetadataListItem>
         </MetadataList>
       )}
-      {iso3 && <Button label={`Open the full ${countryName} atlas: seven variables`} variant="primary" href={atlasHref(iso3)} />}
     </VStack>
   );
 }

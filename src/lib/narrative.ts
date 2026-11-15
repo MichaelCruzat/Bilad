@@ -26,7 +26,7 @@ export function describe(variable: string, unit: string, a: SeriesAnalysis, year
 
   let significance: string;
   if (t.p < 0.05) {
-    significance = `The ${dir} trend is statistically significant after correcting for year-to-year persistence (Mann–Kendall with Hamed–Rao correction, ${pPhrase(t.p)}).`;
+    significance = `The ${dir} trend is statistically significant after correcting for year-to-year persistence even allowing for warm or dry years that cluster (${pPhrase(t.p)}).`;
   } else {
     const sd = residualSd(years, series, t.slope, t.intercept);
     const more = yearsToSignificance(t.slope, sd, t.n, t.inflation);

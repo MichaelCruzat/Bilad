@@ -90,10 +90,13 @@ function Hero({crosscheck}: {crosscheck: Crosscheck | null}) {
             {APP_NAME} maps how every patch of land on Earth has changed since 1981, then checks each trend against a second, independent NASA record before it calls the trend real.
           </Text>
           <Text color="secondary">
+            Its starting data, NASA’s MERRA-2 reanalysis (a weather model that blends decades of satellite and station data into one gap-free record), says Bangladesh has cooled since 1981. Weather stations say it warmed by +0.35 °C per decade. {APP_NAME} catches disagreements like that on every land cell.
+          </Text>
+          <Text color="secondary">
             {g
-              ? `Since 1981, ${percent(g.areaUp)} of the world’s land has warmed beyond chance. Across ${percent(g.areaFlagged, 0)} of it, weather stations contradict the reanalysis, so ${APP_NAME} flags the trend instead of reporting it.`
-              : 'Loading every land cell on Earth…'}{' '}
-            {chile ? `Central Chile has had ${chile} less rain since 2010; Bangladesh did not cool, whatever the reanalysis says.` : ''}
+              ? `Since 1981, ${percent(g.areaUp)} of the world’s land has warmed beyond chance. On ${percent(g.areaFlagged, 0)} of it, ${APP_NAME} flags the trend as a likely data artefact: stations show the opposite, or the record jumps in a single year and the stations do not.`
+              : 'Loading every land cell on Earth…'}
+            {chile ? ` Where both records agree, the findings are sharp: central Chile has had ${chile} less rain since 2010.` : ''}
           </Text>
           <HStack gap={2} wrap="wrap">
             <Button label="Explore the world" variant="primary" href="#/world" />
@@ -196,12 +199,12 @@ function ScaleFacts({index}: {index: DataIndex}) {
     <VStack gap={4}>
       <Divider />
       <Grid columns={{minWidth: 150, max: 6}} gap={6}>
-        <Fact value={String(index.nations.length)} label="nations, one pipeline" />
-        <Fact value={thousands(cells)} label="grid cells, each weighted by its land area" />
+        <Fact value="54,425" label="land cells worldwide, each weighted by its land area" />
+        <Fact value={String(index.nations.length)} label={`nations with all seven variables (${thousands(cells)} cells)`} />
         <Fact value={String(index.lastYear - index.firstYear + 1)} label={`years of monthly data, ${index.firstYear}–${index.lastYear}`} />
         <Fact value={String(VARIABLES.length)} label="Earth-system variables" />
-        <Fact value="2" label="independent NASA witnesses: GISTEMP, GPCP" />
-        <Fact value={String(CASES.length)} label="case files, four verdicts" />
+        <Fact value="2" label="witnesses: GISTEMP stations (independent), GPCP gauges and satellites (partly independent)" />
+        <Fact value={String(CASES.length)} label="case files" />
       </Grid>
       <Text type="supporting">Counts of the dataset shipped with this site (public/data).</Text>
     </VStack>
@@ -209,9 +212,9 @@ function ScaleFacts({index}: {index: DataIndex}) {
 }
 
 const STAGES = [
-  ['01', 'Acquire', 'Monthly NASA POWER (MERRA-2) values for every 0.5° × 0.625° cell that touches the nation, each weighted by its true land area.'],
-  ['02', 'Deseasonalise', 'Compare each month with its own 1991–2020 normal, so a dry summer is not mistaken for a trend; rainfall is read as a share of normal.'],
-  ['03', 'Test', 'Theil–Sen trend and a Mann–Kendall test corrected for persistence in every cell, then false-discovery control across the whole map.'],
+  ['01', 'Acquire', 'Monthly NASA POWER (MERRA-2) values for every 0.5° × 0.625° land cell on Earth, each weighted by its true land area.'],
+  ['02', 'Remove the seasons', 'Compare each month with its own 1991–2020 normal, so a dry summer is not mistaken for a trend; rainfall is read as a share of normal.'],
+  ['03', 'Test', 'Measure the trend so one extreme year cannot drag it, test whether it beats chance, and make sure testing thousands of cells does not raise false alarms.'],
   ['04', 'Cross-check', 'Screen each record for jumps, then compare it with weather stations (GISTEMP) or gauges and satellites (GPCP) on the same cells.'],
   ['05', 'Explain', 'State what changed, where, how much, how sure, and whether a second record agrees, in plain words next to the numbers.'],
 ] as const;
@@ -263,7 +266,7 @@ function Validation({index, crosscheck}: {index: DataIndex; crosscheck: Crossche
           <Text type="display-2" hasTabularNumbers>
             {signed(bgd.claim.slope * 10, 2)} / {signed(bgd.witness.slope * 10, 2)}
           </Text>
-          <Text type="supporting">°C per decade in Bangladesh: a significant reanalysis cooling that stations contradict, caught by the integrity screen.</Text>
+          <Text type="supporting">°C per decade in Bangladesh: a significant reanalysis cooling, caught twice. Stations disagree, and the record jumps in 1997.</Text>
           <Link href="#/case/bangladesh-phantom-cooling">Read case 03</Link>
         </VStack>
         <VStack gap={2}>
@@ -283,7 +286,7 @@ function CaseList() {
     <VStack gap={4}>
       <Eyebrow>Case files</Eyebrow>
       <Heading level={2} type="display-3">
-        Four case files, each with a different verdict
+        Four case files, four different outcomes
       </Heading>
       <VStack gap={0}>
         {CASES.map(c => {
@@ -384,7 +387,7 @@ function Coverage({index, crosscheck}: {index: DataIndex; crosscheck: Crosscheck
       </HStack>
       <Table data={rows} columns={columns} idKey="iso3" density="balanced" hasHover />
       <Text type="supporting">
-        MERRA-2 matches stations closely in Chile and Mexico. It warms more slowly than stations in Morocco and Spain (ranges still overlap) and in Kenya (they do not), and it reverses sign in Bangladesh, where its record jumps in 1997–98. Rainfall is compared with a record that shares some rain gauges with MERRA-2. These nations ship with full detail; adding one is a registry line and <Text type="code">make data NATIONS=PER</Text>.
+        MERRA-2 matches stations closely in Chile and Mexico. It warms more slowly than stations in Morocco and Spain (ranges still overlap) and in Kenya (they do not), and it reverses sign in Bangladesh, where its record jumps in 1997–98. Rainfall is compared with a record that shares some rain gauges with MERRA-2.
       </Text>
       <HStack gap={2}>
         <Button label="Open the atlas" variant="primary" href={atlasHref('CHL')} />

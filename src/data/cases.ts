@@ -45,7 +45,7 @@ export const CASES: CaseDef[] = [
     ],
     expected: 'corroborated',
     lesson:
-      'Both records show the drop, so a processing artefact in the reanalysis is ruled out. They disagree on its size, roughly a quarter less rain in one and a third in the other, which is why the case reports a range. Both draw on rain gauges, so their agreement cannot rule out a problem shared by the gauges themselves.',
+      'Both records show the drop, so a processing artefact in the reanalysis is ruled out. They disagree on its size, about a third less rain in MERRA-2 (34%) and a quarter less in GPCP (23%), which is why the case reports a range. Both draw on rain gauges, so their agreement cannot rule out a problem shared by the gauges themselves.',
     references: [
       {label: 'Garreaud et al. (2017), The 2010–2015 megadrought in central Chile, Hydrology and Earth System Sciences', url: 'https://doi.org/10.5194/hess-21-6307-2017'},
       {label: 'Garreaud et al. (2020), The Central Chile Mega Drought (2010–2018), International Journal of Climatology', url: 'https://doi.org/10.1002/joc.6219'},
@@ -56,18 +56,18 @@ export const CASES: CaseDef[] = [
     id: 'chile-coast-andes',
     number: '02',
     title: 'Two Chiles: a flat coast and warming Andes',
-    dek: 'The same latitude, two different stories, less than 200 km apart.',
+    dek: 'Same latitude, less than 200 km apart: a flat coast and warming Andes.',
     iso3: 'CHL',
     variable: 'T2M_MAX',
     focus: {kind: 'contrast', latMin: -38, latMax: -18, labels: ['Coast (west-most cells)', 'Andes (east-most cells)']},
-    question: 'Is all of Chile warming at the same pace, or does the same latitude tell different stories at the coast and in the mountains?',
+    question: 'Is all of Chile warming at the same pace, or do the coast and the mountains behave differently at the same latitude?',
     context: [
       'Station studies found that daytime temperatures along Chile’s subtropical coast barely rose, or even fell, while inland valleys and the Andes warmed. A cool ocean and strengthened coastal upwelling are leading explanations.',
       'Bilad compares the west-most and east-most grid cell of every row between 18°S and 38°S. Each pair shares a latitude and differs mainly in distance from the ocean and in elevation, which climbs steeply toward the Andes.',
     ],
     expected: 'unwitnessed',
     lesson:
-      'A national average can hide opposite local trends. Resolution matters too: GISTEMP’s 2° grid is about as wide as Chile, so no independent gridded record can separate coast from mountains here, and Bilad leaves the case without a verdict.',
+      'A national average can hide opposite local trends. GISTEMP’s 2° grid is also about as wide as Chile, so no independent gridded record can separate coast from mountains here, and Bilad leaves the case without a verdict.',
     references: [
       {label: 'Falvey & Garreaud (2009), Regional cooling in a warming world, Journal of Geophysical Research', url: 'https://doi.org/10.1029/2008JD010519'},
       {label: 'NASA POWER, MERRA-2 meteorology', url: 'https://power.larc.nasa.gov/docs/methodology/'},
@@ -84,11 +84,11 @@ export const CASES: CaseDef[] = [
     question: 'MERRA-2 says Bangladesh has cooled significantly since 1981. Should anyone believe it?',
     context: [
       'Taken alone, the reanalysis series passes every standard test: a significant Mann–Kendall trend, a tight confidence interval, most of the land area significant after false-discovery control. A tool that stopped there would report a cooling nation.',
-      'Weather stations tell the opposite story. And the reanalysis does not cool gradually: its temperature, humidity and soil moisture all jump around 1997–98. These are coupled inside one model, so together they point to a single change in what the model was fed. The timing matches a period when new satellite sounders (AMSU-A, first flown on NOAA-15 in 1998) entered the observing system that MERRA-2 assimilates.',
+      'Weather stations show warming. The reanalysis drop is not gradual either: temperature, humidity and soil moisture all jump in 1997–98. They come from one model, so one change in what it was fed could explain all three. New satellite sounders (AMSU-A, first flown on NOAA-15) joined the observing system that MERRA-2 assimilates in 1998.',
     ],
     expected: 'contradicted',
     lesson:
-      'A significance test only compares a record with chance. It assumes the data were produced the same way from start to finish, which a reanalysis cannot promise. When a record jumps in one year and an independent record disagrees, the trend is telling you about the dataset.',
+      'A significance test only compares a record with chance. It assumes the data were produced the same way from start to finish, which a reanalysis cannot promise. When a record jumps in one year and an independent record disagrees, the trend more likely records a change in the dataset than in the climate.',
     references: [
       {label: 'Gelaro et al. (2017), The Modern-Era Retrospective Analysis for Research and Applications, Version 2 (MERRA-2), Journal of Climate', url: 'https://doi.org/10.1175/JCLI-D-16-0758.1'},
       {label: 'Lenssen et al. (2019), Improvements in the GISTEMP uncertainty model, JGR Atmospheres', url: 'https://doi.org/10.1029/2018JD029522'},
@@ -105,12 +105,12 @@ export const CASES: CaseDef[] = [
     focus: {kind: 'nation'},
     question: 'Both records say Kenya is warming. Do they agree on how fast?',
     context: [
-      'Over equatorial East Africa, MERRA-2 and the station-based GISTEMP record agree that temperatures have risen since 1981. The question is the rate, which is what adaptation planning actually needs.',
+      'Over equatorial East Africa, MERRA-2 and the station-based GISTEMP record agree that temperatures have risen since 1981. They differ on the rate, and the rate is what adaptation planning needs.',
       'A milder version appears in Morocco and Spain, where MERRA-2 also warms more slowly than stations but the two 95% ranges still overlap. Atlas temperature trends there may understate the warming.',
     ],
     expected: 'same-direction',
     lesson:
-      'Two records can agree on the direction and still disagree on the size. The 95% ranges show whether two estimates are compatible; here they do not overlap. Station coverage in East Africa is sparse, so the station record carries its own uncertainty.',
+      'Here the 95% ranges do not overlap, so the two estimates are not compatible. Station coverage in East Africa is sparse, so the station record carries its own uncertainty.',
     references: [
       {label: 'GISTEMP v4 (NASA GISS)', url: 'https://data.giss.nasa.gov/gistemp/'},
       {label: 'Gelaro et al. (2017), MERRA-2, Journal of Climate', url: 'https://doi.org/10.1175/JCLI-D-16-0758.1'},

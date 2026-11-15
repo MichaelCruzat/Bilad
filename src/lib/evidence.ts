@@ -202,3 +202,72 @@ export const PRODUCTS: Record<string, {name: string; long: string; agency: strin
     url: 'https://psl.noaa.gov/data/gridded/data.gpcp.html',
   },
 };
+
+/**
+ * What Bilad knows about the independent witness for one selection. Each
+ * state renders differently, so a failed download never reads as "no witness".
+ */
+export type WitnessState =
+  | {kind: 'unsupported'}
+  | {kind: 'loading'}
+  | {kind: 'failed'; message: string; retry: () => void}
+  | {kind: 'no-coverage'}
+  | {kind: 'too-coarse'}
+  | {kind: 'available'; exam: CrossExamination};
+
+/** Build the witness state from the load status and, when ready, the witness series. */
+export function toWitnessState(
+  variable: string,
+  status: {status: 'loading'} | {status: 'error'; error: Error; retry: () => void} | {status: 'ready'},
+  years: number[],
+  claim: ArrayLike<number>,
+  witness: () => ArrayLike<number> | null,
+): WitnessState {
+  if (!hasWitness(variable)) return {kind: 'unsupported'};
+  if (status.status === 'loading') return {kind: 'loading'};
+  if (status.status === 'error') return {kind: 'failed', message: status.error.message, retry: status.retry};
+  const w = witness();
+  if (!w || Array.from(w).filter(Number.isFinite).length < 10) return {kind: 'no-coverage'};
+  return {kind: 'available', exam: crossExamine(years, claim, w)};
+}
+
+export type Verdict = {label: string; tone: 'success' | 'warning' | 'error' | 'neutral'; sentence: string};
+
+/** One deterministic verdict from significance, the integrity screen and the witness. */
+export function overallVerdict(p: number, witness: WitnessState, stepDominated: boolean): Verdict {
+  const significant = p < 0.05;
+  if (witness.kind === 'available') {
+    const {exam} = witness;
+    if (exam.artifactSuspected) return {label: 'Likely data artefact', tone: 'error', sentence: 'The independent record does not show this change, so it most likely comes from how the data were produced.'};
+    switch (exam.verdict) {
+      case 'corroborated':
+        return {label: 'Backed by an independent record', tone: 'success', sentence: 'Both records show a significant change in the same direction, and their ranges overlap.'};
+      case 'same-direction':
+        return {label: 'Real direction, uncertain size', tone: 'warning', sentence: 'Both records agree on the direction but not on how fast.'};
+      case 'weakly-supported':
+        return {label: 'Weakly supported', tone: 'warning', sentence: 'Only one of the two records shows a significant change; the other leans the same way.'};
+      case 'contradicted':
+      case 'unsupported':
+        return {label: 'Not backed by the independent record', tone: 'error', sentence: 'The independent record leans the opposite way.'};
+      default:
+        return {label: 'No detectable trend', tone: 'neutral', sentence: 'Neither record shows a significant change over this window.'};
+    }
+  }
+  if (witness.kind === 'failed') return {label: 'Verdict pending', tone: 'neutral', sentence: 'The independent record could not be loaded, so the trend has not been cross-examined yet.'};
+  if (witness.kind === 'too-coarse') return {label: 'No verdict at this scale', tone: 'neutral', sentence: 'The independent record is coarser than the places compared, so it cannot judge this contrast.'};
+  if (witness.kind === 'loading') return {label: 'Checking the witness…', tone: 'neutral', sentence: 'Loading the independent record.'};
+  if (!significant) return {label: 'Not significant', tone: 'neutral', sentence: 'The change cannot yet be told apart from natural year-to-year swings.'};
+  if (stepDominated) return {label: 'Significant, but jump-shaped', tone: 'warning', sentence: 'The record behaves like a single jump, and no independent record is available to check it.'};
+  return {label: 'Significant, single-dataset claim', tone: 'warning', sentence: 'The trend passes the tests, but no independent record covers it yet.'};
+}
+
+/** The one limitation shown with each verdict, by variable. */
+export const LIMITATION: Record<string, string> = {
+  T2M: 'A 0.5° cell averages valleys and peaks; a trend says what changed, not why.',
+  T2M_MAX: 'Single reanalysis; no independent record in this release.',
+  T2M_MIN: 'Single reanalysis; no independent record in this release.',
+  PRECTOTCORR: 'GPCP shares some rain gauges with MERRA-2, and the correction fades poleward of about 42°.',
+  GWETROOT: 'Modelled from MERRA-2’s own rainfall, so it cannot confirm a rainfall trend.',
+  RH2M: 'Single reanalysis; no independent record in this release.',
+  WS2M: 'Single reanalysis; no independent record in this release.',
+};

@@ -1,6 +1,6 @@
 # Bilad
 
-**A global Earth-system trend detective.** Bilad maps how every land cell on Earth, from 60°S to 84°N, has changed since 1981 using NASA POWER data. It tests each trend with methods built for autocorrelated climate records, then checks it against an independent NASA record before calling it real.
+Bilad is a global Earth-system trend detective. It maps how every land cell on Earth, from 60°S to 84°N, has changed since 1981 using NASA POWER data. It tests each trend with methods built for autocorrelated climate records, then checks it against an independent NASA record before calling it real.
 
 Built for the NASA Space Apps 2026 challenge [Be An Earth System Trend Detective!](https://www.spaceappschallenge.org/2026/challenges/earth-system-trend-detective/).
 
@@ -12,7 +12,7 @@ Built for the NASA Space Apps 2026 challenge [Be An Earth System Trend Detective
 
 Across 54,425 land cells, temperature has risen by about 0.25 °C per decade since 1981, and 71% of the world's land has warmed beyond chance after a worldwide false-discovery test. Weather stations back that warming over most of the planet. On about 5% of land they contradict the reanalysis, and Bilad flags those trends instead of reporting them. South Asia is the largest such region.
 
-The challenge asks what is changing, where, by how much, and whether the change is significant. Bilad adds a fifth question: **is it real?** A significance test only checks the record it is given. The four case files each end in a different verdict:
+The challenge asks what is changing, where, by how much, and whether the change is significant. Bilad also asks whether the change is real, because a significance test only checks the record it is given. The four case files end in four different outcomes:
 
 | Case | Claim tested | Reanalysis (MERRA-2) | Independent witness | Verdict |
 |---|---|---|---|---|
@@ -21,7 +21,7 @@ The challenge asks what is changing, where, by how much, and whether the change 
 | 03 Bangladesh's phantom cooling | Bangladesh cooled since 1981 | −0.19 °C/decade, p = 0.03, 80% of land "significant"; behaves as a jump in 1997 (ΔBIC 18.7) | GISTEMP: +0.35 °C/decade | **Contradicted: a likely dataset artefact** |
 | 04 Kenya | Kenya is warming | +0.18 °C/decade | GISTEMP: +0.34 °C/decade | **Same direction, different size** |
 
-Case 03 is the reason Bilad exists. A tool that stopped at a significant Mann–Kendall test would report that Bangladesh cooled. In MERRA-2, Bangladesh's daytime heat, humidity and soil moisture all jump around 1997–98, a period of large changes in the satellite observations the reanalysis assimilates. Weather stations show warming.
+In MERRA-2, Bangladesh's temperature, humidity and soil moisture all jump around 1997–98, a period of large changes in the satellite observations the reanalysis assimilates, and weather stations show warming. A significant Mann–Kendall test alone would report that Bangladesh cooled.
 
 ## The product
 
@@ -71,7 +71,7 @@ GISTEMP v4, GPCP v2.3   ──► pipeline/crosscheck.py ──► public/data/c
                  pipeline/validate.py ◄──┘  recomputes every headline with scipy + pymannkendall; CI fails on disagreement
 ```
 
-Each language does the job it is best at:
+The project uses Python, TypeScript and Make:
 
 - **Python** for the data pipeline: tiling NASA POWER requests, Natural Earth boundaries (shapely), land fractions, packing, and reading netCDF witnesses (netCDF4). Python with numpy, shapely and netCDF4 is the standard Earth-science stack.
 - **TypeScript** for the statistics engine (`src/lib/stats.ts`) and the interactive app. The same engine writes the shipped headlines and runs in the reader's browser, so the two always agree.
@@ -137,7 +137,7 @@ Values are MERRA-2 (NASA GMAO) served by NASA POWER at native resolution, quanti
 - **Creativity:** frames trend detection as cross-examination. Each claim faces an independent witness and an integrity screen, and the casebook deliberately includes a significant trend that is false.
 - **Validity:** uses Theil–Sen, Hamed–Rao-corrected Mann–Kendall, field-wide FDR, a BIC step screen and two independent NASA products. The engine matches pymannkendall, and a Python re-implementation checks every shipped headline in CI.
 - **Relevance:** answers the challenge's four questions with NASA Earth-science data, and adds whether the change is real.
-- **Presentation:** four guided cases with four different verdicts, a shareable atlas, and a method page with the formulas.
+- **Presentation:** four guided cases with four different outcomes, a shareable atlas, and a method page with the formulas.
 
 ## AI-use disclosure
 

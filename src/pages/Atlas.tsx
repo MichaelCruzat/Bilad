@@ -249,7 +249,7 @@ export function Atlas({iso3, params}: Props) {
         meta={meta}
         grid={data.data.grid}
         analysis={data.data.analysis}
-        witnessGrid={witness.status === 'ready' ? witness.data : null}
+        witnessStatus={witness}
         selection={selection}
       />
     ) : null;

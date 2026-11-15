@@ -25,6 +25,8 @@ import {Legend} from '../viz/Legend';
 import {Card} from '@astryxdesign/core/Card';
 import {CHROME} from '../viz/chrome';
 import {SeriesChart} from '../viz/SeriesChart';
+import {VerdictStrip} from '../features/VerdictStrip';
+import {LIMITATION, type WitnessState} from '../lib/evidence';
 
 const FULL = {from: 1981, to: 2024};
 const TONE: Record<string, 'success' | 'warning' | 'error' | 'neutral'> = {success: 'success', warning: 'warning', error: 'error', neutral: 'neutral'};
@@ -147,9 +149,25 @@ function CaseBody({def, bundle, analysis, crosscheck, index, witnessGrid}: {def:
   }, [def, focus, meta, analysis, years, witness]);
 
   const verdict = exam ? VERDICT_TEXT[exam.verdict] : null;
+  const witnessState: WitnessState = exam ? {kind: 'available', exam} : {kind: 'too-coarse'};
 
   return (
     <VStack gap={8}>
+      <VerdictStrip
+        place={focus.name}
+        variable={def.variable}
+        window={FULL}
+        result={result}
+        unit={unit}
+        witness={witnessState}
+        step={step}
+        resolution={focus.cells ? `${focus.cells.length} cells of 0.5° × 0.625°, area-weighted` : `${meta.cells.length} cells of 0.5° × 0.625°, area-weighted`}
+        limitation={LIMITATION[def.variable]}
+        next={{
+          label: 'Investigate this yourself in the atlas',
+          href: atlasHref(def.iso3, {v: def.variable, region: focus.region, band: def.focus.kind === 'contrast' ? `${def.focus.latMin},${def.focus.latMax}` : undefined}),
+        }}
+      />
       <Grid columns={{minWidth: 320, max: 2}} gap={8}>
         <VStack gap={3}>
           <Text type="supporting" color="accent">
@@ -271,12 +289,14 @@ function CaseBody({def, bundle, analysis, crosscheck, index, witnessGrid}: {def:
           <Heading level={3}>{step?.stepDominated ? `A jump in ${step.breakAt}, not a ramp` : 'Behaves like a gradual change'}</Heading>
           {step && (
             <Text color="secondary">
-              Best single step: {step.breakAt}, {signed(step.step, digits)} {chartUnit}. ΔBIC {num(step.deltaBic, 1)} (above 6 favours a jump); trend remaining once the step is removed: {pPhrase(step.residualTrendP)}.
+              {step.stepDominated
+                ? `In ${step.breakAt} the record shifts by ${signed(step.step, digits)} ${chartUnit} at once. A one-time shift fits far better than a steady trend (score ${num(step.deltaBic, 1)}; above 6 counts as strong), and once it is taken out no trend is left (${pPhrase(step.residualTrendP)}).`
+                : `The best single shift, in ${step.breakAt} (${signed(step.step, digits)} ${chartUnit}), fits no better than a steady trend (score ${num(step.deltaBic, 1)}; a jump needs above 6).`}
             </Text>
           )}
           {breaks.length > 0 && (
             <Text color="secondary">
-              Across {meta.name}’s seven national series, {breaks.map(b => `${b.variables.length} variables jump within a year of ${b.year} (${b.variables.join(', ')})`).join('; ')}. These variables are coupled inside one model, so a shared jump suggests something changed in the data fed to it, though it does not prove it.{exam?.artifactSuspected ? ' The independent record shows no such jump.' : ''}
+              Across {meta.name}’s seven national series, {breaks.map(b => `${b.variables.length} variables jump within a year of ${b.year} (${b.variables.join(', ')})`).join('; ')}. These variables are coupled inside one model, so a shared jump suggests something changed in the data fed to it, though it does not prove it.{exam?.artifactSuspected ? ' The independent record shows no such jump.' : exam && (exam.verdict === 'corroborated' || exam.verdict === 'same-direction') ? ` ${product.name} shows the same change without that jump, so the verdict does not depend on it.` : ''}
             </Text>
           )}
         </VStack>
@@ -318,8 +338,8 @@ function verdictHeadline(def: CaseDef, verdict?: string, artifact?: boolean): st
   if (!verdict) return 'A contrast in one dataset, with no witness at this scale.';
   if (artifact) return 'Not climate: a likely artefact of the dataset.';
   if (verdict === 'corroborated')
-    return def.variable === 'PRECTOTCORR' ? 'Supported: a partly independent gauge-and-satellite record agrees.' : 'Real: an independent station record agrees.';
-  if (verdict === 'same-direction') return 'Real direction, uncertain size.';
+    return def.variable === 'PRECTOTCORR' ? 'Corroborated by a partly independent gauge-and-satellite record.' : 'An independent station record agrees.';
+  if (verdict === 'same-direction') return 'Both records show the change; they disagree on how fast.';
   return VERDICT_TEXT[verdict as keyof typeof VERDICT_TEXT].label;
 }
 
