@@ -39,6 +39,15 @@ function summarize(iso3: string) {
     });
     const tests = annual.map(a => trendTest(years, a));
     const pStar = fdrThreshold(tests.map(t => t.p));
+    if (v.id === 'T2M') {
+      // Light per-cell preview for the home page's nation strip.
+      const preview = {
+        variable: 'T2M',
+        slope: tests.map(t => Math.round(t.slope * 10 * 1000) / 1000),
+        significant: tests.map(t => (pStar > 0 && t.p <= pStar ? 1 : 0)),
+      };
+      writeFileSync(join(dir, 'preview.json'), JSON.stringify(preview));
+    }
     let up = 0;
     let down = 0;
     tests.forEach((t, i) => {

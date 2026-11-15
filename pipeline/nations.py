@@ -59,6 +59,15 @@ NATIONS: tuple[Nation, ...] = (
         "Mainland Spain and the Balearics: a high-data European benchmark against which other nations can be compared.",
         clip=Clip(35.5, 44, -9.5, 4.5),
     ),
+    Nation(
+        "PHL", "608", "Philippines",
+        "An archipelago of more than 7,000 islands in the typhoon belt, one of the nations most exposed to climate hazards.",
+        regions=(
+            Region("luzon", "Luzon", 12.5, 21.5),
+            Region("visayas", "Visayas", 9.25, 12.25),
+            Region("mindanao", "Mindanao", 4.5, 9),
+        ),
+    ),
     Nation("MEX", "484", "Mexico", "A large, topographically complex nation with deserts, tropical forests and recurrent multi-year drought."),
 )
 
