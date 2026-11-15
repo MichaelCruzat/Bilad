@@ -4,6 +4,7 @@
  *   #/case/<id>                case file
  *   #/atlas/<ISO3>?v=&layer=&cell=&from=&to=&band=
  *   #/method?s=<section>
+ *   #/world?v=&layer=&year=&cell=&country=
  * Using the hash keeps deep links working on GitHub Pages with no server.
  */
 import {useCallback, useEffect, useState} from 'react';
@@ -13,6 +14,7 @@ export type Route =
   | {page: 'case'; id: string}
   | {page: 'atlas'; iso3: string; params: URLSearchParams}
   | {page: 'method'; params: URLSearchParams}
+  | {page: 'world'; params: URLSearchParams}
   | {page: 'missing'; path: string};
 
 export function parseHash(hash: string): Route {
@@ -22,6 +24,7 @@ export function parseHash(hash: string): Route {
   if (parts.length === 0) return {page: 'home'};
   if (parts[0] === 'case' && parts[1]) return {page: 'case', id: parts[1]};
   if (parts[0] === 'atlas') return {page: 'atlas', iso3: (parts[1] ?? 'CHL').toUpperCase(), params: new URLSearchParams(query)};
+  if (parts[0] === 'world') return {page: 'world', params: new URLSearchParams(query)};
   if (parts[0] === 'method') return {page: 'method', params: new URLSearchParams(query)};
   return {page: 'missing', path};
 }
@@ -59,5 +62,22 @@ export function useAtlasParams(iso3: string, params: URLSearchParams) {
       window.dispatchEvent(new HashChangeEvent('hashchange'));
     },
     [iso3, params],
+  );
+}
+
+/** Like useAtlasParams, for any route prefix such as '#/world'. */
+export function useAtlasParamsAt(prefix: string, params: URLSearchParams) {
+  return useCallback(
+    (patch: Record<string, string | number | null | undefined>) => {
+      const next = new URLSearchParams(params);
+      Object.entries(patch).forEach(([k, v]) => {
+        if (v === null || v === undefined || v === '') next.delete(k);
+        else next.set(k, String(v));
+      });
+      const qs = next.toString();
+      window.history.replaceState(null, '', `${prefix}${qs ? `?${qs}` : ''}`);
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
+    },
+    [prefix, params],
   );
 }

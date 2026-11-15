@@ -71,13 +71,21 @@ def main() -> None:
         for nation in NATIONS if args.all else [get_nation(n) for n in args.nations]:
             build_context(nation, ROOT)
     elif args.command == "global":
-        from .global_grid import build_global
+        from .global_grid import assign_countries, build_global
+
+        from .basemap import build_global_relief
 
         build_global(ROOT, CACHE)
+        assign_countries(ROOT, CACHE)
+        build_global_relief(ROOT)
     elif args.command == "crosscheck":
-        from .crosscheck import run
+        from .crosscheck import run, run_global
 
-        run(args.gistemp or download(GISTEMP_URL, "gistemp250_GHCNv4.nc"), args.gpcp or download(GPCP_URL, "gpcp_precip.mon.mean.nc"), ROOT / "public" / "data")
+        gistemp = args.gistemp or download(GISTEMP_URL, "gistemp250_GHCNv4.nc")
+        gpcp = args.gpcp or download(GPCP_URL, "gpcp_precip.mon.mean.nc")
+        run(gistemp, gpcp, ROOT / "public" / "data")
+        if (CACHE / "global" / "cells.json").exists():
+            run_global(gistemp, gpcp, ROOT / "public" / "data", CACHE)
     elif args.command == "validate":
         from .validate import run as validate
 

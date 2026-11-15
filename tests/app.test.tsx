@@ -61,9 +61,10 @@ describe('casebook', () => {
   it('opens on a data-derived claim and lists every case', async () => {
     renderAt('#/');
     expect(await screen.findByRole('heading', {level: 1, name: 'Bilad'})).toBeInTheDocument();
-    expect(await screen.findByText(/Central Chile has had \d+–\d+% less rain since 2010\. Bangladesh did not cool/, {}, {timeout: 5000})).toBeInTheDocument();
+    expect(await screen.findByText(/of the world’s land has warmed beyond chance/, {}, {timeout: 8000})).toBeInTheDocument();
+    expect(await screen.findByText(/Central Chile has had \d+–\d+% less rain since 2010/, {}, {timeout: 8000})).toBeInTheDocument();
     for (const c of CASES) expect(screen.getByRole('link', {name: c.title})).toHaveAttribute('href', `#/case/${c.id}`);
-    expect(await screen.findByRole('application', {name: /Chile: rainfall in \d{4} as a share of the 1991–2020 normal/}, {timeout: 5000})).toBeInTheDocument();
+    expect(await screen.findByRole('application', {name: /World map: is each land cell’s warming trend backed by weather stations/}, {timeout: 8000})).toBeInTheDocument();
   });
 
   it('shows the six-nation ledger with verdicts', async () => {
@@ -102,6 +103,20 @@ describe('navigation between cases', () => {
     renderAt('#/atlas/KEN');
     expect(screen.queryByText(/Could not load/)).not.toBeInTheDocument();
     expect(await screen.findByRole('heading', {level: 2, name: /Kenya, whole nation/}, {timeout: 5000})).toBeInTheDocument();
+  });
+});
+
+describe('world atlas', () => {
+  it('cross-examines any country picked from the global grid', async () => {
+    renderAt('#/world?country=050');
+    expect(await screen.findByRole('heading', {level: 2, name: 'Bangladesh'}, {timeout: 10000})).toBeInTheDocument();
+    expect(await screen.findByText('Contradicted', {}, {timeout: 10000})).toBeInTheDocument();
+  });
+
+  it('summarises the whole world when nothing is selected', async () => {
+    renderAt('#/world');
+    expect(await screen.findByRole('heading', {name: /The world since 1981/}, {timeout: 10000})).toBeInTheDocument();
+    expect(screen.getByText(/land cells, temperature has changed by/)).toBeInTheDocument();
   });
 });
 

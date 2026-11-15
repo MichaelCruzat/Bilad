@@ -23,7 +23,8 @@ import numpy as np
 import shapely
 from shapely.geometry import MultiPolygon, Polygon, box
 
-from . import geometry, power
+from . import geometry
+from . import power
 from .build import quantise
 from .variables import FIRST_YEAR, LAST_YEAR, MISSING, MONTHS, VARIABLES
 
@@ -39,9 +40,7 @@ def load_land(world_atlas_land: Path) -> MultiPolygon:
         polygons = [g["arcs"]] if g["type"] == "Polygon" else g["arcs"]
         for polygon in polygons:
             rings = [geometry._ring(r, arcs) for r in polygon]
-            p = Polygon(rings[0], rings[1:])
-            if p.bounds[2] - p.bounds[0] < 180:  # drop antimeridian wrappers
-                parts.append(p)
+            parts.extend(geometry.split_antimeridian(Polygon(rings[0], rings[1:])))
     return MultiPolygon(parts)
 
 
@@ -121,3 +120,42 @@ def build_global(root: Path, cache: Path, variables=GLOBAL_VARIABLES, workers: i
     }
     (public / "meta.json").write_text(json.dumps(meta))
     (out_cache / "requests.json").write_text(json.dumps(requests))
+
+
+def assign_countries(root: Path, cache: Path) -> None:
+    """Give every global cell the country covering most of it (9 x 9 lattice vote).
+
+    Writes public/data/global/countries.json (ISO numeric id and name per
+    country index) and country.bin (uint16 index per cell, 65535 = none).
+    """
+    from shapely import STRtree, points
+
+    cells = json.loads((cache / "global" / "cells.json").read_text())
+    lats = np.array(cells["lat"])
+    lons = np.array(cells["lon"])
+    topology = json.loads((root / "node_modules/world-atlas/countries-50m.json").read_text())
+    names, ids, shapes = [], [], []
+    for g in topology["objects"]["countries"]["geometries"]:
+        if "arcs" not in g:
+            continue
+        shapes.append(geometry.repair(geometry.decode_topojson(topology, str(g.get("id")))))
+        ids.append(str(g.get("id")))
+        names.append(g.get("properties", {}).get("name", ""))
+    tree = STRtree(shapes)
+    offsets = (np.arange(geometry.LATTICE) + 0.5) / geometry.LATTICE - 0.5
+    oy, ox = np.meshgrid(offsets * geometry.D_LAT, offsets * geometry.D_LON, indexing="ij")
+    n = len(lats)
+    per = oy.size
+    sample_lat = (lats[:, None] + oy.ravel()[None, :]).ravel()
+    sample_lon = (lons[:, None] + ox.ravel()[None, :]).ravel()
+    pt_idx, shape_idx = tree.query(points(sample_lon, sample_lat), predicate="within")
+    votes = np.zeros((n, len(shapes)), dtype=np.uint8) if len(shapes) * n < 4e7 else None
+    owner = np.full(n, 65535, dtype="<u2")
+    if votes is not None:
+        np.add.at(votes, (pt_idx // per, shape_idx), 1)
+        has = votes.max(axis=1) > 0
+        owner[has] = votes[has].argmax(axis=1)
+    public = root / "public" / "data" / "global"
+    (public / "country.bin").write_bytes(owner.tobytes())
+    (public / "countries.json").write_text(json.dumps([{"id": i, "name": nm} for i, nm in zip(ids, names)], ensure_ascii=False))
+    print(f"{int((owner != 65535).sum())} of {n} cells assigned to {len(set(owner[owner != 65535].tolist()))} countries")

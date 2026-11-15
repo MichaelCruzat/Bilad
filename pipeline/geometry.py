@@ -12,6 +12,7 @@ from pathlib import Path
 
 import numpy as np
 import shapely
+import shapely.affinity
 from shapely.geometry import MultiPolygon, Polygon, mapping
 
 from .nations import Nation
@@ -20,6 +21,10 @@ EARTH_RADIUS_KM = 6371.0088
 D_LAT = 0.5
 D_LON = 0.625
 LATTICE = 9  # land fraction sampled on a 9 x 9 lattice per cell
+# A polygon that crosses the antimeridian (Fiji, the Aleutians) spans ~360°
+# of longitude on a flat plane. Real continents stay well below this
+# (Afro-Eurasia is ~197° wide), so anything wider is a wrap artefact.
+WRAP_DEGREES = 300
 
 
 def _decode_arcs(topology: dict) -> list[list[tuple[float, float]]]:
@@ -97,3 +102,54 @@ def land_fractions(shape: MultiPolygon, lats: np.ndarray, lons: np.ndarray) -> n
 def bounds(shape: MultiPolygon) -> tuple[float, float, float, float]:
     """(west, south, east, north)."""
     return shape.bounds
+
+
+def _unwrap(ring: list[tuple[float, float]]) -> list[tuple[float, float]]:
+    """Make a ring continuous across the antimeridian by undoing ±360° jumps."""
+    out: list[tuple[float, float]] = []
+    shift = 0.0
+    prev = None
+    for lon, lat in ring:
+        if prev is not None:
+            if lon - prev > 180:
+                shift -= 360
+            elif lon - prev < -180:
+                shift += 360
+        prev = lon
+        out.append((lon + shift, lat))
+    return out
+
+
+def split_antimeridian(polygon: Polygon) -> list[Polygon]:
+    """Repair a polygon that crosses the antimeridian into valid pieces in [-180, 180].
+
+    Natural Earth stores some land (Afro-Eurasia, Fiji, the Aleutians) as one
+    polygon whose longitudes jump between +180 and -180. On a plane that reads
+    as a 360°-wide band, so it is unwrapped into one continuous shape and then
+    cut at the antimeridian.
+    """
+    west, _, east, _ = polygon.bounds
+    if east - west < WRAP_DEGREES:
+        return [polygon]
+    shell = _unwrap(list(polygon.exterior.coords))
+    holes = [_unwrap(list(r.coords)) for r in polygon.interiors]
+    fixed = shapely.make_valid(Polygon(shell, holes))
+    pieces: list[Polygon] = []
+    for offset in (-360, 0, 360):
+        window = shapely.box(-180 - offset, -90, 180 - offset, 90)
+        part = shapely.intersection(fixed, window)
+        if part.is_empty:
+            continue
+        part = shapely.affinity.translate(part, xoff=offset)
+        for g in getattr(part, "geoms", [part]):
+            if isinstance(g, Polygon) and not g.is_empty and g.area > 0:
+                pieces.append(g)
+    return pieces
+
+
+def repair(shape: MultiPolygon) -> MultiPolygon:
+    """Split every antimeridian-crossing polygon of a shape."""
+    parts: list[Polygon] = []
+    for p in getattr(shape, "geoms", [shape]):
+        parts.extend(split_antimeridian(p))
+    return MultiPolygon(parts)

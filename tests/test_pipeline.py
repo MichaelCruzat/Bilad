@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 
 import numpy as np
-from shapely.geometry import MultiPolygon, box
+from shapely.geometry import MultiPolygon, Polygon, box
 
 from pipeline import geometry, power
 from pipeline.build import quantise
@@ -55,6 +55,20 @@ class Geometry(unittest.TestCase):
         }
         shape = geometry.decode_topojson(topology, "001")
         self.assertAlmostEqual(shape.area, 4.0)
+
+
+class Antimeridian(unittest.TestCase):
+    def test_a_polygon_crossing_the_date_line_is_cut_not_dropped(self):
+        # A small island straddling 180°: stored with a jump from +179.5 to -179.5.
+        island = Polygon([(179.5, -16.5), (-179.5, -16.5), (-179.5, -16.0), (179.5, -16.0)])
+        pieces = geometry.split_antimeridian(island)
+        self.assertEqual(len(pieces), 2)
+        self.assertAlmostEqual(sum(p.area for p in pieces), 0.5, places=6)
+        self.assertTrue(all(-180 <= p.bounds[0] and p.bounds[2] <= 180 for p in pieces))
+
+    def test_a_wide_continent_is_kept_whole(self):
+        eurasia_like = Polygon([(-17.0, 10.0), (179.0, 10.0), (179.0, 70.0), (-17.0, 70.0)])
+        self.assertEqual(geometry.split_antimeridian(eurasia_like), [eurasia_like])
 
 
 class Packing(unittest.TestCase):

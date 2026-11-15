@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Mapping
 
 
-DEFAULT_LIMITS = {"initial-js": 240 * 1024, "js": 450 * 1024, "css": 55 * 1024}
+DEFAULT_LIMITS = {"initial-js": 240 * 1024, "js": 520 * 1024, "css": 55 * 1024}
 
 _ENTRY = re.compile(r'(?:src|href)="\./assets/([^"]+\.js)"')
 

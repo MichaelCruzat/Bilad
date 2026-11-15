@@ -55,14 +55,22 @@ export function mean(values: ArrayLike<number>): number {
   return count ? sum / count : NaN;
 }
 
-/** Drop pairs where y is not finite. */
+/**
+ * Values are rounded to 1e-9 before testing. Annual means of quantised
+ * monthly data can be exactly equal in real arithmetic yet differ in the
+ * last floating-point bit depending on summation order, so without this a
+ * tie in one implementation (or language) is not a tie in another.
+ */
+export const TIE_PRECISION = 1e9;
+
+/** Drop pairs where y is not finite; round y so ties are detected identically everywhere. */
 export function finitePairs(t: ArrayLike<number>, y: ArrayLike<number>): {t: number[]; y: number[]} {
   const outT: number[] = [];
   const outY: number[] = [];
   for (let i = 0; i < y.length; i++) {
     if (Number.isFinite(y[i]) && Number.isFinite(t[i])) {
       outT.push(t[i]);
-      outY.push(y[i]);
+      outY.push(Math.round(y[i] * TIE_PRECISION) / TIE_PRECISION);
     }
   }
   return {t: outT, y: outY};

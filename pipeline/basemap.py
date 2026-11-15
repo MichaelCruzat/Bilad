@@ -66,13 +66,8 @@ def neighbours(world_atlas: Path, nation: Nation, extent) -> dict:
     for g in topology["objects"]["countries"]["geometries"]:
         if str(g.get("id")) == nation.atlas_id or "arcs" not in g:
             continue
-        shape = geometry.decode_topojson(topology, str(g.get("id")))
-        # Polygons crossing the antimeridian (Fiji, the Aleutians) wrap the
-        # whole globe on a plane; drop them instead of drawing a false border.
-        parts = [p for p in shape.geoms if p.bounds[2] - p.bounds[0] < 180]
-        if not parts:
-            continue
-        shape = shapely.MultiPolygon(parts)
+        # Polygons crossing the antimeridian are cut there instead of wrapping the globe.
+        shape = geometry.repair(geometry.decode_topojson(topology, str(g.get("id"))))
         if not shape.intersects(frame):
             continue
         clipped = shapely.clip_by_rect(shape, *extent)
@@ -113,3 +108,26 @@ def build_context(nation: Nation, root: Path) -> None:
     meta["basemap"] = {"source": f"NASA GIBS {LAYER}", "url": url, "width": width, "height": height}
     meta_path.write_text(json.dumps(meta, separators=(",", ":"), ensure_ascii=False))
     print(f"  {nation.iso3}: relief {width}x{height}, {len(json.loads((out / 'context.json').read_text())['features'])} neighbours")
+
+
+def build_global_relief(root: Path) -> None:
+    """Blue Marble relief for the global atlas extent (180°W–180°E, 60°S–84°N)."""
+    extent = (-180.0, -60.0, 180.0, 84.0)
+    query = urllib.parse.urlencode({
+        "SERVICE": "WMS", "REQUEST": "GetMap", "VERSION": "1.3.0", "LAYERS": LAYER, "STYLES": "",
+        "CRS": "EPSG:4326", "BBOX": f"{extent[1]},{extent[0]},{extent[3]},{extent[2]}",
+        "WIDTH": 3000, "HEIGHT": 1200, "FORMAT": "image/jpeg",
+    })
+    url = f"{GIBS}?{query}"
+    out = root / "public" / "data" / "global"
+    out.mkdir(parents=True, exist_ok=True)
+    with urlopen(url, timeout=180) as response:
+        if not response.headers.get("Content-Type", "").startswith("image/"):
+            raise RuntimeError("GIBS did not return an image for the global relief")
+        (out / "relief.jpg").write_bytes(response.read())
+    meta_path = out / "meta.json"
+    meta = json.loads(meta_path.read_text())
+    meta["extent"] = list(extent)
+    meta["basemap"] = {"source": f"NASA GIBS {LAYER}", "url": url, "width": 3000, "height": 1200}
+    meta_path.write_text(json.dumps(meta))
+    print("  global relief 3000x1200")

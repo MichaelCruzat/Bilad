@@ -22,6 +22,7 @@ from pathlib import Path
 import numpy as np
 import pymannkendall as mk
 from scipy import stats
+from scipy import stats as stats_mod
 
 from .variables import FIRST_YEAR, LAST_YEAR, VARIABLES
 
@@ -41,9 +42,14 @@ def annual_anomalies(monthly: np.ndarray) -> np.ndarray:
     return np.where(counts >= 10, annual, np.nan)
 
 
+def tie_round(series: np.ndarray) -> np.ndarray:
+    """Round to 1e-9, as the TypeScript engine does, so ties match across languages."""
+    return np.round(series * 1e9) / 1e9
+
+
 def corrected_p(series: np.ndarray) -> float:
     """Hamed–Rao p with the variance inflation floored at 1, as Bilad does."""
-    series = series[np.isfinite(series)]
+    series = tie_round(series[np.isfinite(series)])
     original = mk.original_test(series)
     modified = mk.hamed_rao_modification_test(series)
     return original.p if modified.var_s < original.var_s else modified.p
@@ -95,12 +101,57 @@ def check_nation(data: Path, iso3: str, summary: dict) -> list[str]:
     return problems
 
 
+def check_global(data: Path, cache: Path, sample: int = 400) -> list[str]:
+    """Recompute a random sample of global cells and compare with the shipped stats."""
+    meta_path = data / "global" / "meta.json"
+    monthly_dir = cache / "global"
+    if not meta_path.exists() or not monthly_dir.exists():
+        print("Global atlas: not built, skipped")
+        return []
+    meta = json.loads(meta_path.read_text())
+    n = meta["cells"]
+    rng = np.random.default_rng(1981)
+    picks = rng.choice(n, size=min(sample, n), replace=False)
+    problems = []
+    for variable in meta["variables"]:
+        scale = next(v.scale for v in VARIABLES if v.id == variable)
+        display = DISPLAY.get(variable, 1.0)
+        monthly = np.fromfile(monthly_dir / f"{variable}.i16", dtype="<i2").reshape(n, -1)
+        stats = np.fromfile(data / "global" / f"{variable}.stats.bin", dtype="<f4", count=6 * n).reshape(6, n)
+        shipped_slope, shipped_p, normal = stats[0], stats[3], stats[5]
+        mismatches = 0
+        checked = 0
+        for c in picks:
+            values = np.where(monthly[c] == -32768, np.nan, monthly[c] * scale)
+            annual = annual_anomalies(values[None, :])[0] * display
+            if variable == "PRECTOTCORR":
+                if not normal[c] >= 0.1 * display:
+                    continue
+                annual = annual / normal[c] * 100
+            ok = np.isfinite(annual)
+            if ok.sum() < 10 or not np.isfinite(shipped_slope[c]):
+                continue
+            checked += 1
+            slope = stats_mod.theilslopes(tie_round(annual[ok]), YEARS[ok]).slope * 10
+            p = corrected_p(annual)
+            tol = 1e-3 + 1e-3 * abs(slope)
+            if abs(slope - shipped_slope[c]) > tol or abs(p - shipped_p[c]) > 2e-3:
+                mismatches += 1
+        status = "ok" if mismatches == 0 else f"MISMATCH in {mismatches}"
+        print(f"  global {variable:<12} {checked} sampled cells: slope and corrected p recomputed independently, {status}")
+        if mismatches:
+            problems.append(f"global {variable}: {mismatches} of {checked} sampled cells disagree")
+    return problems
+
+
 def run(data: Path) -> int:
     index = json.loads((data / "index.json").read_text())
     problems: list[str] = []
     for summary in index["nations"]:
         print(summary["name"])
         problems += check_nation(data, summary["iso3"], summary)
+    print("Global atlas")
+    problems += check_global(data, data.parent.parent / "pipeline" / ".cache")
     if problems:
         print(f"\n{len(problems)} headline(s) disagree between the TypeScript and Python implementations:")
         print("\n".join(f"  {p}" for p in problems))

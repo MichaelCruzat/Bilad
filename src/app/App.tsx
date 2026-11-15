@@ -16,6 +16,7 @@ const Casebook = lazy(() => import('../pages/Casebook').then(m => ({default: m.C
 const CaseFile = lazy(() => import('../pages/CaseFile').then(m => ({default: m.CaseFile})));
 const Atlas = lazy(() => import('../pages/Atlas').then(m => ({default: m.Atlas})));
 const Method = lazy(() => import('../pages/Method').then(m => ({default: m.Method})));
+const World = lazy(() => import('../pages/World').then(m => ({default: m.World})));
 
 const CHALLENGE = 'https://www.spaceappschallenge.org/2026/challenges/earth-system-trend-detective/';
 
@@ -37,7 +38,8 @@ function Navigation({route}: {route: Route}) {
       startContent={
         <HStack gap={1}>
           <Button label="Casebook" size="sm" variant={current === 'home' || current === 'case' ? 'secondary' : 'ghost'} href="#/" />
-          <Button label="Atlas" size="sm" variant={current === 'atlas' ? 'secondary' : 'ghost'} href="#/atlas/CHL" />
+          <Button label="World" size="sm" variant={current === 'world' ? 'secondary' : 'ghost'} href="#/world" />
+          <Button label="Nations" size="sm" variant={current === 'atlas' ? 'secondary' : 'ghost'} href="#/atlas/CHL" />
           <Button label="Method" size="sm" variant={current === 'method' ? 'secondary' : 'ghost'} href="#/method" />
         </HStack>
       }
@@ -54,6 +56,8 @@ function page(route: Route): ReactNode {
       return <Layout contentWidth={1152} content={<CaseFile key={route.id} id={route.id} />} />;
     case 'atlas':
       return <Atlas key={route.iso3} iso3={route.iso3} params={route.params} />;
+    case 'world':
+      return <World params={route.params} />;
     case 'method':
       return <Layout contentWidth={960} content={<Method section={route.params.get('s')} />} />;
     default:

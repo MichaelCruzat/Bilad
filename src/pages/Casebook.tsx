@@ -11,20 +11,19 @@ import {Table, pixel, proportional, type TableColumn} from '@astryxdesign/core/T
 import {Heading, Text} from '@astryxdesign/core/Text';
 import {CASES} from '../data/cases';
 import {VARIABLES, getVariable} from '../data/variables';
-import {cellsInBand, subsetAbsolute, subsetSeries} from '../lib/analysis';
+import {cellsInBand, subsetAbsolute} from '../lib/analysis';
 import {agreement, trendTest, type Agreement} from '../lib/stats';
 import {VERDICT_TEXT, witnessSeries, type Crosscheck} from '../lib/evidence';
 import {useAsync, useCrosscheck, useIndex, useNation, useVariable} from '../lib/hooks';
-import {loadBoundary, loadMeta, loadPreview, type DataIndex} from '../lib/nationData';
+import {loadBoundary, loadMeta, loadPreview, loadWorld, type DataIndex} from '../lib/nationData';
 import {percent, signed, thousands} from '../lib/format';
 import {atlasHref} from '../app/router';
-import {NationMap, colorCells} from '../viz/NationMap';
-import {Legend} from '../viz/Legend';
 import {MiniMap, STRIP_LIMIT} from '../viz/MiniMap';
-import {usePlayback} from '../viz/usePlayback';
-import {divergingColor} from '../viz/color';
-import {YearLedger} from '../viz/YearLedger';
-import {Wordmark} from '../brand/Logo';
+import {divergingColor, VERDICT_COLORS} from '../viz/color';
+import {APP_NAME, Wordmark} from '../brand/Logo';
+import {WorldMap} from '../viz/WorldMap';
+import {AspectRatio} from '@astryxdesign/core/AspectRatio';
+import {globalReliefUrl, loadCountries, loadGlobalCells, loadGlobalMeta, loadGlobalStats, loadGlobalSummary} from '../lib/globalData';
 
 const FULL = {from: 1981, to: 2024};
 const YEARS = Array.from({length: 44}, (_, i) => 1981 + i);
@@ -69,114 +68,115 @@ export function Casebook() {
 }
 
 function Hero({crosscheck}: {crosscheck: Crosscheck | null}) {
+  const meta = useAsync(loadGlobalMeta, []);
+  const summary = useAsync(loadGlobalSummary, []);
+  const countries = useAsync(loadCountries, []);
+  const world = useAsync(loadWorld, []);
+  const bundle = useAsync(async () => ({cells: await loadGlobalCells(), stats: await loadGlobalStats('T2M')}), []);
+  const ready = meta.status === 'ready' && summary.status === 'ready' && countries.status === 'ready' && bundle.status === 'ready';
+  const g = summary.status === 'ready' ? summary.data.variables.T2M : null;
+  const chile = useChileShare(crosscheck);
+  return (
+    <VStack gap={5}>
+      <Eyebrow>{`${APP_NAME} · v2 · NASA POWER 1981–2024 · Space Apps 2026`}</Eyebrow>
+      <HStack gap={10} wrap="wrap" vAlign="end">
+        <VStack maxWidth="40rem" width="min(100%, 40rem)">
+          <Heading level={1}>
+            <Wordmark />
+          </Heading>
+        </VStack>
+        <VStack gap={3} maxWidth="38rem">
+          <Text type="large">
+            Every place on Earth keeps a climate record. {APP_NAME} reads each one, finds what changed and by how much, and asks a second, independent record whether to believe it.
+          </Text>
+          <Text color="secondary">
+            {g
+              ? `Since 1981, ${percent(g.areaUp)} of the world’s land has warmed beyond chance. Across ${percent(g.areaFlagged, 0)} of it, weather stations contradict the reanalysis, so ${APP_NAME} flags the trend instead of reporting it.`
+              : 'Loading every land cell on Earth…'}{' '}
+            {chile ? `Central Chile has had ${chile} less rain since 2010; Bangladesh did not cool, whatever the reanalysis says.` : ''}
+          </Text>
+          <HStack gap={2} wrap="wrap">
+            <Button label="Explore the world" variant="primary" href="#/world" />
+            <Button label="Case 03: the phantom cooling" variant="secondary" href="#/case/bangladesh-phantom-cooling" />
+          </HStack>
+        </VStack>
+      </HStack>
+      <AspectRatio ratio={2.5}>
+        <VStack height="100%">
+          {ready ? (
+            <WorldMap
+              cells={bundle.data.cells}
+              stats={bundle.data.stats}
+              annual={null}
+              layer="verdict"
+              year={2024}
+              firstYear={1981}
+              extent={meta.data.extent ?? [-180, -60, 180, 84]}
+              reliefUrl={globalReliefUrl}
+              world={world.status === 'ready' ? world.data : null}
+              selectedCell={null}
+              selectedCountry={null}
+              countryIds={countries.data.map(c => c.id)}
+              onSelectCell={c => {
+                if (c !== null) window.location.hash = `#/world?cell=${c}`;
+              }}
+              describeCell={c => {
+                const country = bundle.data.cells.country[c];
+                const a = bundle.data.stats.agreement[c];
+                return [
+                  country !== 65535 ? countries.data[country].name : 'Open water',
+                  `${signed(bundle.data.stats.slope[c], 2)} °C per decade`,
+                  a === 255 ? 'no station record here' : `stations: ${VERDICT_TEXT[summary.data.agreements[a]].label.toLowerCase()}`,
+                  'click to cross-examine',
+                ];
+              }}
+              title="World map: is each land cell’s warming trend backed by weather stations?"
+            />
+          ) : (
+            <HStack gap={2} vAlign="center">
+              <Spinner size="sm" />
+              <Text color="secondary">Loading every land cell on Earth…</Text>
+            </HStack>
+          )}
+        </VStack>
+      </AspectRatio>
+      <HStack gap={5} wrap="wrap" vAlign="center">
+        {(['Corroborated by stations', 'Same direction, different size', 'Weakly supported', 'Contradicted', 'Not supported', 'No detectable trend'] as const).map((label, i) => (
+          <HStack key={label} gap={2} vAlign="center">
+            <svg width="12" height="12" aria-hidden="true">
+              <rect width="12" height="12" rx="2" fill={VERDICT_COLORS[i]} />
+            </svg>
+            <Text type="supporting">{label}</Text>
+          </HStack>
+        ))}
+      </HStack>
+      <Text type="supporting">
+        Temperature trend 1981–2024 for every land cell from 60°S to 84°N (NASA POWER, MERRA-2), checked cell by cell against GISTEMP weather stations, on NASA GIBS Blue Marble relief. Scroll to zoom, drag to pan, click a cell to open it.
+      </Text>
+    </VStack>
+  );
+}
+
+/** "23–34%": central Chile's post-2010 rainfall deficit in MERRA-2 and GPCP. */
+function useChileShare(crosscheck: Crosscheck | null): string | null {
   const nation = useNation('CHL');
   const meta = nation.status === 'ready' ? nation.data.meta : null;
   const rain = useVariable(meta, 'PRECTOTCORR', FULL);
-  const central = meta?.regions.find(r => r.id === 'central');
-  const playback = usePlayback(1981, 2024, {autoplay: true, initial: 1981});
-
-  const share = useMemo(() => {
-    if (!meta || !central || rain.status !== 'ready') return null;
+  return useMemo(() => {
+    const central = meta?.regions.find(r => r.id === 'central');
+    if (!meta || !central || rain.status !== 'ready' || !crosscheck) return null;
     const cells = cellsInBand(meta, central.latMin, central.latMax);
     const abs = subsetAbsolute(meta, rain.data.analysis, cells);
     const avg = (series: ArrayLike<number>, a: number, b: number) => {
       const v = YEARS.flatMap((y, i) => (y >= a && y <= b ? [series[i]] : []));
       return v.reduce((s, x) => s + x, 0) / v.length;
     };
-    const w = crosscheck ? witnessSeries(crosscheck, 'CHL', 'PRECTOTCORR', FULL, 'central') : null;
-    const witnessShare = w ? 1 - (100 + avg(w, 2010, 2019)) / (100 + avg(w, 1981, 2009)) : null;
-    return {share: 1 - avg(abs, 2010, 2019) / avg(abs, 1981, 2009), witnessShare, series: subsetSeries(meta, rain.data.analysis, cells)};
-  }, [meta, central, rain, crosscheck]);
-  const range =
-    share && share.witnessShare !== null
-      ? `${percent(Math.min(share.share, share.witnessShare)).replace('%', '')}–${percent(Math.max(share.share, share.witnessShare))}`
-      : 'a quarter to a third';
-
-  return (
-    <HStack gap={10} wrap="wrap" vAlign="center">
-      <VStack gap={5} vAlign="center" maxWidth="34rem">
-        <Eyebrow>Bilad · v2 · NASA POWER 1981–2024 · Space Apps 2026</Eyebrow>
-        <Heading level={1}>
-          <Wordmark />
-        </Heading>
-        <Text type="large">
-          Every nation keeps a record of its climate. Bilad finds where it changed, by how much, and whether the change survives an independent witness.
-        </Text>
-        <Text color="secondary">
-          Central Chile has had {range} less rain since 2010. Bangladesh did not cool, even though the same NASA reanalysis says it did and both trends pass a standard significance test. Bilad tells the two apart.
-        </Text>
-        <HStack gap={2} wrap="wrap">
-          <Button label="Open the atlas" variant="primary" href={atlasHref('CHL', {v: 'PRECTOTCORR', layer: 'year'})} />
-          <Button label="Case 01: Chile’s missing rain" variant="secondary" href="#/case/chile-megadrought" />
-          <Button label="Case 03: the phantom cooling" variant="ghost" href="#/case/bangladesh-phantom-cooling" />
-        </HStack>
-      </VStack>
-      <StackItem size="fill">
-      <VStack gap={2} height="max(36rem, calc(100dvh - 9rem))">
-        <HStack gap={3} vAlign="center" hAlign="between" wrap="wrap">
-          <VStack gap={0}>
-            <Eyebrow>Chile · rainfall versus the 1991–2020 normal</Eyebrow>
-            <Text type="display-2" hasTabularNumbers>
-              {playback.year}
-            </Text>
-          </VStack>
-          <Button size="sm" variant="secondary" label={playback.playing ? 'Pause' : 'Play'} onClick={() => playback.setPlaying(!playback.playing)} />
-        </HStack>
-        <StackItem size="fill">
-          {nation.status === 'ready' && rain.status === 'ready' ? (
-            <HStack gap={4} height="100%">
-              <StackItem size="fill">
-                <VStack height="100%">
-                  <NationMap
-                    meta={nation.data.meta}
-                    boundary={nation.data.boundary}
-                    context={nation.data.context}
-                    analysis={rain.data.analysis}
-                    layer="year"
-                    year={playback.year}
-                    showProfile={false}
-                    maxHeight={620}
-                    title={`Chile: rainfall in ${playback.year} as a share of the 1991–2020 normal`}
-                  />
-                </VStack>
-              </StackItem>
-              {share && (
-                <VStack gap={1} width="min(40%, 26rem)" height="100%">
-                  <Text type="code" size="xsm" color="secondary">
-                    CENTRAL CHILE, EACH YEAR
-                  </Text>
-                  <StackItem size="fill">
-                    <YearLedger
-                      years={YEARS}
-                      series={share.series}
-                      variable="PRECTOTCORR"
-                      current={playback.year}
-                      unit="%"
-                      title="Central Chile: rainfall each year as a share of the 1991–2020 normal. Move the pointer or use the arrow keys to pick a year."
-                      onScrub={y => {
-                        playback.setPlaying(false);
-                        playback.setYear(y);
-                      }}
-                    />
-                  </StackItem>
-                </VStack>
-              )}
-            </HStack>
-          ) : (
-            <HStack gap={2} vAlign="center">
-              <Spinner size="sm" />
-              <Text color="secondary">Loading 382 Chilean grid cells…</Text>
-            </HStack>
-          )}
-        </StackItem>
-        {rain.status === 'ready' && <Legend variable="PRECTOTCORR" layer="year" year={playback.year} coloring={colorCells(rain.data.analysis, 'year', playback.year)} unit="% of normal" />}
-        <Text type="supporting">
-          NASA POWER (MERRA-2) on NASA GIBS Blue Marble relief. Brown is drier than normal, teal wetter. Right: central Chile (30–38°S), one row per year; point at a year to jump to it. Watch the 2010s.
-        </Text>
-      </VStack>
-      </StackItem>
-    </HStack>
-  );
+    const w = witnessSeries(crosscheck, 'CHL', 'PRECTOTCORR', FULL, 'central');
+    if (!w) return null;
+    const m2 = 1 - avg(abs, 2010, 2019) / avg(abs, 1981, 2009);
+    const gp = 1 - (100 + avg(w, 2010, 2019)) / (100 + avg(w, 1981, 2009));
+    return `${percent(Math.min(m2, gp)).replace('%', '')}–${percent(Math.max(m2, gp))}`;
+  }, [meta, rain, crosscheck]);
 }
 
 function Fact({value, label}: {value: string; label: string}) {

@@ -124,3 +124,10 @@ export function robustLimit(values: ArrayLike<number>): number {
   abs.sort((a, b) => a - b);
   return niceLimit(abs[Math.min(abs.length - 1, Math.floor(abs.length * 0.95))]);
 }
+
+/**
+ * Verdict colours, in the order of the agreement index used by the global
+ * products: corroborated, same direction, weakly supported, contradicted,
+ * not supported, no detectable trend.
+ */
+export const VERDICT_COLORS = ['#3fbf8f', '#d9b44a', '#8f8a5c', '#e5484d', '#e07b39', '#3a4048'];

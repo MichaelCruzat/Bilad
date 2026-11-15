@@ -177,3 +177,31 @@ def run(gistemp: Path, gpcp: Path, data: Path) -> None:
 
     (data / "crosscheck.json").write_text(json.dumps(result))
     print(f"Wrote {data / 'crosscheck.json'}")
+
+
+def run_global(gistemp: Path, gpcp: Path, data: Path, cache: Path) -> None:
+    """Witness records for the global grid: one annual series per product box.
+
+    Writes public/data/global/witness-<VAR>.bin: int16 annual means for each
+    box (years x boxes, box-major, x100, -32768 missing) followed by a uint16
+    box index per global cell, and witness.json describing both.
+    """
+    cells_raw = json.loads((cache / "global" / "cells.json").read_text())
+    cells = [{"lat": a, "lon": o, "areaKm2": w} for a, o, w in zip(cells_raw["lat"], cells_raw["lon"], cells_raw["area"])]
+    gis = netCDF4.Dataset(gistemp)
+    gp = netCDF4.Dataset(gpcp)
+    out = data / "global"
+    info = {"firstYear": FIRST, "lastYear": LAST, "scale": 0.01, "missing": -32768}
+    for key, ds, var, lon360, check in (
+        ("T2M", gis, "tempanomaly", False, lambda b: np.isfinite(b) & (np.abs(b) < 50)),
+        ("PRECTOTCORR", gp, "precip", True, lambda b: np.isfinite(b) & (b >= 0) & (b < 200)),
+    ):
+        field = ds.variables[var]
+        field.set_auto_mask(True)
+        annual, cell_box = sample_cells(field, monthly_index(ds.variables["time"]), ds.variables["lat"][:], ds.variables["lon"][:], cells, lon360, check)
+        q = np.where(np.isfinite(annual), np.round(annual * 100), -32768).astype("<i2")  # years x boxes
+        blob = np.ascontiguousarray(q.T).tobytes() + cell_box.astype("<u2").tobytes()
+        (out / f"witness-{key}.bin").write_bytes(blob)
+        info[key] = {"boxes": int(annual.shape[1]), "years": int(annual.shape[0])}
+        print(f"global {key}: {annual.shape[1]} witness boxes")
+    (out / "witness.json").write_text(json.dumps(info))
