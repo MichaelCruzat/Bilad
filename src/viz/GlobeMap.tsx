@@ -505,7 +505,7 @@ export function GlobeMap({cells, colorOf, colorKey, world, selectedCell, selecte
           ? hover !== null && describeCell
             ? `${selectedCell === hover ? 'Selected: ' : 'Under the crosshair: '}${describeCell(hover).join('. ')}`
             : 'No land cell under the crosshair. Use the arrow keys to turn towards land.'
-          : 'Arrow keys turn the globe; Enter selects the cell under the crosshair.'}
+          : ''}
       </Text>
     </output>
     </>

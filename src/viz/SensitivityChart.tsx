@@ -1,7 +1,8 @@
 import {CHROME, ticks, textScale} from './chrome';
-import {num, signed} from '../lib/format';
+import {num, pPhrase, signed} from '../lib/format';
 import {useWidth} from './useWidth';
 import {ReadoutMark, ReadoutText, useChartHover} from './readout';
+import type {Help} from '../features/HelpTip';
 import {VStack} from '@astryxdesign/core/Stack';
 import type {StartYearPoint} from '../lib/stats';
 
@@ -71,13 +72,21 @@ export function SensitivityChart({points, unit, digits, title}: Props) {
       {points
         .filter(p => p.start % 5 === 0 || p.start === first || p.start === last)
         .map(p => (
-          <text key={p.start} x={x(p.start)} y={H - 7} fontSize={10 * TS} fill={CHROME.muted} textAnchor="middle" fontFamily={CHROME.font}>
+          <text key={p.start} x={x(p.start)} y={H - 7} fontSize={10 * TS} fill={CHROME.muted} textAnchor={p.start === last ? 'end' : p.start === first ? 'start' : 'middle'} fontFamily={CHROME.font}>
             {p.start}
           </text>
         ))}
       {hov !== null && <ReadoutMark x={x(points[hov].start)} y={y(Number.isFinite(points[hov].slope) ? points[hov].slope : 0)} top={m.t} bottom={H - m.b} r={4} />}
     </svg>
-    <ReadoutText lines={hov === null ? null : [`Start ${points[hov].start}`, `${signed(points[hov].slope, digits)} ${unit}/decade`, `95% range ${signed(points[hov].slopeLow, digits)} to ${signed(points[hov].slopeHigh, digits)}`, `p = ${points[hov].p.toFixed(3)}`]} hint="Point at, tap or arrow through the start years to read each estimate." />
+    <ReadoutText lines={hov === null ? null : [`Start ${points[hov].start}`, `${signed(points[hov].slope, digits)} ${unit}/decade`, `95% range ${signed(points[hov].slopeLow, digits)} to ${signed(points[hov].slopeHigh, digits)}`, pPhrase(points[hov].p)]} help={SENSITIVITY_HELP} />
     </VStack>
   );
 }
+
+const SENSITIVITY_HELP: Help = {
+  title: 'Does the start year matter?',
+  what: 'Each dot is the trend you would get if the record began in that year and ran to the end. A finding worth relying on keeps the same direction whichever start year you pick; one that flips depends on where the record starts. Filled dots are statistically significant; the shaded band is the 95% range.',
+  how: 'Point at, tap or arrow through the start years to read each estimate below the chart.',
+  detail: 'Theil–Sen trend per decade re-estimated from every start year that still leaves a long enough window (10 to 20 years, depending on the record). Dots are filled when the Hamed–Rao-corrected Mann–Kendall test gives p < 0.05; the band is the Gilbert (1987) 95% interval.',
+  method: 'theil-sen',
+};

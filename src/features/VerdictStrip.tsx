@@ -5,6 +5,7 @@ import {Link} from '@astryxdesign/core/Link';
 import {HStack, VStack} from '@astryxdesign/core/Stack';
 import {Text} from '@astryxdesign/core/Text';
 import {getVariable} from '../data/variables';
+import {VerdictTag} from './VerdictTag';
 import {overallVerdict, productName, VERDICT_TEXT, type WitnessState} from '../lib/evidence';
 import type {SeriesAnalysis, StepScreen} from '../lib/stats';
 import {pPhrase, signed} from '../lib/format';
@@ -48,7 +49,7 @@ export function VerdictStrip({place, variable, window, result, unit, witness, st
           <Text type="label" color="accent">
             Verdict
           </Text>
-          <Text weight="semibold">{verdict.label}</Text>
+          <VerdictTag label={verdict.label} />
           <Link href="#/method?s=verdicts">What the verdicts mean</Link>
         </HStack>
         <HStack gap={10} wrap="wrap" vAlign="end">

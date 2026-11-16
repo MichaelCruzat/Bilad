@@ -2,9 +2,10 @@ import {getVariable} from '../data/variables';
 import {divergingColor, robustLimit} from './color';
 import {CHROME, textScale} from './chrome';
 import {fdrThreshold, type TrendTest} from '../lib/stats';
-import {num, signed} from '../lib/format';
+import {pPhrase, signed} from '../lib/format';
 import {useWidth} from './useWidth';
 import {ReadoutMark, ReadoutText, useChartHover} from './readout';
+import type {Help} from '../features/HelpTip';
 import {VStack} from '@astryxdesign/core/Stack';
 
 const MONTHS = ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'];
@@ -76,7 +77,17 @@ export function MonthStrip({trends, variable, unit, digits, title}: Props) {
       })}
       {hi !== null && <ReadoutMark x={m.l + (hi + 0.5) * bw} y={y(Number.isFinite(trends[hi].slope) ? trends[hi].slope : 0)} top={m.t} bottom={H - m.b} r={3.5} />}
     </svg>
-    <ReadoutText lines={hi === null ? null : [NAMES[hi], `${signed(trends[hi].slope, digits)} ${unit}/decade`, `p = ${num(trends[hi].p, 3)}`, pStar > 0 && trends[hi].p <= pStar ? 'significant after correction' : 'exploratory only']} hint="Point at, tap or arrow through the months to read each trend." />
+    <ReadoutText lines={hi === null ? null : [NAMES[hi], `${signed(trends[hi].slope, digits)} ${unit}/decade`, pPhrase(trends[hi].p), pStar > 0 && trends[hi].p <= pStar ? 'significant after correction' : 'exploratory only']} help={monthHelp(unit, Boolean(def.relative))} />
     </VStack>
   );
+}
+
+function monthHelp(unit: string, relative: boolean): Help {
+  return {
+    title: 'Trend by calendar month',
+    what: `Each bar is the long-term trend for one calendar month, in ${unit} per decade${relative ? ' of that month’s own normal' : ''}: above zero that month is increasing, below zero it is decreasing. A change concentrated in a few months can matter more for water or crops than the yearly average suggests. Outlined bars are significant even after allowing for testing twelve months at once; the others are exploratory.`,
+    how: 'Point at, tap or arrow through the months to read each trend and its p-value below the chart.',
+    detail: 'Theil–Sen slope and Hamed–Rao-corrected Mann–Kendall test for each calendar month; Benjamini–Hochberg at a 10% false discovery rate across the twelve months decides the outlines.',
+    method: 'fdr',
+  };
 }

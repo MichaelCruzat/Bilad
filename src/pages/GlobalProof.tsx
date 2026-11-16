@@ -11,7 +11,7 @@ import {Heading, Text} from '@astryxdesign/core/Text';
 import {MotionStack} from '../features/MotionStack';
 import {VerdictStrip} from '../features/VerdictStrip';
 import {useAtlasParamsAt} from '../app/router';
-import {useAsync} from '../lib/hooks';
+import {useAsync, useMediaQuery} from '../lib/hooks';
 import {aggregateGlobal, aggregateGlobalWitness} from '../lib/globalEvidence';
 import {loadCountries, loadGlobalAnnual, loadGlobalCells, loadGlobalMeta, loadGlobalStats, loadGlobalWitness} from '../lib/globalData';
 import {crossExamine} from '../lib/evidence';
@@ -21,6 +21,7 @@ import {SeriesChart} from '../viz/SeriesChart';
 
 /** The same annual grid, footprint, and witness aggregation as the global explorer. */
 export function GlobalProof({params}: {params: URLSearchParams}) {
+  const narrow = useMediaQuery('(max-width: 1100px)');
   const variable = params.get('v') === 'PRECTOTCORR' ? 'PRECTOTCORR' : 'T2M';
   const set = useAtlasParamsAt('#/proof', params);
   const data = useAsync(async () => {
@@ -50,7 +51,7 @@ export function GlobalProof({params}: {params: URLSearchParams}) {
     const area = ids.reduce((sum, c) => sum + cells.area[c], 0);
     const significant = ids.reduce((sum, c) => sum + ((stats.flags[c] & 1) ? cells.area[c] : 0), 0) / area;
     const name = cell !== null ? `Cell at ${lat(cells.lat[cell])}, ${lon(cells.lon[cell])}` : countryIndex >= 0 ? countries[countryIndex].name : 'All covered land';
-    return {ids, years, series, exam, result, area, significant, name};
+    return {ids, years, series, other, relative, exam, result, area, significant, name};
   }, [data, country, cell, variable]);
   const options = useMemo(() => {
     if (data.status !== 'ready') return [];
@@ -71,10 +72,10 @@ export function GlobalProof({params}: {params: URLSearchParams}) {
   return <LayoutContent padding={8}><VStack gap={8}>
     <MotionStack gap={3}>
       <Text type="label" color="accent">How we know · global evidence</Text>
-      <Heading level={1} type="display-2">From a global record to a local verdict</Heading>
+      <Heading level={1} type={narrow ? 'display-3' : 'display-2'}>From a global record to a local verdict</Heading>
       <Text type="large" color="secondary">Follow the calculation for all covered land, any country, or a linked grid cell. These are the same annual data and tests used in Explore.</Text>
     </MotionStack>
-    <HStack gap={4} wrap="wrap">
+    <HStack gap={4} wrap="wrap" vAlign="end">
       <Selector label="Area to examine" hasSearch hasClear value={cell !== null ? null : country ?? 'all'} placeholder={cell !== null ? 'Linked grid cell' : 'All covered land'} options={[{value: 'all', label: 'All covered land'}, ...options]} onChange={v => set({country: !v || v === 'all' ? null : v, cell: null})} />
       <SegmentedControl label="Variable" value={variable} onChange={v => set({v})}><SegmentedControlItem value="T2M" label="Temperature" /><SegmentedControlItem value="PRECTOTCORR" label="Rainfall" /></SegmentedControl>
     </HStack>
@@ -103,6 +104,17 @@ export function GlobalProof({params}: {params: URLSearchParams}) {
         </GlobalStep>
         <GlobalStep n="06" title="Call the witness">
           <Text>{relative ? 'GPCP v2.3 combines gauges and satellites. It is partly independent: some gauge inputs are shared with MERRA-2.' : 'GISTEMP v4 uses weather-station estimates on a coarser 2° grid.'} The witness is sampled over the selected footprint and weighted by the same land areas. A yearly aggregate requires coverage of at least half that area. This comparison cannot resolve detail finer than the witness grid.</Text>
+          <SeriesChart
+            years={selection.years}
+            series={selection.series}
+            analysis={selection.result}
+            variable={variable}
+            unit={selection.relative ? '%' : unit}
+            witness={selection.other}
+            witnessLabel={selection.relative ? 'GPCP v2.3 (independent record)' : 'GISTEMP v4 (independent record)'}
+            step={selection.exam.claimStep}
+            title={`${selection.name}: reanalysis and witness, annual ${selection.relative ? 'rainfall' : 'temperature'} anomaly`}
+          />
         </GlobalStep>
         <GlobalStep n="07" title="Read the result and its limits">
           <VerdictStrip place={selection.name} variable={variable} window={{from: selection.years[0], to: selection.years.at(-1)!}} result={selection.result} unit={unit} witness={selection.exam.witness.n >= 10 ? {kind: 'available', exam: selection.exam} : {kind: 'no-coverage'}} step={selection.exam.claimStep} resolution={`${selection.ids.length.toLocaleString('en-US')} cells, land-area weighted`} limitation="The records are estimates. Agreement supports a trend; disagreement and jump flags require investigation. This is not causal attribution." next={{label: 'Explore this footprint', href: `#/world?${explorer}`}} />

@@ -43,6 +43,7 @@ import {divergingColor, emergenceRamp, robustLimit, VERDICT_COLORS} from '../viz
 import {usePlayback} from '../viz/usePlayback';
 import {YearStrip} from '../viz/YearStrip';
 import {AspectRatio} from '@astryxdesign/core/AspectRatio';
+import {HelpTip, type Help} from '../features/HelpTip';
 
 const LAYERS: {value: WorldLayer; label: string; description: string}[] = [
   {value: 'verdict', label: 'Verdict against the witness', description: 'Does an independent record back the trend?'},
@@ -189,20 +190,21 @@ export function World({params}: {params: URLSearchParams}) {
   const map = (
     <VStack gap={2}>
       <HStack gap={3} vAlign="center" hAlign="between" wrap="wrap">
-        <Heading level={1}>
-          The world <Text color="secondary" type="large">· {def.short.toLowerCase()}, {first}–{last}</Text>
-        </Heading>
-        {layer === 'year' ? (
+        <HStack gap={2} vAlign="center">
+          <Heading level={1}>
+            The world <Text color="secondary" type="large">· {def.short.toLowerCase()}, {first}–{last}</Text>
+          </Heading>
+          <HelpTip help={worldMapHelp(layer, variable)} />
+        </HStack>
+        {layer === 'year' && (
           <Text type="display-3" hasTabularNumbers>
             {playback.year}
           </Text>
-        ) : (
-          <Text type="supporting">Drag to pan; scroll or use the buttons to zoom; click or tap any land cell.</Text>
         )}
         <HStack gap={1}>
           <Button size="sm" variant="secondary" label="Zoom in" onClick={() => mapControls.current?.zoomBy(1.6)} />
           <Button size="sm" variant="secondary" label="Zoom out" onClick={() => mapControls.current?.zoomBy(1 / 1.6)} />
-          <Button size="sm" variant="ghost" label="Reset view" onClick={() => mapControls.current?.reset()} />
+          <Button size="sm" variant="secondary" label="Reset view" onClick={() => mapControls.current?.reset()} />
         </HStack>
       </HStack>
       <AspectRatio ratio={2.5}>
@@ -254,7 +256,7 @@ export function World({params}: {params: URLSearchParams}) {
       {summary.status === 'ready' && (
         <VStack gap={1}>
           <Text type="label" color="secondary">
-            {`Global land ${def.short.toLowerCase()}, each year. Point or drag to show a year on the map.`}
+            {`Global land ${def.short.toLowerCase()}, each year`}
           </Text>
           <YearStrip
             years={Array.from({length: last - first + 1}, (_, i) => first + i)}
@@ -486,7 +488,6 @@ function GlobalPanel({summary, variable, first, last}: {summary: Awaited<ReturnT
         unit={relative ? '%' : def.unit}
         title={`Global land ${def.short.toLowerCase()} anomaly, area-weighted, ${first}–${last}`}
       />
-      <Text type="supporting">Click any land cell, or search for a country, to cross-examine it.</Text>
     </VStack>
   );
 }
@@ -686,9 +687,29 @@ function SelectionActions({name, variable, unit, years, series, witness, result,
         }}
       />
       <Button size="sm" variant="secondary" label="Download evidence (JSON)" onClick={() => download(`trace-${slug}-${variable}-${years[0]}-${years[years.length - 1]}.json`, JSON.stringify(evidence(), null, 2), 'application/json')} />
-      {brief && <Button size="sm" variant="ghost" label="National brief, all seven variables" href={`#/brief/${brief}`} />}
+      {brief && <Button size="sm" variant="secondary" label="National brief, all seven variables" href={`#/brief/${brief}`} />}
     </HStack>
   );
 }
 
 const round = (v: number) => (Number.isFinite(v) ? Number(v.toPrecision(4)) : null);
+
+/** What the global map shows for each layer, then the data and methods behind it. */
+function worldMapHelp(layer: WorldLayer, variable: string): Help {
+  const rain = variable === 'PRECTOTCORR';
+  const quantity = rain ? 'rainfall' : 'temperature';
+  const witness = rain ? 'GPCP v2.3, built from rain gauges and satellites' : 'GISTEMP v4, built from weather stations';
+  const what: Record<WorldLayer, string> = {
+    verdict: `Every land cell is coloured by how its ${quantity} trend since 1981 fares against a second, independently built record (${witness}). Green: both records show the same significant change. Red: they point in opposite directions, so the first record is suspect. The legend on the left lists every outcome.`,
+    trend: `Every land cell’s ${quantity} trend per decade since 1981, from one end of the colour scale to the other as shown in the legend. Dots mark cells whose trend is statistically significant across the whole map.`,
+    year: `Every land cell’s ${quantity} in the chosen year, compared with its own 1991–2020 normal${rain ? ' as a percentage of that normal' : ''}. Every year uses the same colour scale, so years can be compared directly; press play to step through them.`,
+    normal: `The 1991–2020 average ${quantity} for every land cell: the baseline the other layers are measured against.`,
+  };
+  return {
+    title: 'Global map',
+    what: what[layer],
+    how: 'Drag to pan; zoom with the buttons, the wheel or a pinch. Click or tap a land cell, or search for a country on the left, to cross-examine it in the evidence panel. Keyboard: focus the map, move with the arrow keys, and press Enter to open a cell.',
+    detail: `54,425 MERRA-2 land cells from NASA POWER (0.5° × 0.625°), 60°S–84°N, 1981–2024. Trends: Theil–Sen slope; significance: Mann–Kendall with the Hamed–Rao correction; map-wide stippling: Benjamini–Hochberg at a 10% false discovery rate. Verdicts compare direction, significance and overlap of the two 95% ranges with ${rain ? 'GPCP v2.3 (2.5°; it shares some rain gauges with MERRA-2, so it is only partly independent)' : 'GISTEMP v4 (2°, 250 km smoothing, land stations)'}. A cell is flagged as a likely artefact when the witness contradicts it or its record jumps in a year the witness does not.`,
+    method: layer === 'verdict' ? 'witnesses' : layer === 'trend' ? 'theil-sen' : 'anomalies',
+  };
+}

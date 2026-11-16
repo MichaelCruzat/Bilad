@@ -13,7 +13,7 @@ import {CASES, getCase, type CaseDef} from '../data/cases';
 import {getVariable} from '../data/variables';
 import {cellsInBand, rowEdges, subsetAbsolute, subsetSeries, trendUnit, type VariableAnalysis} from '../lib/analysis';
 import {coBreaks, crossExamine, INDEPENDENCE, loadWitness, PRODUCTS, VERDICT_TEXT, witnessSeries, type Crosscheck, type WitnessGrid} from '../lib/evidence';
-import {useAsync, useCrosscheck, useIndex, useNation, useVariable, type NationBundle} from '../lib/hooks';
+import {useAsync, useCrosscheck, useIndex, useMediaQuery, useNation, useVariable, type NationBundle} from '../lib/hooks';
 import type {DataIndex} from '../lib/nationData';
 import {analyzeSeries, stepScreen, trendTest} from '../lib/stats';
 import {describe, findingContext} from '../lib/narrative';
@@ -21,7 +21,6 @@ import {digitsFor, num, percent, pPhrase, pValue, signed} from '../lib/format';
 import {atlasHref} from '../app/router';
 import {NationMap, colorCells} from '../viz/NationMap';
 import {Legend} from '../viz/Legend';
-import {Card} from '@astryxdesign/core/Card';
 import {CHROME} from '../viz/chrome';
 import {SeriesChart} from '../viz/SeriesChart';
 import {VerdictStrip} from '../features/VerdictStrip';
@@ -38,6 +37,7 @@ export function CaseFile({id}: {id: string}) {
   const crosscheck = useCrosscheck();
   const index = useIndex();
   const witnessGrid = useAsync(() => loadWitness(def?.iso3 ?? 'CHL'), [def?.iso3]);
+  const narrow = useMediaQuery('(max-width: 1100px)');
 
   if (!def) {
     return (
@@ -53,12 +53,12 @@ export function CaseFile({id}: {id: string}) {
       <VStack gap={8}>
         <VStack gap={3}>
           <HStack gap={2} vAlign="center" wrap="wrap">
-            <Button label="All cases" variant="ghost" size="sm" href="#/?section=cases" />
+            <Link href="#/?section=cases">← All cases</Link>
             <Text type="label" color="accent">
               Case {def.number} · {nation.status === 'ready' ? nation.data.meta.name : def.iso3} · {getVariable(def.variable).label}
             </Text>
           </HStack>
-          <Heading level={1} type="display-2">
+          <Heading level={1} type={narrow ? 'display-3' : 'display-2'}>
             {def.title}
           </Heading>
           <Text type="large" color="secondary">
@@ -81,6 +81,7 @@ export function CaseFile({id}: {id: string}) {
 }
 
 function CaseBody({def, bundle, analysis, crosscheck, index, witnessGrid}: {def: CaseDef; bundle: NationBundle; analysis: VariableAnalysis; crosscheck: Crosscheck; index: DataIndex; witnessGrid: WitnessGrid}) {
+  const narrow = useMediaQuery('(max-width: 1100px)');
   const {meta, boundary} = bundle;
   const v = getVariable(def.variable);
   const unit = trendUnit(def.variable);
@@ -179,14 +180,14 @@ function CaseBody({def, bundle, analysis, crosscheck, index, witnessGrid}: {def:
           ))}
           {deficit && (
             <Text type="large">
-              In MERRA-2, {focus.name} averaged {num(deficit.before, 0)} mm a year in 1981–2009 and {num(deficit.after, 0)} mm in 2010–2019: <Text weight="bold">{percent(deficit.share)} less rain</Text>
+              In MERRA-2, {focus.name} averaged {num(deficit.before, 0)} mm a year in 1981–2009 and {num(deficit.after, 0)} mm in 2010–2019: <Text type="large" weight="bold">{percent(deficit.share)} less rain</Text>
               {deficit.witnessDeficit !== null ? `. GPCP, on the same cells, shows ${percent(deficit.witnessDeficit)} less.` : '.'}
             </Text>
           )}
           {compareTest && (
             <Text type="large">
-              Daytime highs in the {def.focus.kind === 'contrast' ? def.focus.labels[1].split(' (')[0] : ''} changed by <Text weight="bold">{signed(result.trend.slope * 10, digits)} °C per decade</Text> ({pPhrase(result.trend.p)}); at the coast, on the same rows, by{' '}
-              <Text weight="bold">{signed(compareTest.slope * 10, digits)} °C</Text> ({pPhrase(compareTest.p)}).
+              Daytime highs in the {def.focus.kind === 'contrast' ? def.focus.labels[1].split(' (')[0] : ''} changed by <Text type="large" weight="bold">{signed(result.trend.slope * 10, digits)} °C per decade</Text> ({pPhrase(result.trend.p)}); at the coast, on the same rows, by{' '}
+              <Text type="large" weight="bold">{signed(compareTest.slope * 10, digits)} °C</Text> ({pPhrase(compareTest.p)}).
             </Text>
           )}
         </VStack>
@@ -231,14 +232,6 @@ function CaseBody({def, bundle, analysis, crosscheck, index, witnessGrid}: {def:
           height={360}
           title={`${focus.name}: annual anomaly, ${chartUnit}, 1981–2024`}
         />
-        <Card variant="muted" padding={4}>
-          <VStack gap={1}>
-            <Text weight="semibold">How to read these numbers</Text>
-            <Text color="secondary">
-              The trend is the typical change per decade, estimated so that one extreme year cannot drag it. The 95% range is where the true trend probably lies; if it does not include zero, the direction is clear. The p-value is how often a trend this strong would appear by chance in a record with no real trend; below 0.05 is the usual bar, and TRACE uses a version that allows for dry or warm years clustering together.
-            </Text>
-          </VStack>
-        </Card>
       </VStack>
 
       <Grid columns={{minWidth: 320, max: 2}} gap={8}>
@@ -317,7 +310,7 @@ function CaseBody({def, bundle, analysis, crosscheck, index, witnessGrid}: {def:
             variant="primary"
             href={atlasHref(def.iso3, {v: def.variable, region: focus.region, band: def.focus.kind === 'contrast' ? `${def.focus.latMin},${def.focus.latMax}` : undefined})}
           />
-          {nextCase(def) && <Button label={`Next: ${nextCase(def)!.title}`} variant="secondary" href={`#/case/${nextCase(def)!.id}`} />}
+          {nextCase(def) && <Button label={narrow ? 'Next case' : `Next: ${nextCase(def)!.title}`} variant="secondary" href={`#/case/${nextCase(def)!.id}`} />}
         </HStack>
       </VStack>
 

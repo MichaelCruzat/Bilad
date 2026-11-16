@@ -231,7 +231,7 @@ function BriefBody({iso3}: {iso3: string}) {
                   }
                 }}
               />
-              <Button label="Open the atlas" variant="ghost" href={atlasHref(iso3)} />
+              <Button label="Open the atlas" variant="secondary" href={atlasHref(iso3)} />
             </HStack>
             <Text type="supporting">“Land up / down” is the share of the nation’s land with a significant trend in each direction, after the map-wide false-discovery check.</Text>
             <MetadataList columns={2}>

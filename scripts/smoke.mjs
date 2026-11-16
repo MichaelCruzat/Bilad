@@ -250,6 +250,20 @@ try {
     await p.close();
   });
 
+  await check('help buttons explain each map and chart in plain and technical terms', async () => {
+    const p = await context.newPage();
+    await p.goto(`${BASE}#/world`);
+    await p.getByRole('button', {name: 'About: Global map'}).click({timeout: 30000});
+    await p.getByText('What this shows').first().waitFor({timeout: 5000});
+    await p.getByText('Technical detail').first().waitFor();
+    await p.keyboard.press('Escape');
+    const charts = await p.getByRole('button', {name: /^About: /}).count();
+    if (charts < 3) throw new Error(`only ${charts} help buttons on the World page`);
+    if (await p.getByText('Drag to pan; scroll or use the buttons to zoom').count()) throw new Error('instructions still printed on the page');
+    await capture(p, 'world-help.png');
+    await p.close();
+  });
+
   await check('evidence trail buttons switch the globe and show which stage is on', async () => {
     const p = await context.newPage();
     await p.emulateMedia({reducedMotion: 'reduce'});

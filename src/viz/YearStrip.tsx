@@ -4,6 +4,7 @@ import {CHROME, textScale} from './chrome';
 import {signed} from '../lib/format';
 import {useWidth} from './useWidth';
 import {ReadoutMark, ReadoutText, useChartHover} from './readout';
+import type {Help} from '../features/HelpTip';
 import {VStack} from '@astryxdesign/core/Stack';
 
 type Props = {
@@ -73,10 +74,10 @@ export function YearStrip({years, series, variable, unit, current, onPick, title
     >
       <title>{title}</title>
       <line x1={m.l} x2={W - m.r} y1={y(0)} y2={y(0)} stroke={CHROME.axis} />
-      <text x={m.l - 6} y={y(lim) + 4 * TS} fontSize={10 * TS} fill={CHROME.faint} textAnchor="end" fontFamily={CHROME.font}>
+      <text x={m.l - 6} y={y(lim) + 4 * TS} fontSize={10 * TS} fill={CHROME.muted} textAnchor="end" fontFamily={CHROME.font}>
         {signed(lim, lim < 1 ? 1 : 0)}
       </text>
-      <text x={m.l - 6} y={y(-lim) + 4 * TS} fontSize={10 * TS} fill={CHROME.faint} textAnchor="end" fontFamily={CHROME.font}>
+      <text x={m.l - 6} y={y(-lim) + 4 * TS} fontSize={10 * TS} fill={CHROME.muted} textAnchor="end" fontFamily={CHROME.font}>
         {signed(-lim, lim < 1 ? 1 : 0)}
       </text>
       {years.map((yr, i) => {
@@ -86,15 +87,39 @@ export function YearStrip({years, series, variable, unit, current, onPick, title
           <rect key={yr} x={m.l + i * bw + bw * 0.12} width={bw * 0.76} y={Math.min(y(v), y(0))} height={Math.max(1, Math.abs(y(v) - y(0)))} rx={1} fill={divergingColor(def.palette, v, lim)} fillOpacity={ci < 0 || i === ci ? 1 : 0.55} />
         );
       })}
-      {years.filter(yr => yr % 10 === 0 || yr === years[0] || yr === years[years.length - 1]).map(yr => (
-        <text key={yr} x={m.l + (yr - years[0] + 0.5) * bw} y={H - 4} fontSize={10 * TS} fill={CHROME.muted} textAnchor="middle" fontFamily={CHROME.font}>
+      {years
+        .filter(yr => {
+          const first = years[0];
+          const last = years[years.length - 1];
+          if (yr === first || yr === last) return true;
+          // A decade label too close to an end label would overlap it.
+          return yr % 10 === 0 && (yr - first) * bw > 34 * TS && (last - yr) * bw > 34 * TS;
+        })
+        .map(yr => (
+        <text
+          key={yr}
+          x={yr === years[0] ? m.l : yr === years[years.length - 1] ? m.l + years.length * bw : m.l + (yr - years[0] + 0.5) * bw}
+          y={H - 4}
+          fontSize={10 * TS}
+          fill={CHROME.muted}
+          textAnchor={yr === years[0] ? 'start' : yr === years[years.length - 1] ? 'end' : 'middle'}
+          fontFamily={CHROME.font}
+        >
           {yr}
         </text>
       ))}
       {ci >= 0 && <rect x={m.l + ci * bw} y={m.t - 6} width={bw} height={H - m.t - m.b + 8} fill="none" stroke={CHROME.ink} strokeOpacity={0.8} rx={2} />}
       {hi !== null && <ReadoutMark x={m.l + (hi + 0.5) * bw} y={y(Number.isFinite(hv) ? hv : 0)} top={m.t} bottom={H - m.b} r={3.5} />}
     </svg>
-    <ReadoutText lines={hi === null ? null : [String(years[hi]), Number.isFinite(hv) ? `${signed(hv, 2)} ${unit}` : 'no data']} hint="Point at a bar to read that year's value." />
+    <ReadoutText lines={hi === null ? null : [String(years[hi]), Number.isFinite(hv) ? `${signed(hv, 2)} ${unit}` : 'no data']} help={YEAR_STRIP_HELP} />
     </VStack>
   );
 }
+
+const YEAR_STRIP_HELP: Help = {
+  title: 'Global yearly record',
+  what: 'Each bar is one year of the average over all covered land, compared with the 1991–2020 normal: above the line is higher than normal, below is lower. The outlined bar is the year shown on the map.',
+  how: 'Point at a bar to read its value. Click or drag along the strip to show that year on the map; with the strip focused, the left and right arrow keys step through the years.',
+  detail: 'Area-weighted mean of every covered land cell’s annual anomaly, 60°S–84°N; rainfall is a percentage of each cell’s own normal. The colour scale is clipped at a robust limit, marked at the left.',
+  method: 'anomalies',
+};

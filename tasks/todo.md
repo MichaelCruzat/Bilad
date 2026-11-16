@@ -32,6 +32,8 @@ as supplemental deep links. The global correction in
 - [x] Enlarge the World map by narrowing the Explore side panels.
 - [x] Give every chart point-level readouts (pointer, touch and keyboard) and label the World verdict shares.
 - [x] Rebuild the Method page with a sidebar outline, verdict steps, structured calculation sections and a variables table.
+- [x] Run a four-agent visual review across all routes and widths; fix button visibility, control fit, phone menu and legends.
+- [x] Move on-page instructions into "?" help with plain and technical explanations for every map and chart.
 
 Release evidence is the exact commit's GitHub Actions results and the live
 Pages build. A local checklist is not proof that a later commit deployed.

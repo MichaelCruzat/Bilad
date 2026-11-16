@@ -135,8 +135,8 @@ const STEPS: {term: string; text: string; section: string}[] = [
 ];
 
 const EXTRA_VERDICTS: {label: string; plain: string; color: string}[] = [
-  {label: 'Likely data artefact', plain: 'The witness contradicts the trend, or the record jumps in one year while the witness does not share or corroborate the jump. This is a screening flag, not a finding about which data source caused the disagreement.', color: VERDICT_COLORS[3]},
-  {label: 'Single dataset, or no verdict at this scale', plain: 'No witness exists for this variable, or the witness grid is too coarse to tell the places apart. The trend may be real, but it has not been cross-examined.', color: VERDICT_COLORS[5]},
+  {label: 'Likely data artefact', plain: 'The witness contradicts the trend, or the record jumps in one year while the witness does not share or corroborate the jump. This is a screening flag, not a finding about which data source caused the disagreement. On the maps it shares the red of Contradicted.', color: VERDICT_COLORS[3]},
+  {label: 'Single dataset, or no verdict at this scale', plain: 'No witness exists for this variable, or the witness grid is too coarse to tell the places apart. The trend may be real, but it has not been cross-examined. On the maps it shares the colour of No detectable trend.', color: VERDICT_COLORS[5]},
 ];
 
 const number = (i: number) => String(i + 1).padStart(2, '0');
@@ -189,7 +189,7 @@ function Article({narrow}: {narrow: boolean}) {
           <Text type="label" color="accent">
             Method
           </Text>
-          <Heading level={1} type="display-2">
+          <Heading level={1} type={narrow ? 'display-3' : 'display-2'}>
             How TRACE decides whether a trend is real
           </Heading>
           <Text type="large">
@@ -363,7 +363,7 @@ export function Method({section}: {section?: string | null}) {
     return (
       <Layout
         content={
-          <LayoutContent padding={4} label="Method">
+          <LayoutContent padding={8} label="Method">
             <Article narrow />
           </LayoutContent>
         }
@@ -378,7 +378,7 @@ export function Method({section}: {section?: string | null}) {
             <Text type="label" color="secondary">
               On this page
             </Text>
-            <Outline items={OUTLINE} density="compact" label="Method sections" scrollContainerRef={scroller} />
+            <Outline items={OUTLINE} density="compact" label="Method sections" scrollContainerRef={scroller} offset={96} />
           </VStack>
         </LayoutPanel>
       }

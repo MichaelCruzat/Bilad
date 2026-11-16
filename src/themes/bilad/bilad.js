@@ -108,7 +108,7 @@ export const biladTheme = {
     "--color-syntax-attribute": "light-dark(#584400, #eec448)",
     "--color-syntax-property": "light-dark(#005348, #90d7c8)",
     "--color-syntax-punctuation": "light-dark(#525252, #b9b9b9)",
-    "--color-syntax-background": "light-dark(#ffffff, #111111)",
+    "--color-syntax-background": "#0b1626",
     "--color-syntax-added": "color-mix(in srgb, var(--color-success-muted) 25%, transparent)",
     "--color-syntax-removed": "color-mix(in srgb, var(--color-error-muted) 25%, transparent)",
     "--color-syntax-diff-header": "transparent",
@@ -157,7 +157,7 @@ export const biladTheme = {
     "--color-error-muted": "light-dark(#ffc4be, #ff98903D)",
     "--color-warning-muted": "light-dark(#fae19e, #e2b6233D)",
     "--color-border": "light-dark(#ffffff1a, #ffffff1a)",
-    "--color-border-emphasized": "light-dark(#3e526c, #3f526b)",
+    "--color-border-emphasized": "#5f7596",
     "--color-skeleton": "light-dark(#3e526c, #3f526b)",
     "--color-shadow": "light-dark(#0000001A, #0000004D)",
     "--color-tint-hover": "light-dark(#000000, #ffffff)",
@@ -349,8 +349,8 @@ export const biladTheme = {
         "color": "var(--color-on-error-muted)"
       },
       "variant:secondary": {
-        "background": "#22344f",
-        "border": "1px solid var(--color-border-emphasized)",
+        "border": "1px solid #5f7596",
+        "background": "#2e4568",
         ":hover": {
           "filter": "brightness(1.18)"
         }
@@ -404,7 +404,8 @@ export const biladTheme = {
     },
     "segmented-control": {
       "base": {
-        "padding": "var(--spacing-1)"
+        "padding": "var(--spacing-1)",
+        "background": "#16243a"
       }
     },
     "segmented-control-item": {
@@ -421,7 +422,8 @@ export const biladTheme = {
         "height": "calc(var(--size-element-lg) - 8px)"
       },
       "selected": {
-        "boxShadow": "none"
+        "boxShadow": "none",
+        "background": "#2f4669"
       }
     },
     "switch": {
@@ -437,6 +439,10 @@ export const biladTheme = {
     "card": {
       "base": {
         "padding": "var(--spacing-3)"
+      },
+      "variant:muted": {
+        "background": "#132036",
+        "border": "1px solid var(--color-border)"
       }
     },
     "section": {

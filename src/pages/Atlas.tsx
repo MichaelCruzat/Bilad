@@ -19,6 +19,7 @@ import {useAtlasParams} from '../app/router';
 import {lat, lon, signed, num} from '../lib/format';
 import {NationMap, colorCells, type MapLayer} from '../viz/NationMap';
 import {Legend} from '../viz/Legend';
+import {HelpTip, type Help} from '../features/HelpTip';
 import {usePlayback} from '../viz/usePlayback';
 import {EvidencePanel, type Selection} from '../features/EvidencePanel';
 
@@ -85,6 +86,9 @@ export function Atlas({iso3, params}: Props) {
   }
 
   const nations = index.status === 'ready' ? index.data.nations : [];
+  const legend =
+    data.status === 'ready' ? <Legend variable={variable} layer={layer} coloring={colorCells(data.data.analysis, layer, shownYear)} unit={unit} year={shownYear} /> : null;
+
   const controls = (
     <VStack gap={5}>
       <Selector
@@ -125,15 +129,15 @@ export function Atlas({iso3, params}: Props) {
             : layer === 'emergence'
               ? 'Signal-to-noise: change across the window divided by the typical year-to-year swing. Beyond ±1 the signal has emerged; beyond ±2 it is clear.'
               : layer === 'year'
-                ? `Each cell’s departure from its 1991–2020 normal in a single year, on one colour scale for every year. Press play to watch ${from}–${to} unfold.`
+                ? `Each cell’s departure from its 1991–2020 normal in a single year, on one colour scale for every year.`
                 : `The 1991–2020 average, for context: where values are high or low to begin with.`}
         </Text>
         {layer === 'year' && (
-          <HStack gap={2} vAlign="center">
+          <VStack gap={2}>
             <Button
               size="sm"
               variant="primary"
-              label={playback.playing ? 'Pause' : 'Play'}
+              label={playback.playing ? 'Pause the years' : 'Play the years'}
               onClick={() => playback.setPlaying(!playback.playing)}
             />
             <Slider
@@ -150,12 +154,10 @@ export function Atlas({iso3, params}: Props) {
               }}
               width="100%"
             />
-          </HStack>
+          </VStack>
         )}
       </VStack>
-      {data.status === 'ready' && (
-        <Legend variable={variable} layer={layer} coloring={colorCells(data.data.analysis, layer, shownYear)} unit={unit} year={shownYear} />
-      )}
+      {!narrow && legend}
       <Switch
         label="Stipple significant cells"
         description="Dots mark cells significant at a 10% false discovery rate across the nation."
@@ -178,14 +180,16 @@ export function Atlas({iso3, params}: Props) {
         width="100%"
       />
       <VStack gap={2}>
-        <Text type="label">Focus</Text>
+        <HStack gap={1} vAlign="center">
+          <Text type="label">Focus</Text>
+          <HelpTip help={FOCUS_HELP} />
+        </HStack>
         <HStack gap={1} wrap="wrap">
           <Button size="sm" label="Whole nation" variant={selection.kind === 'nation' ? 'primary' : 'secondary'} onClick={() => set({cell: null, band: null, region: null})} />
           {meta?.regions.map(r => (
             <Button key={r.id} size="sm" label={r.name} variant={regionParam === r.id && cell === null ? 'primary' : 'secondary'} onClick={() => set({region: r.id, band: null, cell: null})} />
           ))}
         </HStack>
-        <Text type="supporting">Drag on the latitude profile beside the map to define your own band. Click a cell, or focus the map and use the arrow keys, to inspect one grid cell.</Text>
       </VStack>
     </VStack>
   );
@@ -196,12 +200,10 @@ export function Atlas({iso3, params}: Props) {
         <Heading level={1}>
           {meta?.name ?? iso3} <Text color="secondary" type="large">· {def.short.toLowerCase()}, {from}–{to}</Text>
         </Heading>
-        {layer === 'year' ? (
+        {layer === 'year' && (
           <Text type="display-3" hasTabularNumbers aria-live="polite">
             {shownYear}
           </Text>
-        ) : (
-          <Text type="supporting">Point at a cell for its value · click or tap to inspect it</Text>
         )}
       </HStack>
       <StackItem size="fill">
@@ -267,6 +269,7 @@ export function Atlas({iso3, params}: Props) {
           <LayoutContent padding={4}>
             <VStack gap={6}>
               {mapArea}
+              {legend}
               <Collapsible defaultIsOpen={false} trigger={<Text weight="semibold">Change nation, variable, map layer or years</Text>}>
                 {controls}
               </Collapsible>
@@ -299,3 +302,11 @@ export function Atlas({iso3, params}: Props) {
     />
   );
 }
+
+const FOCUS_HELP: Help = {
+  title: 'Focus',
+  what: 'Chooses what the evidence panel describes: the whole nation, a named region, a latitude band you draw, or a single grid cell. The trend, the tests and the witness comparison are all recomputed for that selection.',
+  how: 'Pick a region button. Drag up or down on the latitude profile beside the map to draw a band. Click a cell, or focus the map and use the arrow keys, to inspect one cell. “Whole nation” resets the focus.',
+  detail: 'Regional, band and national series are area-weighted means of their cells’ annual anomalies, and go through the same Theil–Sen, Hamed–Rao Mann–Kendall, integrity screen and witness comparison as any other selection. A single cell is compared with the witness value at its centre.',
+  method: 'data',
+};

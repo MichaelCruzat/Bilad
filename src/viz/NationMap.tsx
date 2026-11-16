@@ -11,6 +11,9 @@ import {divergingColor, emergenceRamp, NO_DATA, robustLimit} from './color';
 import {lat as fmtLat, num, signed} from '../lib/format';
 import {CHROME, rootPx} from './chrome';
 import {Readout} from './readout';
+import {HelpTip, type Help} from '../features/HelpTip';
+import {Button} from '@astryxdesign/core/Button';
+import {HStack, VStack} from '@astryxdesign/core/Stack';
 import {fullName} from '../lib/names';
 import {regionalLinesInBounds, useRegionalBoundaries, type Bounds} from '../lib/regionalBoundaries';
 
@@ -271,7 +274,6 @@ export function NationMap({
   const u = (screenPx: number) => (screenPx * (rootPx() / 16)) / screen;
   /** Profile labels: readable, but never wider than the room beside the profile. */
   const profileFont = Math.min(u(12), 15);
-  const button = Math.min(u(34), geo.width / 8);
   const values = useMemo(() => layerValues(analysis, layer, year), [analysis, layer, year]);
   const pLim = layer === 'normal' ? Math.max(Math.abs(coloring.min), Math.abs(coloring.max)) : coloring.limit;
   const px = (v: number) =>
@@ -365,7 +367,7 @@ export function NationMap({
   const bandY = band ? [latToY(band[1]), latToY(band[0])] : null;
   const dragY = drag ? [Math.min(drag[0], drag[1]), Math.max(drag[0], drag[1])] : null;
 
-  return (
+  const svg = (
     <svg
       ref={svgRef}
       viewBox={`0 0 ${totalW.toFixed(0)} ${totalH.toFixed(0)}`}
@@ -481,27 +483,6 @@ export function NationMap({
       )}
       </g>
       </g>
-      {showZoomControls && (
-        <g fontFamily={CHROME.mono} fontSize={button * 0.6}>
-          {([['+', () => zoomBy(1.6), 'Zoom in'], ['−', () => zoomBy(1 / 1.6), 'Zoom out'], ['⟲', zoomReset, 'Reset zoom']] as const).map(([label, act, name], k) => (
-            <g
-              key={name}
-              role="button"
-              aria-label={name}
-              tabIndex={0}
-              transform={`translate(${geo.width - button - 8}, ${8 + k * (button + 6)})`}
-              onClick={act}
-              onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), act())}
-              style={{cursor: 'pointer'}}
-            >
-              <rect width={button} height={button} rx={button / 6} fill={CHROME.body} fillOpacity={0.85} stroke={CHROME.axis} />
-              <text x={button / 2} y={button * 0.7} textAnchor="middle" fill={CHROME.ink}>
-                {label}
-              </text>
-            </g>
-          ))}
-        </g>
-      )}
 
       {hover !== null && describeCell && (() => {
         const lines = describeCell(hover);
@@ -626,6 +607,21 @@ export function NationMap({
       )}
     </svg>
   );
+  return (
+    <VStack gap={2}>
+      <HStack gap={1} hAlign="between" vAlign="center">
+        <HelpTip help={nationMapHelp(showProfile, Boolean(onSelect), Boolean(onBand))} />
+        {showZoomControls && (
+          <HStack gap={1}>
+            <Button size="sm" variant="secondary" label="Zoom in" onClick={() => zoomBy(1.6)} />
+            <Button size="sm" variant="secondary" label="Zoom out" onClick={() => zoomBy(1 / 1.6)} />
+            <Button size="sm" variant="secondary" label="Reset view" onClick={zoomReset} />
+          </HStack>
+        )}
+      </HStack>
+      {svg}
+    </VStack>
+  );
 }
 
 /** Whole-degree latitude ticks at a step that gives about six labels. */
@@ -637,4 +633,19 @@ function latTicks(lats: number[]): number[] {
   const out: number[] = [];
   for (let v = Math.ceil(lo / step) * step; v <= hi; v += step) out.push(v);
   return out;
+}
+
+/** What the national map and its latitude profile show, then their basis. */
+function nationMapHelp(profile: boolean, selectable: boolean, bandable: boolean): Help {
+  return {
+    title: 'National map',
+    what: `Each square is one grid cell, roughly 55 by 70 km at the equator, coloured by the selected layer using the legend. Dots inside cells mark trends that are statistically significant across the whole map.${
+      profile ? ' The panel on the right plots every cell’s value against latitude: each dot is a cell, and the line is the average along each row, so a north–south pattern stands out.' : ''
+    } Outlines of neighbouring countries, and state or province lines when you zoom in, are there for orientation only.`,
+    how: `Point at a cell to read its value.${selectable ? ' Click or tap a cell to make the evidence describe just that cell, or focus the map and move between cells with the arrow keys; Escape clears it.' : ''} Zoom with the buttons, the wheel, a pinch, or + and − on the keyboard; 0 resets.${
+      profile ? ' Point at the latitude profile to read a row.' : ''
+    }${bandable ? ' Drag up or down on the profile to select a latitude band.' : ''}`,
+    detail: 'MERRA-2 reanalysis from NASA POWER on its native 0.5° × 0.625° grid, cells clipped to the coastline and weighted by their land area. Stippling: Benjamini–Hochberg at a 10% false discovery rate across the nation’s cells for the selected analysis window. Profile rows are area-weighted means. Administrative lines are generalized Natural Earth admin-1 boundaries and are not used in any statistic.',
+    method: 'data',
+  };
 }

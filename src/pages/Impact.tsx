@@ -6,13 +6,17 @@ import {Link} from '@astryxdesign/core/Link';
 import {HStack, VStack} from '@astryxdesign/core/Stack';
 import {Heading, Text} from '@astryxdesign/core/Text';
 import {MotionStack} from '../features/MotionStack';
+import {Center} from '@astryxdesign/core/Center';
+import {useMediaQuery} from '../lib/hooks';
 
 export function Impact() {
-  return <LayoutContent padding={8}><VStack gap={8}>
+  const narrow = useMediaQuery('(max-width: 1100px)');
+  return <LayoutContent padding={8}><Center axis="horizontal" maxWidth={880}><VStack gap={8} width="100%">
     <MotionStack gap={4}>
       <Text type="label" color="accent">Purpose and impact</Text>
-      <Heading level={1} type="display-2">Why climate evidence needs a second look</Heading>
-      <Text type="large">Water supplies, agriculture, public health, and infrastructure are exposed to changes in climate. Understanding long-term temperature and rainfall change is one input to assessing those risks. The evidence needs to be traceable before anyone uses it to support a decision. <Link href="https://science.nasa.gov/climate-change/effects/">NASA’s overview of climate effects</Link>.</Text>
+      <Heading level={1} type={narrow ? 'display-3' : 'display-2'}>Why climate evidence needs a second look</Heading>
+      <Text type="large">Water supplies, agriculture, public health, and infrastructure are exposed to changes in climate. Understanding long-term temperature and rainfall change is one input to assessing those risks. The evidence needs to be traceable before anyone uses it to support a decision.</Text>
+      <Text type="supporting">Background: <Link href="https://science.nasa.gov/climate-change/effects/">NASA’s overview of climate effects</Link></Text>
       <Text type="large" color="secondary">TRACE helps people examine that evidence: estimate a trend, test its significance, look for abrupt jumps, and compare it with a differently constructed record on the same footprint.</Text>
     </MotionStack>
 
@@ -53,7 +57,7 @@ export function Impact() {
       <Text color="secondary">TRACE does not forecast conditions, attribute causes, determine local hazards, or replace validated risk assessments. Its contribution is making climate evidence easier to question and review.</Text>
       <HStack gap={3} wrap="wrap"><Button variant="primary" label="Explore the global evidence" href="#/world" /><Button variant="secondary" label="Follow the calculation" href="#/proof" /><Button variant="ghost" label="Read the method" href="#/method" /></HStack>
     </ImpactSection>
-  </VStack></LayoutContent>;
+  </VStack></Center></LayoutContent>;
 }
 
 function ImpactSection({title, children}: {title: string; children: ReactNode}) {

@@ -11,6 +11,7 @@ import {HStack, VStack} from '@astryxdesign/core/Stack';
 import {Heading, Text} from '@astryxdesign/core/Text';
 import {Icon} from '@astryxdesign/core/Icon';
 import {MotionStack} from '../features/MotionStack';
+import {HelpTip, type Help} from '../features/HelpTip';
 import {CaseFiles} from '../features/CaseFiles';
 import {Figure} from '../features/VerdictStrip';
 import {useAsync, useMediaQuery} from '../lib/hooks';
@@ -89,15 +90,18 @@ export function Casebook({section}: {section?: 'cases'}) {
     ];
   };
   const globeFigure = (
-    <VStack as="figure" gap={4} style={{position: narrow ? 'relative' : 'sticky', top: 'var(--spacing-6)', alignSelf: 'start', margin: 0}}>
+    <VStack as="figure" gap={4} style={{position: narrow ? 'relative' : 'sticky', top: 'var(--spacing-6)', alignSelf: 'start', margin: 0, minWidth: 0, maxWidth: '100%'}}>
       <HStack gap={3} vAlign="center" hAlign="between" wrap="wrap">
-        <Text type="label" color="accent">Temperature · 1981–2024</Text>
+        <HStack gap={1} vAlign="center">
+          <Text type="label" color="accent">Temperature · 1981–2024</Text>
+          <HelpTip help={globeHelp(mode)} />
+        </HStack>
         <Text type="supporting">Rainfall is also available in Explore.</Text>
       </HStack>
       <SegmentedControl label="What the globe shows" value={mode} onChange={v => { setFollow(false); setMode(v as Mode); }} layout="fill">
-        <SegmentedControlItem value="claim" label="Reanalysis says" />
-        <SegmentedControlItem value="witness" label="Stations say" />
-        <SegmentedControlItem value="verdict" label="Do they agree?" />
+        <SegmentedControlItem value="claim" label={narrow ? 'Reanalysis' : 'Reanalysis says'} />
+        <SegmentedControlItem value="witness" label={narrow ? 'Stations' : 'Stations say'} />
+        <SegmentedControlItem value="verdict" label={narrow ? 'Agree?' : 'Do they agree?'} />
       </SegmentedControl>
       <MotionStack motionKey={mode} height={narrow ? '58vh' : 'min(56vh, 44rem)'}>
         {ready ? <GlobeMap cells={bundle.data.cells} colorOf={colorOf} colorKey={mode}
@@ -216,4 +220,20 @@ function GlobeLegend({mode}: {mode: Mode}) {
       </Text>
     </HStack>
   );
+}
+
+/** What the evidence globe shows in each view, then the data behind it. */
+function globeHelp(mode: Mode): Help {
+  const what: Record<Mode, string> = {
+    claim: 'Each land cell’s temperature trend per decade since 1981 in NASA’s MERRA-2 reanalysis, from cooling blue to warming red.',
+    witness: 'The same trend measured by an independent record, GISTEMP v4, built from weather stations on a coarser grid. Compare it with the reanalysis view: the colours mean the same thing.',
+    verdict: 'Whether the two records agree for each land cell. Green: both show the same significant change. Red: they point in opposite directions, so the reanalysis there is suspect. The legend below lists every outcome.',
+  };
+  return {
+    title: 'Evidence globe',
+    what: what[mode],
+    how: 'Drag to turn the globe and use the buttons to zoom. Click a land cell to compare both records there. Keyboard: focus the globe, turn it with the arrow keys, and press Enter to select the cell under the crosshair. While the globe follows your scroll it changes view with the evidence trail; choosing a view yourself stops that.',
+    detail: 'MERRA-2 from NASA POWER on its native 0.5° × 0.625° grid, 1981–2024. Witness: GISTEMP v4 (2°, 250 km smoothing, land stations), sampled at each cell’s centre. Trends: Theil–Sen; significance: Hamed–Rao-corrected Mann–Kendall. Verdicts compare direction, significance and overlap of the two 95% ranges.',
+    method: mode === 'verdict' ? 'witnesses' : 'theil-sen',
+  };
 }

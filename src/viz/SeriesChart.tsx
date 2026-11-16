@@ -4,6 +4,7 @@ import {CHROME, ticks, textScale} from './chrome';
 import {num} from '../lib/format';
 import {useWidth} from './useWidth';
 import {ReadoutMark, ReadoutText, useChartHover} from './readout';
+import type {Help} from '../features/HelpTip';
 import {VStack} from '@astryxdesign/core/Stack';
 import type {SeriesAnalysis, StepScreen} from '../lib/stats';
 
@@ -19,6 +20,8 @@ type Props = {
   step?: StepScreen | null;
   title: string;
   height?: number;
+  /** Replaces the chart's built-in explanation behind its "?". */
+  help?: Help;
 };
 
 /**
@@ -26,12 +29,35 @@ type Props = {
  * can read), the Theil–Sen line with its 95% fan, the independent witness as
  * a line, and the best single step when the integrity screen prefers it.
  */
-export function SeriesChart({years, series, analysis, variable, unit, witness, witnessLabel, step, title, height = 220}: Props) {
+export function SeriesChart({years, series, analysis, variable, unit, witness, witnessLabel, step, title, height = 220, help}: Props) {
   const def = getVariable(variable);
   const [ref, W] = useWidth<SVGSVGElement>(640);
-  const H = height;
   const TS = textScale();
-  const m = {l: 40 * TS, r: 12, t: 30 * TS, b: 26 * TS};
+  // Legend items flow left to right and wrap onto extra rows on narrow
+  // charts; widths are estimated from character count.
+  const legendItems: {key: string; label: string; mark: 'bars' | 'trend' | 'witness'}[] = [
+    {key: 'bars', label: 'yearly value', mark: 'bars'},
+    {key: 'trend', label: analysis.trend.p < 0.05 ? 'Sen trend' : 'Sen trend (not significant)', mark: 'trend'},
+    ...(witness ? [{key: 'witness', label: witnessLabel ?? 'Independent record', mark: 'witness' as const}] : []),
+  ];
+  const ROW = 18 * TS;
+  const legend = (() => {
+    let x = 40 * TS;
+    let row = 0;
+    return legendItems.map(item => {
+      const w = (22 + item.label.length * 5.9 + 14) * TS;
+      if (x > 40 * TS && x + w - 14 * TS > W - 12) {
+        x = 40 * TS;
+        row += 1;
+      }
+      const at = {...item, x, row};
+      x += w;
+      return at;
+    });
+  })();
+  const extra = Math.max(...legend.map(l => l.row)) * ROW;
+  const H = height + extra;
+  const m = {l: 40 * TS, r: 12, t: 30 * TS + extra, b: 26 * TS};
   const vals = Array.from(series).filter(Number.isFinite);
   const wVals = witness ? Array.from(witness).filter(Number.isFinite) : [];
   const all = [...vals, ...wVals, 0];
@@ -140,23 +166,16 @@ export function SeriesChart({years, series, analysis, variable, unit, witness, w
           </text>
         </g>
       )}
-      <text x={4} y={m.t - 4} fontSize={10 * TS} fill={CHROME.faint} fontFamily={CHROME.font}>
+      <text x={4} y={m.t - 4} fontSize={10 * TS} fill={CHROME.muted} fontFamily={CHROME.font}>
         {unit}
       </text>
       <g fontSize={11 * TS} fontFamily={CHROME.font}>
         {(() => {
-          // Items flow left to right; widths estimated from character count.
-          const items: {key: string; label: string; mark: 'bars' | 'trend' | 'witness'}[] = [
-            {key: 'bars', label: 'yearly value', mark: 'bars'},
-            {key: 'trend', label: trend.p < 0.05 ? 'Sen trend' : 'Sen trend (not significant)', mark: 'trend'},
-            ...(witness ? [{key: 'witness', label: witnessLabel ?? 'Independent record', mark: 'witness' as const}] : []),
-          ];
-          let x = m.l;
-          return items.map(item => {
-            const x0 = x;
-            x += (22 + item.label.length * 5.9 + 14) * TS;
+          return legend.map(item => {
+            const x0 = item.x;
+            const dy = item.row * ROW;
             return (
-              <g key={item.key}>
+              <g key={item.key} transform={dy ? `translate(0, ${dy})` : undefined}>
                 {item.mark === 'bars' ? (
                   <>
                     <rect x={x0} y={5 * TS} width={6 * TS} height={10 * TS} rx={1} fill={divergingColor(def.palette, lim, lim)} />
@@ -175,7 +194,31 @@ export function SeriesChart({years, series, analysis, variable, unit, witness, w
       </g>
       {readout && <ReadoutMark x={readout.x} y={readout.y} top={m.t} bottom={H - m.b} />}
     </svg>
-    <ReadoutText lines={readout?.lines ?? null} hint="Point at, tap or arrow through the chart to read each year's values." />
+    <ReadoutText lines={readout?.lines ?? null} help={help ?? seriesHelp(unit, witnessLabel ?? (witness ? 'An independent record' : null), Boolean(step?.stepDominated))} />
     </VStack>
   );
+}
+
+/** What the yearly chart shows, for any reader, then its technical basis. */
+function seriesHelp(unit: string, witnessLabel: string | null, jump: boolean): Help {
+  const relative = unit === '%';
+  return {
+    title: 'Yearly values and long-term trend',
+    what: (
+      <>
+        Each bar is one year compared with its 1991–2020 normal{relative ? ', as a percentage of that normal' : ` (${unit})`}: above the zero line is higher than normal, below is lower. The straight line is the long-term trend, the typical change per decade, estimated so that one extreme year cannot drag it. The shaded band is its 95% range: where the true trend probably lies. If the band stays on one side of zero, the direction is clear. The line is solid when the trend is statistically significant and dashed when it is not.
+        {witnessLabel && ` The blue line and dots are ${witnessLabel}, built independently for the same area, so you can see whether the two records tell the same story.`}
+        {jump && ' The dashed vertical line marks a year where the record jumps rather than drifts, which can signal a change in how the data were produced.'}
+      </>
+    ),
+    how: 'Point at or tap a year, or focus the chart and use the arrow keys, to read that year’s exact values on the line below the chart.',
+    detail: (
+      <>
+        Annual means of monthly anomalies (at least 10 months a year). Trend: Theil–Sen slope with a Gilbert (1987) 95% interval. Significance: Mann–Kendall with the Hamed–Rao correction for autocorrelation, p &lt; 0.05; a p-value is how often a trend this strong would appear by chance in a record with no real trend.
+        {witnessLabel && ' The witness is sampled at each grid-cell centre and averaged with the same land-area weights, so both series cover the same footprint.'}
+        {' '}A jump is flagged when a single step beats a straight line by more than 6 in the Bayesian Information Criterion and no trend remains once it is removed.
+      </>
+    ),
+    method: 'theil-sen',
+  };
 }

@@ -4,6 +4,7 @@ import {HStack, StackItem, VStack} from '@astryxdesign/core/Stack';
 import {Heading, Text} from '@astryxdesign/core/Text';
 import {CASES} from '../data/cases';
 import {getVariable} from '../data/variables';
+import {VerdictTag} from './VerdictTag';
 import {VERDICT_TEXT} from '../lib/evidence';
 
 export function CaseFiles() {
@@ -35,7 +36,7 @@ export function CaseFiles() {
                       </Text>
                     </VStack>
                   </StackItem>
-                  <Text weight="semibold">{label}</Text>
+                  <VerdictTag label={label} />
                 </HStack>
               </VStack>
             );

@@ -89,6 +89,18 @@ older session results below are historical, not results for this working tree.
 - Method uses an Astryx `Outline` in a left panel. Outline writes
   `#method-<section>` with `pushState`; the router maps that back to the
   Method page so reloads and shared links work.
+- Instructions live behind a "?" (`src/features/HelpTip.tsx`), not on the
+  page. Each map and chart has one with three parts: what it shows (plain
+  language), how to use it, and technical detail for analysts, with a link
+  into Method. Chart help is built into the chart components; pass `help`
+  to override it.
+- Four review agents audited every route at 390, 1024–1100 and 1440 px.
+  Fixes from that pass: secondary buttons have a #2e4568 fill and a 3.6:1
+  outline, the selected segment is raised, field borders reach 3:1, muted
+  cards have an outline, code blocks are navy, the How we know Variable
+  control no longer stretches to 56px, the phone menu stacks its links, map
+  zoom controls are HTML buttons, chart legends wrap, and verdicts carry
+  their map colour (`VerdictTag`).
 - Verification and regional rendering costs are recorded in
   [PERFORMANCE.md](PERFORMANCE.md). For release state, use the exact commit's
   GitHub Actions results and live Pages build.

@@ -1,5 +1,7 @@
 import {useState, type KeyboardEvent, type PointerEvent} from 'react';
+import {HStack} from '@astryxdesign/core/Stack';
 import {Text} from '@astryxdesign/core/Text';
+import {HelpTip, type Help} from '../features/HelpTip';
 import {CHROME} from './chrome';
 
 /**
@@ -81,22 +83,26 @@ export function ReadoutMark({x, y, top, bottom, r = 4}: {x: number; y: number; t
 }
 
 /**
- * The values under the pointer, as a line of text below the chart so the
- * label never covers the data. Announced politely for keyboard readers.
+ * The chart's "?" and the values under the pointer, as a line of text below
+ * the chart so the label never covers the data. Announced politely for
+ * keyboard readers. Idle, the line stays blank so the layout does not jump.
  */
-export function ReadoutText({lines, hint}: {lines: string[] | null; hint: string}) {
+export function ReadoutText({lines, help}: {lines: string[] | null; help: Help}) {
   return (
-    <Text type="supporting" hasTabularNumbers aria-live="polite">
-      {lines ? (
-        <>
-          <Text type="supporting" weight="semibold" color="primary">
-            {lines[0]}
-          </Text>
-          {lines.slice(1).map(l => ` · ${l}`).join('')}
-        </>
-      ) : (
-        hint
-      )}
-    </Text>
+    <HStack gap={2} vAlign="center">
+      <HelpTip help={help} placement="above" />
+      <Text type="supporting" hasTabularNumbers aria-live="polite">
+        {lines ? (
+          <>
+            <Text type="supporting" weight="semibold" color="primary">
+              {lines[0]}
+            </Text>
+            {lines.slice(1).map(l => ` · ${l}`).join('')}
+          </>
+        ) : (
+          '\u00a0'
+        )}
+      </Text>
+    </HStack>
   );
 }

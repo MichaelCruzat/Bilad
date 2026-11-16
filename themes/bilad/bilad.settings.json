@@ -69,26 +69,63 @@
       "source": "token"
     },
     {
-      "thing": "background",
-      "value": "#22344f",
-      "source": "property",
-      "on": "button",
-      "when": "variant:secondary"
-    },
-    {
-      "thing": "border",
-      "value": "1px solid var(--color-border-emphasized)",
-      "source": "property",
-      "on": "button",
-      "when": "variant:secondary"
-    },
-    {
       "thing": "filter",
       "value": "brightness(1.18)",
       "source": "property",
       "on": "button",
       "when": "variant:secondary",
       "state": "hover"
+    },
+    {
+      "thing": "border",
+      "value": "1px solid #5f7596",
+      "source": "property",
+      "on": "button",
+      "when": "variant:secondary"
+    },
+    {
+      "thing": "background",
+      "value": "#16243a",
+      "source": "property",
+      "on": "segmented-control"
+    },
+    {
+      "thing": "background",
+      "value": "#2f4669",
+      "source": "property",
+      "on": "segmented-control-item",
+      "state": "selected"
+    },
+    {
+      "thing": "--color-border-emphasized",
+      "value": "#5f7596",
+      "source": "token"
+    },
+    {
+      "thing": "background",
+      "value": "#132036",
+      "source": "property",
+      "on": "card",
+      "when": "variant:muted"
+    },
+    {
+      "thing": "border",
+      "value": "1px solid var(--color-border)",
+      "source": "property",
+      "on": "card",
+      "when": "variant:muted"
+    },
+    {
+      "thing": "--color-syntax-background",
+      "value": "#0b1626",
+      "source": "token"
+    },
+    {
+      "thing": "background",
+      "value": "#2e4568",
+      "source": "property",
+      "on": "button",
+      "when": "variant:secondary"
     }
   ],
   "lifted": [],

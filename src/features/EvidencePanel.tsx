@@ -190,9 +190,6 @@ export function EvidencePanel({meta, grid, analysis, witnessStatus, selection}: 
         step={step}
         title={`Annual ${def.short.toLowerCase()} anomaly versus 1991–2020, ${unit === '% of normal' ? 'per cent of normal' : def.unit}, ${place}`}
       />
-      <Text type="supporting">
-        Bars: each year’s departure from the 1991–2020 normal{unit === '% of normal' ? ', as a percentage of that normal' : ''}. Line: Theil–Sen trend, shaded by its 95% range; dashed when not significant.
-      </Text>
 
       {exam && product && (
         <VStack gap={3}>
@@ -254,15 +251,12 @@ export function EvidencePanel({meta, grid, analysis, witnessStatus, selection}: 
       <VStack gap={2}>
         <Heading level={3}>Which months are changing?</Heading>
         <MonthStrip trends={view.seasons} variable={analysis.variable} unit={unit} digits={digits} title={`Trend by calendar month, ${place}`} />
-        <Text type="supporting">
-          Each bar is the trend for one calendar month, in {unit} per decade{def.relative ? ' of that month’s own normal' : ''}. Outlined bars are significant at a 10% false discovery rate across all twelve months; the others are exploratory.
-        </Text>
       </VStack>
       <VStack gap={2}>
         <Heading level={3}>Does the start year matter?</Heading>
         <SensitivityChart points={view.sensitivity} unit={unit} digits={digits} title={`Trend per decade by first year of record, ${place}`} />
         <Text type="supporting">
-          The trend re-estimated for every start year that leaves at least {Math.min(20, Math.max(10, years.length - 5))} years. Filled dots are significant. {robustness(view.sensitivity)}
+          {robustness(view.sensitivity)}
         </Text>
       </VStack>
       </Collapsible>

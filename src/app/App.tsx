@@ -5,9 +5,9 @@ import {Button} from '@astryxdesign/core/Button';
 import {Layout, LayoutContent} from '@astryxdesign/core/Layout';
 import {Link} from '@astryxdesign/core/Link';
 import {HStack, VStack} from '@astryxdesign/core/Stack';
-import {Text} from '@astryxdesign/core/Text';
+import {Heading, Text} from '@astryxdesign/core/Text';
 import {MotionStack} from '../features/MotionStack';
-import {TopNav} from '@astryxdesign/core/TopNav';
+import {TopNav, TopNavItem} from '@astryxdesign/core/TopNav';
 import {useRoute, type Route} from './router';
 import {APP_NAME, LogoMark} from '../brand/Logo';
 import {Glossary} from '../features/Glossary';
@@ -73,14 +73,14 @@ function Navigation({route}: {route: Route}) {
         </Link>
       }
       startContent={
-        <HStack gap={2}>
-          <Button label="Explore" size="lg" variant={current === 'world' || current === 'atlas' ? 'secondary' : 'ghost'} href="#/world" />
-          <Button label="Impact" size="lg" variant={current === 'impact' ? 'secondary' : 'ghost'} href="#/impact" />
-          <Button label="How we know" size="lg" variant={current === 'proof' ? 'secondary' : 'ghost'} href="#/proof" />
-          <Button label="Method" size="lg" variant={current === 'method' ? 'secondary' : 'ghost'} href="#/method" />
-        </HStack>
+        <>
+          <TopNavItem label="Explore" href="#/world" isSelected={current === 'world' || current === 'atlas' || current === 'brief'} />
+          <TopNavItem label="Impact" href="#/impact" isSelected={current === 'impact'} />
+          <TopNavItem label="How we know" href="#/proof" isSelected={current === 'proof'} />
+          <TopNavItem label="Method" href="#/method" isSelected={current === 'method'} />
+        </>
       }
-      endContent={<Button label="NASA challenge" size="lg" variant="ghost" href={CHALLENGE} />}
+      endContent={<TopNavItem label="NASA challenge" href={CHALLENGE} />}
     />
   );
 }
@@ -120,9 +120,22 @@ function page(route: Route): ReactNode {
     default:
       return (
         <Layout
+          contentWidth={1200}
           content={
             <LayoutContent padding={8}>
-              <Banner status="warning" title="Page not found" description={`Nothing lives at “${route.path}”.`} endContent={<Button label="Casebook" href="#/" />} />
+              <VStack gap={4}>
+                <Text type="label" color="accent">
+                  Page not found
+                </Text>
+                <Heading level={1} type="display-3">
+                  Nothing lives at “{route.path}”
+                </Heading>
+                <Text color="secondary">The link may be mistyped or out of date. Every covered country and cell is reachable from Explore.</Text>
+                <HStack gap={2} wrap="wrap">
+                  <Button variant="primary" label="Go to Explore" href="#/world" />
+                  <Button variant="secondary" label="Home" href="#/" />
+                </HStack>
+              </VStack>
             </LayoutContent>
           }
         />
