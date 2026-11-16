@@ -21,11 +21,12 @@ dataset to choose its colour scale on every year change.
 - World: cache the geographic scene so hover, crosshair, and cell selection
   only redraw overlays. Data, camera, size, or country-outline changes
   invalidate that cache.
-- Home: remove the repeated case list, rankings, detailed coverage ledger,
+- Home: remove rankings, the detailed coverage ledger,
   validation receipts, and glossary. The user's later global correction
   restores the full acronym, mission, beneficiaries, worldwide scope, and
   global highlights, replacing the seeded national comparison with a pinned
-  geographic evidence trail. The detailed sections remain on their own tabs.
+  geographic evidence trail. The user then requested the case list on Home
+  and a separate Impact tab for the detailed significance explanation.
 
 ## Measurements
 
@@ -73,7 +74,7 @@ availability, draw counts, shader errors, script time, and task time.
 
 ## Verification and limits
 
-The final global/motion build passed 24 browser checks, including all three
+The earlier global/motion build passed 24 browser checks, including all three
 scroll stages, a pinned globe, global walkthroughs outside the supplemental
 packs, reduced motion, and forced 2D fallback. Its final SwiftShader globe
 run recorded 16.7 ms median intervals and 16.7–16.8 ms p95 intervals, with
@@ -101,3 +102,57 @@ remains slower than the accelerated renderer, and older phones, high pixel
 density, zoom, and different graphics drivers need device testing. Cold
 downloads and the initial witness calculations are outside these warm-data
 samples. Statistics and agreement colours are unchanged by rendering changes.
+
+## Regional outlines and Midnight blue follow-up
+
+Natural Earth admin-1 geometry is generalized from 415,835 to 61,012 vertices
+and contains no names or properties. The file is 995,291 bytes, about 309 KiB
+gzipped. It is requested only after 3× zoom and shared by all three maps.
+The source revision, checksum, license and simplification are recorded in
+`public/data/admin1.meta.json`.
+
+An initial vector implementation reprojected regional lines on every globe
+frame. It was visibly slower, so it was replaced with a separate cached
+WebGL texture. Linear filtering smooths the outline layer; the climate data
+retain nearest-neighbour sampling. The World map similarly caches its
+country/regional lines in geographic coordinates and culls off-screen cells.
+The 2D globe fallback culls regional lines by its visible spherical cap.
+
+Same local Chrome version, 1440×900, SwiftShader and 4× CPU throttle as above;
+three three-second samples per case. The zoomed globe rotates, and the flat
+map pans over North America. Values are callback intervals, not presented FPS.
+
+| Scenario | Initial vector p95 | Retained renderer p95 |
+| --- | ---: | ---: |
+| Zoomed globe with regional lines | 83.3–116.6 ms | 16.7–16.8 ms |
+| Zoomed World map while panning | 183.3–350 ms | 33.4 ms |
+| World year playback | — | 16.8–33.4 ms |
+
+An empty-regional-layer control in the retained implementation measured
+16.7–16.8 ms p95 for the globe and 50–133.4 ms for World. The control being
+slower than the real layer illustrates run variation; adding boundaries is
+not an optimization by itself. Warm-data samples exclude the first asset
+download and texture upload. Older phones and hardware GPUs still need
+device testing. Each cached 2304×1440 outline raster uses about 13 MB before
+browser/GPU copies.
+
+| Experiment | Decision | Evidence |
+| --- | --- | --- |
+| Cache the filtered relief image | Reverted | Zoomed World p95 stayed around 183–250 ms. |
+| Cull off-screen cell rectangles | Kept | Script time fell substantially; zoomed p95 reached 150–167 ms before caching outlines. |
+| Cache the climate grid as an image | Reverted | No consistent frame-time improvement; spikes reached 667 ms. |
+| Cache country/regional line geometry as an image | Kept | World p95 fell to 33–50 ms in the isolated run and 33.4 ms in the combined run. |
+
+Raw runs, including rejected attempts, are in
+[regional-performance-results.json](regional-performance-results.json).
+
+```sh
+pnpm build
+PROFILE_REGIONS=1 PROFILE_SWIFTSHADER=1 PROFILE_OUTPUT=/tmp/regions.json pnpm profile:visuals
+PROFILE_REGIONS=1 PROFILE_REGION_BASELINE=1 PROFILE_SWIFTSHADER=1 PROFILE_OUTPUT=/tmp/empty-regions.json pnpm profile:visuals
+```
+
+These measurements predate the later help/copy review and the requested
+continuous-scroll change. Scrolling now preserves the selected data view,
+camera and running rotation; it does not trigger a fly-to or globe fade.
+Reduced motion and the explicit pause control remain supported.

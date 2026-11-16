@@ -131,7 +131,7 @@ export function Casebook({section}: {section?: 'cases'}) {
           <HStack gap={4} wrap="wrap"><Text type="code">{ready ? bundle.data.cells.n.toLocaleString('en-US') : '54,425'} land cells</Text><Text type="code">1981–2024</Text><Text type="code">60°S–84°N</Text></HStack>
           <HStack gap={3} wrap="wrap"><Button variant="primary" label="Explore the world" href="#/world" /><Button variant="secondary" label="Follow the evidence ↓" onClick={() => story.current?.scrollIntoView({behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start'})} /></HStack>
           <Link href="#/?section=cases">Read the case files</Link>
-          <Text type="supporting">Look at a whole country or a single grid cell, roughly 50 to 70 km across. Every country with land between 60°S and 84°N is included. TRACE was built for the NASA Space Apps Challenge 2026 from open NASA data; it is not an official NASA product.</Text>
+          <Text type="supporting">Explore a country or a single 0.5° × 0.625° grid cell. The atlas includes 223 countries with covered cells between 60°S and 84°N; small places may not be resolved at this scale. TRACE was built for NASA Space Apps 2026 from open NASA data; it is not an official NASA product.</Text>
         </MotionStack>
         {narrow && globeFigure}
         <MotionStack reveal as="section" gap={4}>

@@ -222,7 +222,7 @@ function Walkthrough({iso3, variable}: {iso3: string; variable: string}) {
             </MetadataList>
             <Rule pass={!step.stepDominated}>
               {step.stepDominated
-                ? `Jump-shaped: the jump explains the record far better than a ramp, and no trend is left without it. The trend may come from the data.`
+                ? `Jump-shaped: the step fits better than a ramp, and the residual trend is not significant. This heuristic warning does not establish that no trend remains or identify its cause.`
                 : `No sudden jump flagged: the record does not meet both tests, though that alone does not prove a steady ramp.`}
             </Rule>
           </>

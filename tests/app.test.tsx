@@ -131,8 +131,26 @@ describe('case file', () => {
     expect(await screen.findByRole('heading', {level: 1, name: 'Why climate evidence needs a second look'})).toBeInTheDocument();
     expect(screen.getByRole('heading', {name: 'Why cross-reference temperature records?'})).toBeInTheDocument();
     expect(screen.getByRole('heading', {name: 'Governments and public agencies'})).toBeInTheDocument();
-    expect(screen.getByText('No institution has adopted TRACE yet, and it has no policy outcomes to show.')).toBeInTheDocument();
+    expect(screen.getByText('Institutional adoption and policy outcomes have not been demonstrated.')).toBeInTheDocument();
     expect(screen.getByRole('link', {name: 'Explore the global evidence'})).toHaveAttribute('href', '#/world');
+  });
+
+  it('shows both global temperature estimates and distinguishes overlap from equal rates', async () => {
+    renderAt('#/impact');
+    expect(await screen.findByRole('heading', {name: 'Global temperature: compare the rates'})).toBeInTheDocument();
+    expect(await screen.findByText('+0.25')).toBeInTheDocument();
+    expect(screen.getByText('+0.35')).toBeInTheDocument();
+    expect(screen.getByText(/Overlapping intervals do not establish equal rates/)).toBeInTheDocument();
+  });
+
+  it('keeps the impact explanation available when findings fail and recovers on retry', async () => {
+    serveData(/findings\.json$/);
+    renderAt('#/impact');
+    expect(await screen.findByText('Comparison unavailable')).toBeInTheDocument();
+    expect(screen.getByRole('heading', {name: 'Why cross-reference temperature records?'})).toBeInTheDocument();
+    serveData();
+    fireEvent.click(screen.getByRole('button', {name: 'Retry comparison'}));
+    expect(await screen.findByText('+0.35')).toBeInTheDocument();
   });
 
   it('walks the Bangladesh case to a data-artefact verdict', async () => {

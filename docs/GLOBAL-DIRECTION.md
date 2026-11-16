@@ -55,8 +55,11 @@ outlines with the climate grid's existing transform. The outlines are
 geographic context only. They add no statistics by region, and the climate
 grid is too coarse to resolve administrative boundaries.
 
-Motion should carry meaning: the globe changes from a reanalysis claim to a
-station witness to an agreement map as the reader follows the evidence.
+The latest user correction supersedes automatic scroll-following: the globe
+keeps the same selected data view and camera while the reader scrolls. It
+continues rotating at a constant rate while visible, without scroll-triggered
+fly-to, fade or refresh. Reanalysis, station and agreement views change only
+when the reader chooses their controls.
 Sections and selected evidence slide into place using transform and opacity.
 The page keeps native scrolling, readable text, keyboard access, a rotation
 pause, and reduced-motion support. No scroll hijacking, hidden essential

@@ -392,10 +392,10 @@ function Rankings({cells, stats, countries, variable, onPick}: {cells: GlobalCel
       </VStack>
       <VStack gap={1} width="min(100%, 24rem)">
         <Text type="label" color="secondary">
-          Least trustworthy records: share of each country’s land flagged as a likely artefact
+          Most land flagged for review
         </Text>
         {suspect.map(r => row(r, `${percent(r.flagged)} flagged`))}
-        <Text type="supporting">A cell is flagged when the second record contradicts its trend, or when its record jumps in a single year and the second record does not.</Text>
+        <Text type="supporting">Share of each country’s land flagged by the screening rules. These are review priorities, not a ranking of observational quality. Coarse witness resolution, missing years and shared inputs can affect the comparison; availability of a gridded value does not measure station density.</Text>
       </VStack>
     </HStack>
   );

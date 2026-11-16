@@ -1,0 +1,7 @@
+{
+  "src/lib/stats.ts": "361ff3e26386309c38e831c698899cbd9d3176f03784bcb1715d23a3ba149a4f",
+  "src/lib/evidence.ts": "93e5499891c4a91d8d2047ee35a0d02cfca58a80c8fe0e7dc14b9088ed2a6523",
+  "public/data/global/T2M.stats.bin": "732068083b9177bee0784a5af439b25f0dafb71f0e852d6977889c495e8c4860",
+  "public/data/global/PRECTOTCORR.stats.bin": "e3a4756b04651ee7fecf86c034ccb438265daeb5ba7ddf57f9c045ba168055d5",
+  "public/data/global/summary.json": "0016519cf17b2e31216d28c782feea012e3ad7e54bcf1c996cf4b9a581812a18"
+}

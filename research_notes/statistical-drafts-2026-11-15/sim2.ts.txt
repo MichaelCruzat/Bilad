@@ -1,0 +1,11 @@
+import {stepScreen} from '../src/lib/stats.ts';
+let seed = 4242;
+const rand = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
+const gauss = () => { const u = 1 - rand(), v = rand(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
+const years = Array.from({length: 44}, (_, i) => 1981 + i);
+const run = (phi: number, slope: number, jump: number) => {
+  const N = 3000; let f = 0;
+  for (let r = 0; r < N; r++) { let e = 0; const y = years.map((_, i) => { e = phi * e + Math.sqrt(1 - phi * phi) * gauss(); return slope * i + (i >= 17 ? jump : 0) + e; }); if (stepScreen(years, y)!.stepDominated) f++; }
+  return (100 * f / N).toFixed(1) + '%';
+};
+for (const phi of [0, 0.2, 0.4, 0.6]) console.log(`phi ${phi}: false alarms (trend, no jump) worst of slopes = ${[0, 0.01, 0.02, 0.03, 0.04].map(s => run(phi, s, 0)).join(' ')} | detects a 1.5-sd jump, no trend: ${run(phi, 0, 1.5)} | 2.5-sd jump: ${run(phi, 0, 2.5)}`);

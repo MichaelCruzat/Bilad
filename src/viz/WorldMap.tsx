@@ -37,6 +37,56 @@ type Props = {
 
 export type WorldMapControls = {zoomBy: (factor: number) => void; reset: () => void};
 
+export type WorldMapCamera = {x: number; y: number; k: number};
+
+/**
+ * Find a camera that shows the selected country's shipped data cells.
+ *
+ * The flat map cannot show a date-line-spanning footprint as one compact
+ * rectangle. In that case, keep the full longitude extent and only fit the
+ * latitude, avoiding a misleading zoom to the middle of the Pacific.
+ */
+export function fitWorldMapCamera(cells: GlobalCells, selectedCountry: number | null, size: {w: number; h: number}, extent: [number, number, number, number], padding = 24): WorldMapCamera | null {
+  if (selectedCountry === null || size.w <= 0 || size.h <= 0) return null;
+  const [west, south, east, north] = extent;
+  const width = east - west;
+  const height = north - south;
+  if (!(width > 0 && height > 0)) return null;
+
+  let minLon = Infinity;
+  let minLat = Infinity;
+  let maxLon = -Infinity;
+  let maxLat = -Infinity;
+  for (let c = 0; c < cells.n; c++) {
+    if (cells.country[c] !== selectedCountry) continue;
+    const lon = cells.lon[c];
+    const lat = cells.lat[c];
+    if (!Number.isFinite(lon) || !Number.isFinite(lat)) continue;
+    minLon = Math.min(minLon, lon);
+    minLat = Math.min(minLat, lat);
+    maxLon = Math.max(maxLon, lon);
+    maxLat = Math.max(maxLat, lat);
+  }
+  if (!Number.isFinite(minLon)) return null;
+
+  const crossesAntimeridian = maxLon - minLon > 180;
+  const fitWest = crossesAntimeridian ? west : Math.max(west, minLon - D_LON / 2);
+  const fitEast = crossesAntimeridian ? east : Math.min(east, maxLon + D_LON / 2);
+  const fitSouth = Math.max(south, minLat - D_LAT / 2);
+  const fitNorth = Math.min(north, maxLat + D_LAT / 2);
+  const baseScale = Math.min(size.w / width, size.h / height);
+  const baseOffsetX = (size.w - width * baseScale) / 2;
+  const baseOffsetY = (size.h - height * baseScale) / 2;
+  const x0 = baseOffsetX + (fitWest - west) * baseScale;
+  const x1 = baseOffsetX + (fitEast - west) * baseScale;
+  const y0 = baseOffsetY + (north - fitNorth) * baseScale;
+  const y1 = baseOffsetY + (north - fitSouth) * baseScale;
+  const availableW = Math.max(1, size.w - padding * 2);
+  const availableH = Math.max(1, size.h - padding * 2);
+  const k = Math.max(1, Math.min(40, Math.min(availableW / Math.max(1, x1 - x0), availableH / Math.max(1, y1 - y0))));
+  return {x: (size.w - k * (x0 + x1)) / 2, y: (size.h - k * (y0 + y1)) / 2, k};
+}
+
 const BINS = 72;
 const D_LAT = 0.5;
 const D_LON = 0.625;
@@ -180,7 +230,10 @@ export function WorldMap({cells, stats, annual, layer, year, firstYear, extent, 
     if (!el || typeof ResizeObserver === 'undefined') return;
     const ro = new ResizeObserver(() => {
       const r = el.getBoundingClientRect();
-      if (r.width > 0 && r.height > 0) setSize({w: Math.round(r.width), h: Math.round(r.height)});
+      if (r.width > 0 && r.height > 0) {
+        const next = {w: Math.round(r.width), h: Math.round(r.height)};
+        setSize(current => current.w === next.w && current.h === next.h ? current : next);
+      }
     });
     ro.observe(el);
     return () => ro.disconnect();
@@ -200,6 +253,22 @@ export function WorldMap({cells, stats, annual, layer, year, firstYear, extent, 
       select(el).on('.zoom', null);
     };
   }, [size]);
+
+  const countryCamera = useMemo(
+    () => fitWorldMapCamera(cells, selectedCountry, size, extent),
+    [cells, selectedCountry, size, extent[0], extent[1], extent[2], extent[3]],
+  );
+  useEffect(() => {
+    const el = canvasRef.current;
+    const z = zoomer.current;
+    if (!el || !z) return;
+    const map = select(el);
+    map.interrupt();
+    if (!countryCamera) return;
+    const target = zoomIdentity.translate(countryCamera.x, countryCamera.y).scale(countryCamera.k);
+    if (reduced) map.call(z.transform, target);
+    else map.transition().duration(420).call(z.transform, target);
+  }, [countryCamera, reduced]);
 
   // Draw.
   useEffect(() => {

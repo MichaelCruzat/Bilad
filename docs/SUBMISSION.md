@@ -14,7 +14,7 @@ TRACE is a global Earth-system trend detective: it covers every land cell from 6
 
 ## Three-minute walkthrough
 
-1. **Home (0:00–0:30).** Introduce TRACE: Tracking Regional Atmospheric Change on Earth. Show the worldwide coverage, 1981–2024 window, and latitude limits. Scroll the evidence trail: the same globe moves from reanalysis to station estimates to agreement. Pick any land cell or choose Explore the world. No country is preselected.
+1. **Home (0:00–0:30).** Introduce TRACE: Tracking Regional Atmospheric Change on Earth. Show the worldwide coverage, 1981–2024 window, and latitude limits. Scroll the evidence trail while the same globe keeps rotating; choose its data buttons to compare reanalysis, stations and agreement. Pick any land cell or choose Explore the world. No country is preselected.
 2. **Explore (0:30–1:15).** Search for India on the worldwide grid. Show the weak reanalysis warming against stronger station warming, the uncertainty, and the witness verdict. This country has no supplemental monthly pack; its evidence still works globally.
 3. **Global walkthrough (1:15–2:00).** Select Canada and rainfall in How we know. Follow the footprint, baseline, trend estimate, significance, jump check, and GPCP comparison. State the shared-gauge limitation and distinguish global map FDR from a test of the area-average series.
 4. **One cell (2:00–2:40).** Pick a cell in Explore. Its evidence is for one cell, not the containing country. Copy the exact URL and download its evidence. Explain what an agency analyst could inspect or pass on for further review.

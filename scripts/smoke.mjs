@@ -275,7 +275,7 @@ try {
     const p = await context.newPage();
     await p.emulateMedia({reducedMotion: 'reduce'});
     await p.goto(`${BASE}#/`);
-    await p.getByRole('button', {name: 'Globe follows your scroll'}).click({timeout: 30000});
+    await p.getByRole('application', {name: /Globe of land temperature/}).waitFor({timeout: 30000});
     const show = p.getByRole('button', {name: 'Show the stations on the globe'});
     await show.scrollIntoViewIfNeeded();
     await show.click();

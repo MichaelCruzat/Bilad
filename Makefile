@@ -28,6 +28,7 @@ global:
 	$(PY) -m pipeline global
 	$(PY) -m pipeline crosscheck
 	$(NODE) scripts/summarize-global.ts
+	$(NODE) scripts/global-findings.mjs
 
 summary:
 	$(NODE) scripts/summarize.ts

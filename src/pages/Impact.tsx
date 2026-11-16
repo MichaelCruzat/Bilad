@@ -1,13 +1,18 @@
 import type {ReactNode} from 'react';
 import {Button} from '@astryxdesign/core/Button';
+import {Banner} from '@astryxdesign/core/Banner';
 import {Divider} from '@astryxdesign/core/Divider';
 import {LayoutContent} from '@astryxdesign/core/Layout';
 import {Link} from '@astryxdesign/core/Link';
+import {Grid} from '@astryxdesign/core/Grid';
 import {HStack, VStack} from '@astryxdesign/core/Stack';
 import {Heading, Text} from '@astryxdesign/core/Text';
 import {MotionStack} from '../features/MotionStack';
+import {Figure} from '../features/VerdictStrip';
 import {Center} from '@astryxdesign/core/Center';
-import {useMediaQuery} from '../lib/hooks';
+import {useAsync, useMediaQuery} from '../lib/hooks';
+import {loadGlobalFindings} from '../lib/globalFindings';
+import {percent, signed} from '../lib/format';
 
 export function Impact() {
   const narrow = useMediaQuery('(max-width: 1100px)');
@@ -33,6 +38,8 @@ export function Impact() {
       <HStack><Button variant="secondary" label="See a disagreement in Case 03" href="#/case/bangladesh-phantom-cooling" /></HStack>
     </ImpactSection>
 
+    <TemperatureComparison />
+
     <ImpactSection title="Who can use the result?">
       <VStack gap={4}>
         <Heading level={3}>Citizens, teachers and researchers</Heading>
@@ -47,17 +54,37 @@ export function Impact() {
     </ImpactSection>
 
     <ImpactSection title="What works today">
-      <Text>A working worldwide tool for temperature and rainfall over land from 60°S to 84°N. Any covered country or cell can be examined, linked to and exported. The case files show the main outcomes: records that agree, records that differ in speed, records that contradict each other, and questions too local for the second record to answer.</Text>
-      <Text>Separate test code confirms that the shipped numbers are calculated correctly. That cannot show the observations themselves are right. For rainfall, the second record (GPCP) shares some rain-gauge data with MERRA-2, so the comparison is only partly independent.</Text>
+      <Text>Explore, share and export temperature or rainfall evidence for any covered country or cell. The case files show agreement, different rates, contradictions and comparisons too coarse to resolve a local question.</Text>
+      <Text>Independent checks cover selected calculations; they do not validate the observations or every modelling assumption. The rainfall witness, GPCP, shares rain-gauge inputs with MERRA-2 and is only partly independent.</Text>
     </ImpactSection>
 
     <ImpactSection title="How we would know it helps">
       <Text>The real test is whether analysts reach a reviewed result faster, whether readers interpret uncertainty correctly, whether other teams can reproduce the work, and whether the disagreements TRACE flags hold up when someone investigates them. Coverage numbers and a polished map do not prove any of that.</Text>
-      <Text weight="semibold">No institution has adopted TRACE yet, and it has no policy outcomes to show.</Text>
+      <Text weight="semibold">Institutional adoption and policy outcomes have not been demonstrated.</Text>
       <Text color="secondary">TRACE does not forecast, explain causes, map local hazards or replace a proper risk assessment. What it offers is climate evidence that is easier to question and review.</Text>
       <HStack gap={3} wrap="wrap"><Button variant="primary" label="Explore the global evidence" href="#/world" /><Button variant="secondary" label="Follow the calculation" href="#/proof" /><Button variant="secondary" label="Read the method" href="#/method" /></HStack>
     </ImpactSection>
   </VStack></Center></LayoutContent>;
+}
+
+function TemperatureComparison() {
+  const findings = useAsync(loadGlobalFindings, []);
+  const comparison = findings.status === 'ready' ? findings.data.variables.T2M.allLand : null;
+  const range = (value: number | null) => value === null ? 'unavailable' : signed(value, 2);
+  return <ImpactSection title="Global temperature: compare the rates">
+    {findings.status === 'error' ? <Banner status="warning" title="Comparison unavailable" description="Retry to load the estimates. The explanation remains available." endContent={<Button label="Retry comparison" onClick={findings.retry} />} />
+      : findings.status === 'loading' ? <Text>Loading the global comparison…</Text>
+      : comparison && <>
+        <Text>Area-weighted temperature estimates over covered land, {findings.data.window[0]}–{findings.data.window[1]}.</Text>
+        <Grid columns={{minWidth: 240, max: 2}} gap={6}>
+          <VStack gap={2}><Heading level={3}>NASA POWER / MERRA-2</Heading><Figure value={range(comparison.claim.perDecade)} unit="°C per decade" caption={`95% slope interval ${range(comparison.claim.low)} to ${range(comparison.claim.high)}; ${comparison.claim.n} annual values.`} /></VStack>
+          <VStack gap={2}><Heading level={3}>GISTEMP v4 land stations</Heading><Figure value={range(comparison.witness.perDecade)} unit="°C per decade" caption={`95% slope interval ${range(comparison.witness.low)} to ${range(comparison.witness.high)}; ${comparison.witness.n} annual values.`} /></VStack>
+        </Grid>
+        {comparison.ratio !== null && comparison.ratio > 0 && comparison.ratio < 1 && <Text weight="semibold">The reanalysis point estimate is about {percent(1 - comparison.ratio)} lower than the station estimate.</Text>}
+        <Text>Overlapping intervals do not establish equal rates. This is a descriptive comparison, not a formal test of the difference. Coverage varies with time and the records can share errors.</Text>
+        <HStack gap={3} wrap="wrap"><Button variant="secondary" label="Inspect the global calculation" href="#/proof" /><Link href={`${import.meta.env.BASE_URL ?? './'}data/global/findings.json`}>Download the computed findings</Link></HStack>
+      </>}
+  </ImpactSection>;
 }
 
 function ImpactSection({title, children}: {title: string; children: ReactNode}) {

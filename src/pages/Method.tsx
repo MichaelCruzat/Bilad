@@ -87,8 +87,8 @@ const BLOCKS: Block[] = [
     title: 'Integrity screen: ramp or jump?',
     summary: 'A straight line is compared with a single step, to catch records that jump rather than drift.',
     body: [
-      'A trend test assumes the data were produced the same way throughout. A reanalysis assimilates whatever satellites and stations exist each year, so its record can jump when they change. TRACE fits a straight line and a single step at the best break (each segment at least 8 years) and compares them with the Bayesian Information Criterion. A record is “step-dominated” when the step wins by more than 6 and no trend remains once it is removed. TRACE also flags years in which three or more of a nation’s seven variables jump together.',
-      'A step is not proof of an artefact; regime shifts are real. The verdict depends on the witness.',
+      'A trend test assumes the data were produced the same way throughout. A reanalysis assimilates whatever satellites and stations exist each year, so its record can jump when they change. TRACE fits a straight line and a single step at the best break (each segment at least 8 years) and compares them with the Bayesian Information Criterion. A record is “step-dominated” when the step wins by more than 6 and the residual trend is not significant after removing the two regime means. TRACE also flags years in which three or more of a nation’s seven variables jump together.',
+      'The line counts three parameters; the step counts four, including the break location. The threshold is heuristic: its false-positive rate after breakpoint search and under persistent noise is not calibrated. A non-significant residual test does not prove no trend remains. Real regime shifts exist; a step alone does not prove an artefact.',
     ],
     formula: 'BIC = n ln(RSS/n) + k ln n,   k_trend = 3, k_step = 4;   step-dominated ⇔ ΔBIC > 6 and p_residual ≥ 0.05',
   },
@@ -100,6 +100,7 @@ const BLOCKS: Block[] = [
     body: [
       'Temperature is compared with GISTEMP v4 (250 km smoothing, land stations only); precipitation with GPCP v2.3 (gauges and satellites; originally developed at NASA Goddard, now distributed by NOAA). Witnesses are stored per grid box, so the atlas can cross-examine any selection, from the whole nation down to one cell. Each witness is sampled at the centre of every TRACE cell and averaged with TRACE’s own weights, so the footprint is identical. The verdict compares direction, significance and overlap of the two 95% intervals: corroborated, same direction with a different size, only one record significant, not supported, contradicted, or no detectable trend.',
       'The witnesses are coarser (2° and 2.5°) and are themselves estimates. GPCP and MERRA-2’s corrected precipitation both draw on rain gauges, so their agreement cannot exclude a shared error.',
+      'Overlapping 95% intervals do not establish equal rates. Compare both estimates. A formal difference test must account for dependence within and between the records.',
     ],
   },
 ];

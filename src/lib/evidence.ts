@@ -6,7 +6,8 @@
  * temperature, GPCP for precipitation) and screens it for step changes.
  */
 import {BASELINE, getVariable} from '../data/variables';
-import {agreement, stepScreen, trendTest, type Agreement, type StepScreen, type TrendTest} from './stats';
+import {stepScreen, type Agreement} from './stats';
+import {crossExamine, type CrossExamination} from './crossExamine';
 import type {DataIndex} from './nationData';
 import type {Window} from './analysis';
 
@@ -66,26 +67,7 @@ export function witnessSeries(xc: Crosscheck, iso3: string, variable: string, wi
   return out;
 }
 
-export type CrossExamination = {
-  claim: TrendTest;
-  witness: TrendTest;
-  verdict: Agreement;
-  claimStep: StepScreen | null;
-  witnessStep: StepScreen | null;
-  /** Reanalysis looks like a jump while the witness does not, or they disagree outright. */
-  artifactSuspected: boolean;
-};
-
-export function crossExamine(years: number[], claimSeries: ArrayLike<number>, witness: ArrayLike<number>): CrossExamination {
-  const claim = trendTest(years, claimSeries);
-  const w = trendTest(years, witness);
-  const verdict = agreement(claim, w);
-  const claimStep = stepScreen(years, claimSeries);
-  const witnessStep = stepScreen(years, witness);
-  const artifactSuspected =
-    verdict === 'contradicted' || Boolean(claimStep?.stepDominated && !witnessStep?.stepDominated && verdict !== 'corroborated');
-  return {claim, witness: w, verdict, claimStep, witnessStep, artifactSuspected};
-}
+export {crossExamine, type CrossExamination};
 
 /**
  * One vocabulary for the witness comparison, used by every map legend, badge
@@ -93,7 +75,7 @@ export function crossExamine(years: number[], claimSeries: ArrayLike<number>, wi
  * "Likely data artefact", when the integrity screen also fails.
  */
 export const VERDICT_TEXT: Record<Agreement, {label: string; tone: 'success' | 'warning' | 'error' | 'neutral'; plain: string}> = {
-  corroborated: {label: 'Corroborated', tone: 'success', plain: 'Both records show a significant change in the same direction, and their 95% ranges overlap.'},
+  corroborated: {label: 'Corroborated', tone: 'success', plain: 'Both records show a significant change in the same direction, and their 95% ranges overlap. Overlap does not establish equal rates; compare both estimates.'},
   'same-direction': {label: 'Same direction, different size', tone: 'warning', plain: 'Both records agree on the direction, but not on how fast; their 95% ranges do not overlap.'},
   'weakly-supported': {label: 'Only one record significant', tone: 'warning', plain: 'One record shows a significant change; the other leans the same way without reaching significance.'},
   contradicted: {label: 'Contradicted', tone: 'error', plain: 'The two records show significant changes in opposite directions. Their sources, sampling or uncertainty need explaining before either is trusted here.'},

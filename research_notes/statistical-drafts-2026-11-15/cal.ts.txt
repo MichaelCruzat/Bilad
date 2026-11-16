@@ -1,0 +1,23 @@
+import {stepScreen} from '../src/lib/stats.ts';
+let seed = 987654;
+const rand = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
+const gauss = () => { const u = 1 - rand(), v = rand(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
+const years = Array.from({length: 44}, (_, i) => 1981 + i);
+// For each persistence level, find the smallest dBIC threshold T so that, for every trend size,
+// P(dBIC > T and residual trend p >= 0.05) <= 5%.
+const out: string[] = [];
+for (const phi of [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6]) {
+  let need = 6;
+  for (const s of [0, 0.01, 0.02, 0.03, 0.04, 0.06, 0.08]) {
+    const N = 3000; const cand: number[] = [];
+    for (let r = 0; r < N; r++) {
+      let e = 0; const y = years.map((_, i) => { e = phi * e + Math.sqrt(1 - phi * phi) * gauss(); return s * i + e; });
+      const st = stepScreen(years, y)!;
+      cand.push(st.residualTrendP >= 0.05 ? st.deltaBic : -Infinity);
+    }
+    cand.sort((a, b) => a - b);
+    need = Math.max(need, cand[Math.floor(0.95 * N)]);
+  }
+  out.push(`${phi}: ${need.toFixed(1)}`);
+}
+console.log(out.join('\n'));

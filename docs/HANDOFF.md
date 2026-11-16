@@ -19,8 +19,10 @@ cell scope, witness coverage, retry, and animation cleanup.
 
 The user's latest correction makes the product explicitly global. Home retains
 the full acronym, purpose, worldwide scope, and observation window, with no
-seeded nation. A pinned globe follows a three-stage evidence trail as the page
-scrolls. Primary navigation is Explore, Impact, How we know, and Method. The
+seeded nation. A pinned globe accompanies the evidence trail. The latest
+user instruction keeps its selected view, camera and rotation continuous
+while scrolling; the former scroll observer and fly-to/fade behaviour are
+removed. Primary navigation is Explore, Impact, How we know, and Method. The
 default proof route supports all covered land, any country, and linked cells;
 the seven national packs remain supplemental deep links. The globe uses a
 cached geographic texture with WebGL,

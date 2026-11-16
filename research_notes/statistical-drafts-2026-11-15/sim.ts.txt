@@ -1,0 +1,15 @@
+import {stepScreen} from '../src/lib/stats.ts';
+// Null: linear trend + AR(1) noise, n = 44 years. How often does the screen flag a jump?
+let seed = 12345;
+const rand = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
+const gauss = () => { const u = 1 - rand(), v = rand(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
+const years = Array.from({length: 44}, (_, i) => 1981 + i);
+for (const phi of [0, 0.2, 0.4]) for (const slope of [0, 0.02, 0.04]) {
+  const N = 4000; let flagged = 0; const dbic: number[] = [];
+  for (let r = 0; r < N; r++) {
+    let e = 0; const y = years.map((yr, i) => { e = phi * e + Math.sqrt(1 - phi * phi) * gauss(); return slope * (yr - 1981) / 0.25 * 0.25 + e * 0.25; });
+    const s = stepScreen(years, y)!; dbic.push(s.deltaBic); if (s.stepDominated) flagged++;
+  }
+  dbic.sort((a, b) => a - b);
+  console.log(`phi=${phi} slope=${slope}/yr (noise sd 0.25): flagged ${(100 * flagged / N).toFixed(1)}%, dBIC 95th=${dbic[Math.floor(0.95 * N)].toFixed(2)} 99th=${dbic[Math.floor(0.99 * N)].toFixed(2)}`);
+}

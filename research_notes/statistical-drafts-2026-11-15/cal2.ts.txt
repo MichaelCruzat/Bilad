@@ -1,0 +1,23 @@
+import {stepScreen} from '../src/lib/stats.ts';
+let seed = 777;
+const rand = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
+const gauss = () => { const u = 1 - rand(), v = rand(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
+const years = Array.from({length: 44}, (_, i) => 1981 + i);
+const bins = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6];
+const slopes = [0, 0.01, 0.02, 0.03, 0.04, 0.06];
+// samples[bin][slope] = dBIC values (or -inf when the residual trend survives)
+const samples = bins.map(() => slopes.map(() => [] as number[]));
+for (const phi of [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7]) slopes.forEach((s, si) => {
+  for (let r = 0; r < 2500; r++) {
+    let e = 0; const y = years.map((_, i) => { e = phi * e + Math.sqrt(1 - phi * phi) * gauss(); return s * i + e; });
+    const st = stepScreen(years, y)!;
+    const b = Math.min(bins.length - 1, Math.max(0, Math.floor(st.persistence * 10 + 1e-9)));
+    samples[b][si].push(st.residualTrendP >= 0.05 ? st.deltaBic : -Infinity);
+  }
+});
+const table = bins.map((b, bi) => {
+  let need = 6;
+  slopes.forEach((_, si) => { const v = samples[bi][si].sort((a, c) => a - c); if (v.length >= 200) need = Math.max(need, v[Math.floor(0.95 * v.length)]); });
+  return [b, +need.toFixed(1), samples[bi].reduce((n, v) => n + v.length, 0)];
+});
+console.log(JSON.stringify(table));

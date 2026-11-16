@@ -287,12 +287,12 @@ function CaseBody({def, bundle, analysis, crosscheck, index, witnessGrid}: {def:
           <Text type="label" color="accent">
             Integrity screen
           </Text>
-          <Heading level={3}>{step?.stepDominated ? `A jump in ${step.breakAt}, not a ramp` : 'Behaves like a gradual change'}</Heading>
+          <Heading level={3}>{step?.stepDominated ? `A jump in ${step.breakAt}, not a ramp` : 'No jump warning'}</Heading>
           {step && (
             <Text color="secondary">
               {step.stepDominated
-                ? `In ${step.breakAt} the record shifts by ${signed(step.step, digits)} ${chartUnit} at once. A one-time shift fits far better than a steady trend (score ${num(step.deltaBic, 1)}; above 6 counts as strong), and once it is taken out no trend is left (${pPhrase(step.residualTrendP)}).`
-                : `The best single shift, in ${step.breakAt} (${signed(step.step, digits)} ${chartUnit}), fits no better than a steady trend (jump score ${num(step.deltaBic, 1)}; it would need to be above 6 to count as a sudden jump).`}
+                ? `In ${step.breakAt} the fitted shift is ${signed(step.step, digits)} ${chartUnit}. It fits better than a steady trend (score ${num(step.deltaBic, 1)}; the heuristic threshold is 6). The residual trend is not significant (${pPhrase(step.residualTrendP)}), which does not prove that no trend remains.`
+                : `The best single shift is in ${step.breakAt} (${signed(step.step, digits)} ${chartUnit}), with a jump score of ${num(step.deltaBic, 1)}. It does not meet both warning conditions: a score above 6 and a non-significant residual trend. That does not establish a gradual change.`}
             </Text>
           )}
           {breaks.length > 0 && (

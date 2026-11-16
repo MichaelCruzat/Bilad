@@ -421,7 +421,7 @@ export type StepScreen = {
   step: number;
   bicTrend: number;
   bicStep: number;
-  /** BIC(trend) - BIC(step): > 6 is strong evidence the record is a step, not a ramp. */
+  /** BIC(trend) - BIC(step); > 6 is a heuristic warning, not a calibrated error rate. */
   deltaBic: number;
   /** Corrected Mann–Kendall p of the series after removing the two regime means. */
   residualTrendP: number;
