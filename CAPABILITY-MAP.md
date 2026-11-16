@@ -1,13 +1,18 @@
-# Bilad Capability Map
+# TRACE Capability Map
 
-Bilad is an Earth System Trend Detective. The product turns open NASA Earth science data into a clear, explainable investigation: select a variable and region, inspect a long-enough time series, quantify the trend, and understand whether the signal passes a basic significance screen.
+TRACE screens temperature and rainfall trends across a global land grid, 60°S–84°N, 1981–2024. It combines statistical tests, jump warnings, source comparison, and exportable evidence. Agreement adds support; flags identify records needing investigation. The product contract is [GLOBAL-DIRECTION.md](docs/GLOBAL-DIRECTION.md).
 
-| Module | Responsibility | Depends on |
-| --- | --- | --- |
-| `platform-quality` | Responsive shell, accessibility, resilient loading, local fallback, GitHub Pages deployment | — |
-| `data-provenance` | Variable/region data model, NASA POWER retrieval, source citations, uncertainty and limitations | `platform-quality` |
-| `trend-explorer` | Variable and region selection, time-series chart, regression summary, Mann–Kendall screen | `data-provenance` |
-| `investigation-brief` | Plain-language verdict, guided example, method and limitation surfaces | `trend-explorer` |
-| `story-and-submission` | Challenge alignment, README, sources, AI disclosure, licensing, deployment | `data-provenance`, `investigation-brief` |
+| Module | Responsibility | Lives in | Depends on |
+| --- | --- | --- | --- |
+| `data-pipeline` | Global land grid plus supplemental national packs; NASA POWER tiling/cache, boundaries, land fractions, packing, and provenance | `pipeline/` (Python) | — |
+| `witnesses` | GISTEMP v4 and partly independent GPCP v2.3, sampled on global and supplemental footprints | `pipeline/crosscheck.py` | `data-pipeline` |
+| `statistics` | Theil–Sen, Hamed–Rao Mann–Kendall, Benjamini–Hochberg, Pettitt, BIC step screen, emergence, agreement verdicts | `src/lib/stats.ts` | — |
+| `summaries` | Global per-cell statistics and national headlines, using the browser's engine | `scripts/summarize-global.ts`, `scripts/summarize.ts` | `statistics`, `data-pipeline` |
+| `verification` | Independent recomputation of national headlines and optional cached global sample; regression and browser checks | `pipeline/validate.py`, `tests/`, `scripts/smoke.mjs` | all |
+| `global-explorer` | Any covered country or cell, source comparison, year playback, shareable URL, and evidence export | `src/pages/World.tsx`, `src/lib/globalEvidence.ts`, `src/viz/WorldMap.tsx` | `statistics`, `witnesses` |
+| `global-walkthrough` | All land, any country, or a linked cell through the calculation and its limits | `src/pages/GlobalProof.tsx` | `global-explorer` |
+| `supplemental-atlas` | Extra variables, monthly diagnostics, profiles, briefs for seven national packs | `src/pages/Atlas.tsx`, `src/pages/Brief.tsx` | `statistics`, `witnesses` |
+| `global-home` | Full identity, purpose and beneficiaries, pinned globe, scroll-led evidence trail, and global highlights | `src/pages/Casebook.tsx`, `src/features/MotionStack.tsx`, `src/viz/GlobeMap.tsx` | `summaries`, `witnesses` |
+| `casebook` | Four guided examples and a method reference | `src/pages/Cases.tsx`, `src/pages/CaseFile.tsx`, `src/data/cases.ts` | `statistics`, `witnesses` |
 
-Build order: `platform-quality` → `data-provenance` → `trend-explorer` → `investigation-brief` → `story-and-submission`.
+Build order: data → witnesses → shared statistics → summaries → verification → global explorer/walkthrough → global home and guided examples. Supplemental packs extend the product without defining its geographic coverage.

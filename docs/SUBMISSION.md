@@ -2,54 +2,47 @@
 
 ## Project page links
 
-- **Link to Project Demo:** [Six-slide English demo](https://michaelcruzat.github.io/Bilad/bilad-demo.pdf)
-- **Link to Final Project:** [Bilad live site](https://michaelcruzat.github.io/Bilad/)
-- **Code:** [Bilad on GitHub](https://github.com/MichaelCruzat/Bilad)
+- **Final project:** [TRACE live site](https://michaelcruzat.github.io/TRACE/)
+- **Code:** [TRACE on GitHub](https://github.com/MichaelCruzat/TRACE)
+- **Demo:** `public/trace-demo.pdf`, captured from the current build (data window 1981–2024). The three-minute walkthrough below is the script.
 
-Use these in the team’s Project tab and complete the remaining form fields before submitting for judging. The [2026 Project Submission Guide](https://www.spaceappschallenge.org/resources/project-submission-guide/) covers the form, judging criteria, and deadline.
+Complete the remaining fields in the team's Project tab using the [2026 Project Submission Guide](https://www.spaceappschallenge.org/resources/project-submission-guide/).
+
+## One-paragraph summary
+
+TRACE is a global Earth-system trend detective: it covers every land cell from 60°S to 84°N, with seven nations in full detail. It maps 44 years of NASA POWER (MERRA-2) data across the globe, cell by cell, and tests every trend with methods built for autocorrelated climate records: Theil–Sen slopes, Hamed–Rao-corrected Mann–Kendall tests, and false-discovery control across the map. It then checks whether each change is real: each trend faces a ramp-or-jump integrity screen and is cross-examined against an independent NASA record (GISTEMP v4 stations, GPCP v2.3 precipitation) on the same footprint. The casebook shows four outcomes. Central Chile's post-2010 rainfall loss is corroborated. Chile's coast and Andes diverge at a scale no witness can resolve. Kenya's warming is real but underestimated. Bangladesh's statistically significant "cooling" is contradicted by stations and flagged as a data artefact. The Python pipeline is nation-agnostic: one registry line and one command add a country.
+
+## Three-minute walkthrough
+
+1. **Home (0:00–0:30).** Introduce TRACE: Tracking Regional Atmospheric Change on Earth. Show the worldwide coverage, 1981–2024 window, and latitude limits. Scroll the evidence trail: the same globe moves from reanalysis to station estimates to agreement. Pick any land cell or choose Explore the world. No country is preselected.
+2. **Explore (0:30–1:15).** Search for India on the worldwide grid. Show the weak reanalysis warming against stronger station warming, the uncertainty, and the witness verdict. This country has no supplemental monthly pack; its evidence still works globally.
+3. **Global walkthrough (1:15–2:00).** Select Canada and rainfall in How we know. Follow the footprint, baseline, trend estimate, significance, jump check, and GPCP comparison. State the shared-gauge limitation and distinguish global map FDR from a test of the area-average series.
+4. **One cell (2:00–2:40).** Pick a cell in Explore. Its evidence is for one cell, not the containing country. Copy the exact URL and download its evidence. Explain what an agency analyst could inspect or pass on for further review.
+5. **A warning worth investigating (2:40–3:00).** Optionally open Case 03: Bangladesh's significant cooling is contradicted by stations and flagged for investigation. Close on Method and the validation limits. This is evidence screening; policy outcomes and institutional adoption are not claimed.
+
+## Coverage
+
+Every land cell from 60°S to 84°N (54,425 cells, 223 countries) for temperature and rainfall, plus seven featured nations with all seven variables: Bangladesh, Chile, Kenya, Mexico, Morocco, the Philippines and Spain.
 
 ## Challenge alignment
 
-Bilad addresses **Be An Earth System Trend Detective!** by making the investigation path explicit:
-
-1. Select a variable.
-2. Select a primary point and an optional comparison point.
-3. Visualize annual means as absolute values or change from a 2000–2004 reference.
-4. Quantify the fitted trend.
-5. Screen whether the pattern is statistically meaningful.
-6. Explain what the result does and does not prove.
-
-## Judge walkthrough
-
-Open the [Bilad live site](https://michaelcruzat.github.io/Bilad/) and use the default Atacama / Canadian Arctic surface-temperature comparison. GitHub Actions publishes pushes to `main` after the checks pass.
-
-- The briefing names the challenge and frames the four questions.
-- The variable card defines the selected NASA POWER parameter and unit.
-- The field index makes "where" explicit and shows that a coordinate is a screening point, not a whole ecosystem.
-- The chart shows complete-year means and fitted monthly-data trends. Open “Annual values and missing years” for the accessible values and any gaps. The baseline-relative switch makes regional changes comparable while the absolute view preserves measured levels or synthetic demo levels, as labeled.
-- Two readouts summarize change per year, an approximate confidence interval, Mann–Kendall p-value, R², usable coverage, each location's source, and the exact NASA request when live.
-- The method section explains the five-year reference, annual-mean screening, the live endpoint, the deterministic fallback, and the limits of causal interpretation.
-
-Then switch variables or regions to show that the same scientific workflow generalizes across Earth-system contexts. The field illustration is original and its curves are schematic; it does not reproduce the visual reference or claim to map measured patterns.
+| Challenge question | Where TRACE answers it |
+|---|---|
+| What is changing? | Seven NASA POWER variables across atmosphere, hydrosphere and land surface |
+| Where? | A gridded atlas for each nation, latitude bands, single cells, named regions |
+| How much? | Theil–Sen slope per decade with a 95% interval; signal-to-noise; months that change most |
+| Is it significant? | Hamed–Rao-corrected Mann–Kendall per series; Benjamini–Hochberg across the map; start-year sensitivity; years until significant |
+| Is it real? (added) | BIC ramp-versus-jump screen, co-breaks across variables, independent NASA witness |
 
 ## Data notes
 
-NASA POWER is a public NASA data service. Bilad requests monthly point data for one variable at each selected location using a latitude, longitude, start year, end year, and JSON format. The default window is 2000–2024 so the prototype has a stable long time series while remaining light enough for a browser demo.
+- NASA POWER monthly regional API, MERRA-2 native 0.5° × 0.625°, 1981–2024. Each request URL is kept in `meta.json` and shown in the atlas.
+- GISTEMP v4 (250 km, land stations) and GPCP v2.3 monthly, sampled at the centre of each TRACE cell and averaged with TRACE's land-area weights.
+- No key, backend or account is needed; the shipped data is static.
 
-The live response is normalized in `src/lib/nasaPower.ts`. Bilad checks the declared NASA unit, removes invalid values and missing-data sentinels, and converts solar MJ/m²/day to kWh/m²/day. Annual means require all 12 months. A live result needs at least 80% complete years in the requested window. Below that threshold, the affected point uses labeled demo data. Each request has a 25-second limit and can be retried while the other point finishes independently.
+## Compliance
 
-NASA POWER reports the underlying product names in each response. The solar series crosses the SRB-to-SYN1DEG transition at January 2001, inside the five-year visual reference; see [NASA POWER's source notes](https://power.larc.nasa.gov/docs/methodology/communities/). The app links to the exact point request for reproduction.
-
-## Limitations
-
-- A single point is not a complete regional or global analysis.
-- A linear slope and Mann–Kendall screen do not establish causation.
-- NASA POWER blends model and observational inputs depending on the parameter and period.
-- The fallback series is synthetic demo data and must never be described as an observation.
-- The 2000–2004 reference is a short visual baseline, not a climate normal. If either point lacks any of its five reference years, Bilad falls back to absolute values and says so.
-- The approximate slope interval assumes independent monthly residuals, which may not hold. It can disagree with the annual Mann–Kendall screen.
-- Scientific users should inspect the underlying NASA data product and perform domain-specific quality control before drawing conclusions.
-
-## AI disclosure
-
-AI assistance was used for development scaffolding, implementation support, test drafting, documentation, and review. Human responsibility remains with the project team for the final code, source interpretation, scientific language, and submission.
+- NASA and third-party sources are credited in the app footer, the Method page, each case file and the README.
+- Original code and documentation are under Apache 2.0. Boundaries are Natural Earth (public domain) via world-atlas.
+- AI assistance is disclosed in the README.
+- No personal data is collected; the site sets no cookies and requests nothing beyond its own static files and its web font.

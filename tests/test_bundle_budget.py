@@ -30,6 +30,29 @@ class BundleBudgetTests(unittest.TestCase):
                 len(gzip.compress((assets / "app.css").read_bytes(), mtime=0)),
             )
 
+    def test_measures_the_initial_load_from_index_html(self):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            assets = root / "assets"
+            assets.mkdir()
+            (assets / "index-a1.js").write_bytes(b"const shell = 1;" * 40)
+            (assets / "vendor-b2.js").write_bytes(b"const shared = 2;" * 40)
+            (assets / "Atlas-c3.js").write_bytes(b"const lazyRoute = 3;" * 400)
+            (assets / "index.css").write_bytes(b"body{}")
+            (root / "index.html").write_text(
+                '<script type="module" src="./assets/index-a1.js"></script>'
+                '<link rel="modulepreload" href="./assets/vendor-b2.js">'
+            )
+
+            measured = measure_assets(root)
+
+            initial = sum(
+                len(gzip.compress((assets / name).read_bytes(), mtime=0))
+                for name in ("index-a1.js", "vendor-b2.js")
+            )
+            self.assertEqual(measured["initial-js"], initial)
+            self.assertGreater(measured["js"], measured["initial-js"])
+
     def test_reports_only_assets_that_exceed_their_limit(self):
         limits = {"js": 100, "css": 60}
 

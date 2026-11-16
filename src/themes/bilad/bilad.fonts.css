@@ -1,2 +1,4 @@
 /* Written by `astryx experimental theme editor` after every build of themes/bilad/; do not edit it here. Change the theme with the editor. */
-@import "@astryxdesign/theme-neutral/fonts.css";
+@import "@fontsource/ibm-plex-sans/index.css";
+@import "@fontsource/ibm-plex-mono/index.css";
+@import "@fontsource/source-serif-4/index.css";

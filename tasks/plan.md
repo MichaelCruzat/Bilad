@@ -1,64 +1,103 @@
-# Implementation Plan: Bilad V1
+# TRACE v2 — National Earth-System Trend Atlas
 
-Source spec: [SPEC.md](../SPEC.md)
+Status: historical build plan. The application has since added global coverage,
+TRACE branding, the two-record globe, national briefs, exports, and the
+`#/proof` walkthrough. Use [README.md](../README.md) for current behavior,
+[docs/HANDOFF.md](../docs/HANDOFF.md) for implementation context, and
+[tasks/todo.md](todo.md) for current verification and release work.
 
-## Overview
+Challenge: NASA Space Apps 2026, "Be An Earth System Trend Detective!"
+(what is changing, where, how much, is it statistically significant).
 
-Build Bilad as a static React/TypeScript experience that guides a user from the Earth System Trend Detective problem to transparent variable/region selection, NASA POWER time series, statistical trend screen, and plain-language verdict. Keep the first release self-contained with deterministic fallback data, optional live NASA POWER retrieval, visible limitations, and a GitHub Pages deployment path.
+## Why v1 is being replaced
 
-## Architecture decisions
+v1 compared five hard-coded points over 25 years, opened on synthetic data,
+fitted OLS to autocorrelated monthly values, and answered "where" with a
+dropdown. It had no map, no field significance, and no story beyond hedging copy.
 
-- Keep the application client-only so the public demo needs no server, secret, or database.
-- Separate live NASA POWER observations from deterministic fallback data so a failed network request never erases the core experience.
-- Keep trend analysis pure and deterministic in `src/lib/trendAnalysis.ts`; UI components consume typed data and do not own scientific logic.
-- Use Astryx for shell, layout, type, controls, cards, and status treatments; add only the domain-specific chart primitive the system does not provide.
-- Keep the chart and semantic variable/region controls as the source of truth; no map-tile dependency is required for the scientific story.
-- Use the browser URL for non-sensitive view state only if it improves demoability; no user data or auth state is required.
+## Product
 
-## Task list
+*TRACE* (Tracking Regional Atmospheric Change on Earth) produces a climate-change ledger for a nation:
+a gridded map of where each Earth-system variable has changed since 1981, by how
+much, and whether the change survives a field-significance test, plus a
+printable national evidence brief. The pipeline is nation-agnostic: adding a
+country is one registry entry and one command, so the same evidence can be
+produced for any nation — the long-term use is supporting National Adaptation
+Plans, national meteorological services in data-poor countries, educators and
+journalists.
 
-### Phase 1: Foundation
+Pilot: Chile (4,300 km, Atacama to Patagonia; documented 2010– "megadrought" is
+the validation target). Also shipped: Kenya, Morocco, Bangladesh, Spain, Mexico.
 
-- [x] Task 1: Bootstrap the Vite/React/TypeScript project and initialize Astryx.
-- [ ] Task 2: Add typed variable/region/source data and deterministic trend utilities with tests.
+## Users and jobs
 
-### Checkpoint: Foundation
+1. Analyst / adaptation planner: "Which parts of my country are drying, and is
+   that robust?" → atlas + brief.
+2. Educator / student: "What does a significant trend actually mean?" →
+   guided story, method page, start-year sensitivity.
+3. Judge: understands problem, data, method, validation in three minutes.
 
-- [x] Astryx template is in use.
-- [ ] `pnpm test`, `pnpm lint`, and `pnpm build` pass after the scope correction.
-- [x] The app renders a stable shell without a network dependency.
+## Data (offline pipeline, `pipeline/build.ts`)
 
-### Phase 2: Core investigation
+- NASA POWER monthly *regional* API (MERRA-2 native 0.5° × 0.625°), 1981–2024.
+- Variables: T2M, T2M_MAX, T2M_MIN, PRECTOTCORR, GWETROOT (root-zone soil
+  wetness), RH2M, WS2M.
+- Nation boundary: Natural Earth 1:50m (world-atlas). Bounding box tiled into
+  ≤10°×10° requests. Each grid cell's land fraction (9×9 sample lattice) and
+  true spherical area are recorded; cells are area-weighted.
+- Output: quantised Int16 binaries per variable + meta.json with every request
+  URL (provenance) + national summary in index.json.
 
-- [ ] Task 3: Build the briefing-to-explorer flow with variable/region selection, chart, trend verdict, and method surface.
-- [ ] Task 4: Add NASA POWER enrichment, fallback states, variable definitions, limitations, and source links.
+## Statistics (`src/lib/stats.ts`, shared by pipeline and browser, tested)
 
-### Checkpoint: Core investigation
+- Anomalies vs WMO 1991–2020 normal, per calendar month; annual mean of anomalies.
+- Theil–Sen slope + Gilbert (1987) 95% interval.
+- Mann–Kendall with Hamed–Rao (1998) serial-correlation correction (clamped ≥1).
+  Parity-tested against pymannkendall.
+- Field significance: Benjamini–Hochberg FDR, α_FDR = 0.10 (Wilks 2016).
+- Pettitt change-point test.
+- Signal-to-noise (Hawkins & Sutton 2012): fitted change / interannual σ.
+- Start-year sensitivity: trend re-estimated for every start year leaving ≥20 yrs.
+- Per-calendar-month trends ("which season is changing").
+- Compound hot–dry signal: bivariate classes of T2M_MAX S/N × (−GWETROOT S/N).
 
-- [ ] A user can select a variable and region, inspect a time series, and understand the trend verdict.
-- [ ] Live NASA POWER data is optional and failures remain recoverable.
-- [ ] Keyboard and narrow viewport checks pass.
+## Experience (stages)
 
-### Phase 3: Storytelling
+1. **Home** — globe of shipped nations coloured by national warming rate; a
+   data-derived headline strip; how-it-works (Acquire → Deseasonalise → Test →
+   Control false discoveries); nation ledger table; Chile validation teaser.
+2. **Atlas** `#/n/CHL` — controls rail (variable, layer: trend / significance /
+   emergence S/N / change-point year / compound hot-dry; analysis window);
+   SVG map (equal-area projection centred on the nation) with FDR stippling and a
+   latitude profile sharing the map's y-axis; detail panel for the nation or a
+   selected cell: anomaly series + Sen line + Pettitt break, season clock,
+   start-year sensitivity, test table, provenance.
+3. **Brief** `#/n/CHL/brief` — printable national evidence ledger: every variable's
+   national trend, CI, corrected p, % of area significantly up/down, change year,
+   deterministic plain-language findings, CSV export.
+4. **Method & validation** `#/method` — formulas, assumptions, references;
+   reproduction of the Central Chile megadrought from MERRA-2 vs the literature
+   (Garreaud et al. 2017, 2020), reported honestly whether or not it reproduces.
 
-- [ ] Task 5: Add the guided judge example, method/provenance surfaces, and submission-ready copy.
+## Stack
 
-### Phase 4: Release readiness
+Vite + React 19 + TypeScript, Astryx UI, d3-geo + topojson for projection,
+hand-written SVG charts, Vitest. Static site on GitHub Pages; no backend, no key.
 
-- [ ] Task 6: Add README, source registry, license, AI disclosure, GitHub Pages workflow, and release checks.
-- [ ] Task 7: Run browser acceptance, accessibility review, code review, and final simplification pass.
+## Revisions after independent review
 
-### Checkpoint: Release candidate
+- Reframed around four case files with four different verdicts, for students and the public.
+- Added the independent witnesses (GISTEMP, GPCP), the BIC ramp-versus-jump screen and co-breaks, after Bangladesh's MERRA-2 record showed a 1997–98 jump.
+- Rainfall read as % of normal; data-poor cells excluded from the field test; season clock FDR-controlled; "years until significant" added.
+- Cut: globe, KPI tiles, compound hot–dry layer, change-point map layer, printable brief.
+- Pipeline moved to Python with an independent Python validator; statistics stay in one TypeScript engine shared by the summaries and the browser.
 
-- [ ] Tests, lint, build, and browser smoke tests pass.
-- [ ] All sources and limitations are visible.
-- [ ] The app is ready for a GitHub push and public deployment.
+## Build stages (one commit + push each, branch `rebuild/national-atlas`)
 
-## Risks and mitigations
-
-| Risk | Impact | Mitigation |
-| --- | --- | --- |
-| Astryx API or package setup differs from expected | High | Initialize from the CLI/template first; keep domain logic independent of UI primitives. |
-| NASA POWER rate limit/CORS/network failure | High | Normalize responses behind a small client and provide deterministic fallback time series with freshness labels. |
-| Statistical language overstates the prototype | High | Show the method, assumptions, confidence interval, and limitations next to every verdict. |
-| Scope expands during the hackathon | Medium | Keep global raster analysis, causal attribution, ML classification, accounts, and native mobile explicitly deferred. |
+1. Statistics engine + tests ✅
+2. Data pipeline + six nations of real NASA POWER data ✅
+3. Cross-examination, integrity screen, agreement verdicts ✅
+4. Casebook, case files, atlas, method ✅
+5. Python pipeline, independent validator, Makefile, CI on pull requests ✅
+6. README and submission notes ✅
+7. Independent product and code review, fixes

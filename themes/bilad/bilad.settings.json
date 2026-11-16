@@ -1,29 +1,74 @@
 {
   "name": "bilad",
   "like": "neutral",
-  "mode": "dark-only",
+  "mode": "light-only",
   "settings": [
-    {
-      "thing": "accent",
-      "value": "#e0a84f",
-      "source": "dial"
-    },
-    {
-      "thing": "neutral",
-      "value": "#31445a",
-      "source": "dial"
-    },
     {
       "thing": "type",
       "value": "editorial",
       "source": "dial"
     },
     {
-      "thing": "--color-text-disabled",
-      "value": "#9fb1c8",
+      "thing": "font",
+      "value": "ibm-plex-sans",
+      "source": "dial",
+      "on": "body"
+    },
+    {
+      "thing": "font",
+      "value": "ibm-plex-mono",
+      "source": "dial",
+      "on": "code"
+    },
+    {
+      "thing": "headings",
+      "value": "bold",
+      "source": "dial",
+      "axis": "weight"
+    },
+    {
+      "thing": "headings",
+      "value": "tight",
+      "source": "dial",
+      "axis": "tracking"
+    },
+    {
+      "thing": "neutral",
+      "value": "#efe8da",
+      "source": "dial"
+    },
+    {
+      "thing": "accent",
+      "value": "#b8322a",
+      "source": "dial"
+    },
+    {
+      "thing": "font",
+      "value": "source-serif",
+      "source": "dial",
+      "on": "heading"
+    },
+    {
+      "thing": "--color-background-body",
+      "value": "#f3ede1",
+      "source": "token"
+    },
+    {
+      "thing": "--color-background-surface",
+      "value": "#ebe3d3",
+      "source": "token"
+    },
+    {
+      "thing": "--color-background-card",
+      "value": "#f8f4ec",
+      "source": "token"
+    },
+    {
+      "thing": "--color-text-primary",
+      "value": "#1c1a17",
       "source": "token"
     }
   ],
   "lifted": [],
-  "palette": "29cb16a90c9c9ba88c1106bdc3d793dcf26393ab4b5e197444ae75085b8a9e7e"
+  "palette": "03a2f409d06c34eb6614ea23e1be3c9bbd4dc29c54bd4a5139b00368fa53ecf3"
 }

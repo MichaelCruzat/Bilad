@@ -1,0 +1,141 @@
+import {readFileSync} from 'node:fs';
+import {join} from 'node:path';
+import {describe, expect, it} from 'vitest';
+import {analyzeVariable, cellsInBand, subsetSeries} from '../src/lib/analysis';
+import {witnessForCells, type WitnessGrid} from '../src/lib/evidence';
+import {describe as narrate, findingContext} from '../src/lib/narrative';
+import {analyzeSeries} from '../src/lib/stats';
+import {coBreaks, crossExamine, overallVerdict, witnessSeries, type Crosscheck} from '../src/lib/evidence';
+import {decodeGrid, type DataIndex, type NationMeta} from '../src/lib/nationData';
+
+const DATA = join(__dirname, '..', 'public', 'data');
+const index: DataIndex = JSON.parse(readFileSync(join(DATA, 'index.json'), 'utf8'));
+const xc: Crosscheck = JSON.parse(readFileSync(join(DATA, 'crosscheck.json'), 'utf8'));
+const FULL = {from: 1981, to: 2024};
+
+function load(iso3: string, variable: string) {
+  const meta: NationMeta = JSON.parse(readFileSync(join(DATA, 'nations', iso3, 'meta.json'), 'utf8'));
+  const buf = readFileSync(join(DATA, 'nations', iso3, `${variable}.i16`));
+  const ab = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
+  const scale = meta.variables.find(v => v.id === variable)!.scale;
+  return {meta, grid: decodeGrid(ab, scale, meta.grid.missing, meta.grid.months, variable)};
+}
+
+describe('shipped data', () => {
+  it('ships every registered nation with seven variables', () => {
+    expect(index.nations.map(n => n.iso3).sort()).toEqual(['BGD', 'CHL', 'ESP', 'KEN', 'MAR', 'MEX', 'PHL']);
+    index.nations.forEach(n => expect(Object.keys(n.stats)).toHaveLength(7));
+  });
+
+  it('browser recomputation reproduces the pipeline headline for every nation', () => {
+    for (const n of index.nations) {
+      const {meta, grid} = load(n.iso3, 'T2M');
+      const a = analyzeVariable(meta, grid, FULL);
+      expect(a.national.slopeDecade).toBeCloseTo(n.stats.T2M.slopePerDecade, 2);
+      expect(a.areaUp).toBeCloseTo(n.stats.T2M.areaUp, 1);
+    }
+  });
+});
+
+describe('release truth', () => {
+  const NUMBER_WORDS = ['three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
+  const docs = ['README.md', 'docs/SUBMISSION.md'].map(f => readFileSync(join(__dirname, '..', f), 'utf8'));
+
+  it('names every shipped nation in the README and submission notes', () => {
+    for (const n of index.nations) docs.forEach(d => expect(d).toContain(n.name));
+  });
+
+  it('never states a nation count that differs from the shipped data', () => {
+    const shipped = NUMBER_WORDS[index.nations.length - 3];
+    for (const d of docs) {
+      for (const w of NUMBER_WORDS.filter(x => x !== shipped)) {
+        expect(d.toLowerCase()).not.toMatch(new RegExp(`\\b${w}[ -](featured )?nations?\\b`));
+      }
+    }
+  });
+});
+
+describe('consistency', () => {
+  it('a subset covering every cell reproduces the national series, for rainfall too', () => {
+    const {meta, grid} = load('CHL', 'PRECTOTCORR');
+    const a = analyzeVariable(meta, grid, FULL);
+    const all = meta.cells.map((_, i) => i);
+    const sub = subsetSeries(meta, a, all);
+    a.national.series.forEach((v, i) => expect(sub[i]).toBeCloseTo(v, 6));
+  });
+
+  it('per-cell witnesses aggregate to the shipped national witness', () => {
+    for (const iso3 of ['CHL', 'BGD', 'MEX']) {
+      const meta: NationMeta = JSON.parse(readFileSync(join(DATA, 'nations', iso3, 'meta.json'), 'utf8'));
+      const w: WitnessGrid = JSON.parse(readFileSync(join(DATA, 'nations', iso3, 'witness.json'), 'utf8'));
+      const weights = meta.cells.map(c => c.areaKm2);
+      for (const v of ['T2M', 'PRECTOTCORR']) {
+        const mine = witnessForCells(w, v, weights, meta.cells.map((_, i) => i), FULL)!;
+        const shipped = witnessSeries(xc, iso3, v, FULL)!;
+        shipped.forEach((x, i) => expect(Math.abs(mine[i] - x)).toBeLessThan(v === 'T2M' ? 0.002 : 0.05));
+      }
+    }
+  });
+
+  it('never tells a reader a non-significant trend needs zero more years', () => {
+    const {meta, grid} = load('CHL', 'T2M');
+    const a = analyzeVariable(meta, grid, FULL);
+    for (let c = 0; c < meta.cells.length; c++) {
+      const series = Float64Array.from(a.annual.subarray(c * 44, (c + 1) * 44));
+      const text = narrate('T2M', '°C', analyzeSeries(a.years, series), a.years, series).significance;
+      expect(text).not.toMatch(/\b0 more years/);
+    }
+  });
+});
+
+describe('case verdicts', () => {
+  const years = Array.from({length: 44}, (_, i) => 1981 + i);
+
+  it('Bangladesh: reanalysis cooling is contradicted by GISTEMP and flagged', () => {
+    const {meta, grid} = load('BGD', 'T2M');
+    const a = analyzeVariable(meta, grid, FULL);
+    const x = crossExamine(years, a.national.series, witnessSeries(xc, 'BGD', 'T2M', FULL)!);
+    expect(x.claim.slope).toBeLessThan(0);
+    expect(x.witness.slope).toBeGreaterThan(0);
+    expect(x.verdict).toBe('contradicted');
+    expect(x.artifactSuspected).toBe(true);
+    expect(x.claimStep!.breakAt).toBeGreaterThanOrEqual(1996);
+    expect(x.claimStep!.breakAt).toBeLessThanOrEqual(1999);
+    const cb = coBreaks(index, 'BGD');
+    expect(cb.some(g => g.year >= 1996 && g.year <= 1999 && g.variables.length >= 3)).toBe(true);
+    // The plain-language summary must not endorse a trend the verdict rejects.
+    const text = narrate('T2M', '°C', analyzeSeries(years, a.national.series), years, a.national.series, findingContext(x, 'T2M'));
+    expect(text.emergence).not.toMatch(/clearly emerged/);
+    expect(text.significance).toMatch(/^Taken alone/);
+    expect(overallVerdict(x.claim.p, {kind: 'available', exam: x}, true).label).toBe('Likely data artefact');
+  });
+
+  it('Chile: national warming agrees with GISTEMP', () => {
+    const {meta, grid} = load('CHL', 'T2M');
+    const a = analyzeVariable(meta, grid, FULL);
+    const x = crossExamine(years, a.national.series, witnessSeries(xc, 'CHL', 'T2M', FULL)!);
+    expect(x.verdict).toBe('corroborated');
+    expect(x.artifactSuspected).toBe(false);
+  });
+
+  it('Central Chile: rainfall decline agrees with GPCP', () => {
+    const {meta, grid} = load('CHL', 'PRECTOTCORR');
+    const a = analyzeVariable(meta, grid, FULL);
+    const central = meta.regions.find(r => r.id === 'central')!;
+    const cells = cellsInBand(meta, central.latMin, central.latMax);
+    const mine = subsetSeries(meta, a, cells);
+    const x = crossExamine(years, mine, witnessSeries(xc, 'CHL', 'PRECTOTCORR', FULL, 'central')!);
+    expect(x.claim.slope).toBeLessThan(0);
+    expect(x.witness.slope).toBeLessThan(0);
+    expect(['corroborated', 'same-direction']).toContain(x.verdict);
+  });
+
+  it('Kenya: same direction, but the reanalysis warms more slowly', () => {
+    const {meta, grid} = load('KEN', 'T2M');
+    const a = analyzeVariable(meta, grid, FULL);
+    const x = crossExamine(years, a.national.series, witnessSeries(xc, 'KEN', 'T2M', FULL)!);
+    expect(x.claim.slope).toBeGreaterThan(0);
+    expect(x.witness.slope).toBeGreaterThan(x.claim.slope);
+    expect(['same-direction', 'corroborated']).toContain(x.verdict);
+  });
+});

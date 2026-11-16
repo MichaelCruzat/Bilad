@@ -1,94 +1,167 @@
-# Bilad
+# TRACE: Tracking Regional Atmospheric Change on Earth
 
-Bilad is an Earth System Trend Detective for NASA Space Apps 2026.
+TRACE is a global Earth-system trend detective. It maps land cells from 60°S to 84°N since 1981 using NASA POWER data. It tests temperature and rainfall trends with methods built for autocorrelated climate records, then compares them with a second NASA record. Agreement supports a trend; disagreement and abrupt jumps identify records that need investigation.
 
-**Live site:** [michaelcruzat.github.io/Bilad](https://michaelcruzat.github.io/Bilad/) · [Six-slide judging demo](https://michaelcruzat.github.io/Bilad/bilad-demo.pdf). Pushes to `main` deploy through GitHub Actions after the project checks pass.
+Built for the NASA Space Apps 2026 challenge [Be An Earth System Trend Detective!](https://www.spaceappschallenge.org/2026/challenges/earth-system-trend-detective/).
 
-It helps a user compare one Earth-system variable at two locations, inspect 25 years of NASA POWER monthly data, estimate change per year, and check whether the pattern passes a statistical screen. Its first-run series is synthetic demo data, plainly labeled until live data is loaded.
+**Live site:** [michaelcruzat.github.io/TRACE](https://michaelcruzat.github.io/TRACE/)
 
-## NASA challenge
+*TRACE* stands for Tracking Regional Atmospheric Change on Earth.
 
-Bilad responds to [Be An Earth System Trend Detective!](https://www.spaceappschallenge.org/2026/challenges/earth-system-trend-detective/).
+## Why this exists
 
-The product is designed around the challenge's four questions:
+Climate communication and adaptation assessments depend on interpreting trends
+correctly. Statistical significance alone cannot exclude a data discontinuity
+or resolve disagreement between products. TRACE makes those warnings visible:
+one workflow combines trend tests, jump screening, a second record, provenance,
+and exportable evidence for any covered country or land cell.
 
-- What is changing?
-- Where is it changing?
-- How much is it changing?
-- Is the change statistically significant?
+Researchers and the public can inspect the result without building a pipeline.
+NASA data users can identify locations where products need closer comparison.
+Public agencies can review warming or rainfall evidence, including its
+uncertainty and assumptions, before including it in further assessments.
+Institutional adoption and policy outcomes are not yet demonstrated. This is
+an evidence-screening prototype, not a forecast or causal attribution tool.
+
+## What it finds
+
+Across 54,425 land cells, temperature has risen by about 0.25 °C per decade since 1981, and 71% of the world's land is selected as warming by Benjamini–Hochberg at a 10% target false discovery rate. Weather stations back that warming on about 59% of land. TRACE flags 4.8% of land as a likely data artefact for temperature and 13.5% for rainfall. A flag means the witness contradicts a trend, or the reanalysis has a jump the witness does not share and does not corroborate. These are screening flags, not established causes. Across South Asia, stations mostly lean the opposite way to the reanalysis.
+
+The challenge asks what is changing, where, by how much, and whether the change is significant. TRACE also asks whether the change is real, because a significance test only checks the record it is given. The four case files end in four different outcomes:
+
+| Case | Claim tested | Reanalysis (MERRA-2) | Independent witness | Verdict |
+|---|---|---|---|---|
+| 01 Central Chile's missing rain | Rainfall fell after 2010 | −17.1% of normal per decade; 34% less rain in 2010–19 than 1981–2009 | GPCP (partly independent: shares rain gauges): −11.2% per decade; 23% less | **Corroborated** |
+| 02 Two Chiles | Coast and Andes warm differently | Daytime highs: coast −0.01 °C/decade (p = 0.87), Andes +0.29 °C/decade (p < 0.001) | Witness grids (2°) are wider than Chile | **No witness at this scale** |
+| 03 Bangladesh's phantom cooling | Bangladesh cooled since 1981 | −0.19 °C/decade, p = 0.03, 80% of land "significant"; behaves as a jump in 1997 (ΔBIC 18.7) | GISTEMP: +0.35 °C/decade | **Contradicted: a likely data artefact** |
+| 04 Kenya | Kenya is warming | +0.18 °C/decade | GISTEMP: +0.34 °C/decade | **Same direction, different size** |
+
+In MERRA-2, Bangladesh's temperature, humidity and soil moisture all jump around 1997–98, a period of large changes in the satellite observations the reanalysis assimilates, and weather stations show warming. A significant Mann–Kendall test alone would report that Bangladesh cooled.
+
+## The product
+
+- **World** (`#/world`): every land cell on a zoomable map over NASA Blue Marble relief, for temperature and rainfall.
+  - The verdict layer shows, cell by cell, whether the station or gauge record backs the trend. Other layers show the trend itself, any single year (playable), and the 1991–2020 normal.
+  - A strip of yearly global values sits under the map; pointing at a year shows it on the map.
+  - Search any of 223 countries, or click a cell. TRACE builds that country's series from its cells and cross-examines it against the witness on the spot.
+  - Rankings list the fastest-changing countries and the ones whose reanalysis record is least trustworthy.
+- **Home** (`#/`): TRACE's full name, worldwide purpose, coverage, and observation window. A pinned globe follows the evidence as you scroll from reanalysis to stations to agreement. Any picked cell opens its global evidence; the page has no default country or shortlist of nations.
+- **Cases** (`#/cases`): four guided investigations, each linking to its full evidence and verdict.
+- **How we know** (`#/proof?country=&cell=&v=`): a calculation walkthrough for all covered land, any covered country, or one linked cell. It uses the same global annual arrays and footprint aggregation as Explore. Older `?n=<ISO3>` links retain the supplemental monthly walkthrough.
+- **Case files** (`#/case/<id>`): claim → evidence → cross-examination → integrity screen → verdict, with sources. Every number is computed in the browser from the shipped data.
+- **Atlas** (`#/atlas/<ISO3>`): any shipped nation and any of seven variables.
+  - Every map sits on NASA GIBS Blue Marble shaded relief with neighbouring borders.
+  - Each grid cell coloured by its trend, by one year's anomaly (with a play button), by its signal-to-noise ratio, or by its 1991–2020 normal.
+  - Cells significant at a 10% false discovery rate are stippled.
+  - A latitude profile beside the map shares its vertical axis; drag on it to define a band.
+  - The evidence panel shows the whole nation, a band, or a single cell. It includes the annual series with its Theil–Sen trend, the independent witness for that exact selection (temperature and rainfall), the ramp-or-jump screen, a month-by-month "season clock", start-year sensitivity, the full test record and every NASA POWER request URL.
+  - All atlas state lives in the URL, so any view can be shared.
+- **Method** (`#/method`): formulas, assumptions, limitations and references.
+
+Seven nations also ship supplemental seven-variable packs: Bangladesh, Chile, Kenya, Mexico, Morocco, the Philippines and Spain. They add detail to a global product; they do not limit which countries can be explored. The primary navigation leads to the worldwide atlas and worldwide walkthrough.
+
+The product and motion contract is [GLOBAL-DIRECTION.md](docs/GLOBAL-DIRECTION.md). Transitions use transform and opacity, preserve native scrolling, stop rotation off-screen, and respect reduced motion. Country/continent outlines and cell colours share the same geographic transform, including the globe texture's nonstandard aspect ratio.
+
+## How a trend earns a verdict
+
+| Step | Method | What it rules out |
+|---|---|---|
+| Measure | NASA POWER monthly MERRA-2 on its native 0.5° × 0.625° grid; each cell weighted by its true land area | Point samples standing in for a nation |
+| Deseasonalise | Monthly anomalies against the WMO 1991–2020 normal; rainfall as % of each cell's own normal | The seasonal cycle swamping the trend; wet regions dominating |
+| Test each cell | Theil–Sen slope with Gilbert (1987) interval; Mann–Kendall with Hamed–Rao (1998) correction for serial correlation | Outliers; persistence posing as a trend |
+| Test the map | Benjamini–Hochberg false-discovery control, α = 0.10 (Wilks 2016) | Tens of thousands of tests (54,425 cells per variable) producing "significant" cells by chance |
+| Screen integrity | Straight line versus single step compared by BIC; co-breaks across a nation's seven variables | A change in satellites or processing posing as climate |
+| Cross-examine | Same footprint in GISTEMP v4 (stations) and GPCP v2.3 (gauges + satellites, partly independent), for any selection down to one cell | Trusting a single dataset |
+
+For trends that are not yet significant, TRACE estimates how many more years of record would be needed at the current rate and noise.
+
+## Architecture
+
+```
+NASA POWER regional API ──► pipeline/ (Python) ──► public/data/nations/<ISO3>/*.i16, meta.json, boundary.json
+                         └► python -m pipeline global ──► every land cell, 60°S–84°N (cached; ~700 requests)
+                                         scripts/summarize-global.ts ──► public/data/global/*.stats.bin, *.annual.i16, summary.json
+GISTEMP v4, GPCP v2.3   ──► pipeline/crosscheck.py ──► public/data/crosscheck.json, nations/<ISO3>/witness.json
+                                         │
+                 scripts/summarize.ts ◄──┘  uses src/lib/stats.ts ──► public/data/index.json
+                                         │
+            browser (React + Astryx) ◄───┘  uses the same src/lib/stats.ts
+                                         │
+                 pipeline/validate.py ◄──┘  recomputes every headline with scipy + pymannkendall; CI fails on disagreement
+```
+
+The project uses Python, TypeScript and Make:
+
+- **Python** for the data pipeline: tiling NASA POWER requests, Natural Earth boundaries (shapely), land fractions, packing, and reading netCDF witnesses (netCDF4). Python with numpy, shapely and netCDF4 is the standard Earth-science stack.
+- **TypeScript** for the statistics engine (`src/lib/stats.ts`) and the interactive app. The same engine writes the shipped headlines and runs in the reader's browser, so the two always agree.
+- **Python, again, as an independent check.** `pipeline/validate.py` rebuilds every nation-variable headline and a random sample of global cells from the raw binaries with different code (`scipy.stats.theilslopes`, `pymannkendall`, a separate Benjamini–Hochberg). Two implementations in two languages must agree before CI passes. Values are rounded to 1e-9 before testing in both, so ties are detected the same way despite different floating-point summation.
+- **Make** as the single entry point.
+
+Per-cell global statistics are precomputed; the browser loads them without rerunning 54,425 trend tests. The globe projects a cached geographic texture through WebGL, with a batched 2D fallback. The World map caches its geographic layer for pointer feedback and computes the annual colour scale once per dataset. Reproducible measurements and remaining limits are in [the performance notes](docs/PERFORMANCE.md).
 
 ## Run locally
 
-Requires Node.js 22+ and pnpm 11+. The optional asset-size checks use Python 3.9+.
+Requires Node.js 22+, pnpm 11+ and Python 3.11+.
 
-    pnpm install
-    pnpm dev
+    make install     # pnpm install + pip install -r pipeline/requirements.txt
+    make dev         # http://localhost:5173
+    make check       # TypeScript + Python tests, lint, build, size budget, independent recomputation
+    make global      # rebuild the global atlas (downloads once, then served from cache)
 
-Quality checks:
+The site is static and needs no key, account or backend. The shipped data is committed, so `make dev` works offline once installed.
 
-    pnpm test
-    pnpm lint
-    pnpm build
-    python3 -m unittest discover -s tests -p 'test_*.py'
-    python3 scripts/bundle_budget.py
+## Add a nation
 
-The app does not require a secret or backend. Once the page has loaded, the deterministic demo data remains usable if the NASA endpoint is unavailable. A first visit to the hosted site still needs a connection to download the page. "Load NASA POWER data" requests the public monthly endpoint for both selected locations; each result keeps its own live/demo source label.
+1. Add one entry to `pipeline/nations.py` (ISO3, ISO numeric code, name, optional clip box and named regions).
+2. Run `make data NATIONS=PER`.
 
-The browser app uses TypeScript for the interactive analysis. A small, standard-library-only Python check measures the built JavaScript and CSS assets; CI rejects a large size regression. The GitHub Actions YAML runs both sets of checks and deploys the static HTML site. Successful NASA POWER requests are reused during a page session, while failures can be retried.
+The pipeline tiles the boundary into NASA POWER requests (cached on disk), keeps every MERRA-2 cell that overlaps land, packs 1981–2024 monthly values for seven variables, refreshes the national summaries and samples both witnesses on the new footprint. The atlas, the nation table and the validator pick the new nation up automatically.
 
-## Three-minute demo
+## Data
 
-1. Start with the default surface-temperature question: Atacama Desert versus Canadian Arctic.
-2. Open the investigation desk. The field index shows each point coordinate; the comparison selector changes the second location.
-3. Read the baseline-relative annual chart, open its annual-value table, then switch to absolute values to see the different temperature levels.
-4. Load NASA POWER data. Check each source, complete-year count, NASA product, and exact request before interpreting the slopes, confidence intervals, and Mann–Kendall screens.
-5. Read the method: a point is not a regional average, the five-year baseline is not a climate normal, and a detected trend does not establish its cause.
+| Variable | NASA POWER parameter | Read as |
+|---|---|---|
+| Air temperature at 2 m | `T2M` | °C |
+| Daily maximum / minimum temperature | `T2M_MAX`, `T2M_MIN` | °C |
+| Precipitation, bias-corrected | `PRECTOTCORR` | % of 1991–2020 normal (mm/yr in the case files) |
+| Root-zone soil wetness | `GWETROOT` | % saturation |
+| Relative humidity at 2 m | `RH2M` | % |
+| Wind speed at 2 m | `WS2M` | m/s |
 
-## Data and method
+Values are MERRA-2 (NASA GMAO) served by NASA POWER at native resolution, quantised to Int16 for shipping. Every request URL is listed in the atlas's provenance panel and in each `meta.json`. Boundaries are Natural Earth 1:50m via world-atlas. Basemaps are NASA GIBS `BlueMarble_ShadedRelief_Bathymetry` (EPSG:4326), fetched by `python -m pipeline context` and drawn under a cylindrical projection centred on each nation, so the imagery lines up with the grid cells without resampling.
 
-The prototype uses three NASA POWER variables:
+## Limitations
 
-- **Surface temperature (T2M)** — average air temperature at 2 meters, shown in °C.
-- **Precipitation (PRECTOTCORR)** — bias-corrected average daily precipitation, shown in mm/day.
-- **Solar energy (ALLSKY_SFC_SW_DWN)** — all-sky surface shortwave downward radiation. NASA POWER returns MJ/m²/day; Bilad divides by 3.6 and shows kWh/m²/day.
+- A detected trend says what changed, where and by how much. It does not say why. TRACE does not attribute causes, forecast or downscale.
+- A 0.5° cell averages over valleys and peaks. Coastal cells that are mostly sea carry an ocean influence; they are weighted by land area and flagged when selected.
+- MERRA-2's precipitation correction uses gauge analyses (satellite–gauge over Africa) and fades out poleward of about 42°, so rainfall trends in Patagonia rest more on the model. Soil wetness is modelled from that same precipitation, so it is not an independent witness to a rainfall trend.
+- The witnesses are coarser (2° and 2.5°) and are estimates themselves. GPCP and MERRA-2's corrected precipitation both draw on rain gauges, so their agreement cannot exclude a shared error.
+- Neighbouring reanalysis cells are not independent, so shares of significant area are descriptive.
 
-The analysis:
+## Sources
 
-1. Fits an ordinary least-squares line to monthly observations from complete 12-month years. A live result needs at least 80% of the requested years. Below that threshold, the affected point uses labeled demo data.
-2. Plots complete-year means either as absolute values or as differences from each location's 2000–2004 annual mean. Gaps remain gaps, and a table exposes every annual value. The five-year reference is a visual baseline, not a climate normal.
-3. Reports the slope per year and an approximate 95% confidence interval. The interval assumes independent monthly residuals, an assumption climate data may violate.
-4. Applies a Mann–Kendall monotonic-trend screen to annual means so repeating seasonal cycles do not dominate the screen. This screen and the slope interval can disagree.
-5. Labels the result as a screening analysis, not a causal explanation, forecast, or scientific-grade conclusion.
+- [NASA Space Apps 2026 challenge statement](https://www.spaceappschallenge.org/2026/challenges/earth-system-trend-detective/) · [Space Apps terms](https://www.spaceappschallenge.org/legal/)
+- [NASA POWER](https://power.larc.nasa.gov/) and its [monthly API](https://power.larc.nasa.gov/docs/services/api/temporal/monthly/); MERRA-2: Gelaro et al. (2017), [doi:10.1175/JCLI-D-16-0758.1](https://doi.org/10.1175/JCLI-D-16-0758.1); precipitation correction: Reichle et al. (2017), [doi:10.1175/JCLI-D-16-0570.1](https://doi.org/10.1175/JCLI-D-16-0570.1)
+- [GISTEMP v4](https://data.giss.nasa.gov/gistemp/), NASA GISS; Lenssen et al. (2019), [doi:10.1029/2018JD029522](https://doi.org/10.1029/2018JD029522)
+- [GPCP v2.3](https://psl.noaa.gov/data/gridded/data.gpcp.html), NASA GSFC via NOAA PSL; Adler et al. (2018), [doi:10.3390/atmos9040138](https://doi.org/10.3390/atmos9040138)
+- Central Chile megadrought: Garreaud et al. (2017), [doi:10.5194/hess-21-6307-2017](https://doi.org/10.5194/hess-21-6307-2017); Garreaud et al. (2020), [doi:10.1002/joc.6219](https://doi.org/10.1002/joc.6219)
+- Coastal cooling in Chile: Falvey & Garreaud (2009), [doi:10.1029/2008JD010519](https://doi.org/10.1029/2008JD010519)
+- Methods: Mann (1945); Sen (1968); Gilbert (1987); Hamed & Rao (1998); Benjamini & Hochberg (1995); Wilks (2016); Hawkins & Sutton (2012). Full links are on the in-app Method page.
+- [NASA GIBS](https://www.earthdata.nasa.gov/engage/open-data-services-software/earthdata-developer-portal/gibs-api) Blue Marble relief imagery.
+- [Natural Earth](https://www.naturalearthdata.com/) boundaries via [world-atlas](https://github.com/topojson/world-atlas). UI built with Astryx; type set in Source Serif 4, IBM Plex Sans and IBM Plex Mono.
 
-If the public endpoint is unavailable, Bilad uses a deterministic, clearly labeled demo series. The fallback is there to keep the investigation judgeable; it is not presented as NASA data.
+## Judging criteria
 
-NASA POWER identifies its solar source products as SRB and SYN1DEG across this window; the [NASA POWER source documentation](https://power.larc.nasa.gov/docs/methodology/communities/) places the transition at January 2001, inside the short reference period. Bilad shows the products reported by each response and a link to the exact request. The transition is a reason to inspect the underlying product before making a scientific claim.
-
-## NASA and source citations
-
-- [NASA Space Apps 2026 home](https://www.spaceappschallenge.org/2026/)
-- [NASA Space Apps project submission guide](https://www.spaceappschallenge.org/resources/project-submission-guide/)
-- [NASA challenge statement](https://www.spaceappschallenge.org/2026/challenges/earth-system-trend-detective/)
-- [NASA POWER](https://power.larc.nasa.gov/)
-- [NASA POWER monthly API documentation](https://power.larc.nasa.gov/docs/services/api/temporal/monthly/)
-- [NASA POWER temporal API overview](https://power.larc.nasa.gov/docs/services/api/temporal/)
-- [NASA Earthdata](https://www.earthdata.nasa.gov/)
-- [NASA Space Apps terms and conditions](https://www.spaceappschallenge.org/legal/)
-
-The coordinate-field illustration is original SVG artwork. Its sample points reflect catalog coordinates; its curves are schematic, not measured geospatial data. The UI system is Astryx as included in the project dependencies. No artwork or copy was taken from the visual reference site.
-
-## NASA rubric mapping
-
-- **Impact:** makes Earth-system trend questions legible to students, educators, and the public.
-- **Creativity:** uses an original field-atlas visual language and lets users compare both absolute values and baseline-relative change.
-- **Validity:** shows the source, parameter, coordinate, time window, sample count, fitted slope, confidence interval, and significance screen.
-- **Relevance:** directly follows the selected NASA challenge questions.
-- **Presentation:** opens with a complete two-location example and a three-minute field guide; once loaded, it remains usable during a NASA endpoint outage.
+- **Impact:** gives students, educators and the public a way to tell a real Earth-system trend from a statistical or data artefact. The pipeline is nation-agnostic, so the same evidence can be produced for any country NASA POWER covers.
+- **Creativity:** frames trend detection as cross-examination. Each claim faces an independent witness and an integrity screen, and the casebook deliberately includes a significant trend that is false.
+- **Validity:** uses Theil–Sen, Hamed–Rao-corrected Mann–Kendall, field-wide FDR, a BIC step screen and two independent NASA products. The engine matches pymannkendall, and a Python re-implementation checks every shipped headline in CI.
+- **Relevance:** answers the challenge's four questions with NASA Earth-science data, and adds whether the change is real.
+- **Presentation:** four guided cases with four different outcomes, a shareable atlas, and a method page with the formulas.
 
 ## AI-use disclosure
 
-AI assistance was used during development for code scaffolding, interface iteration, documentation drafting, test cases, and repository review. The project team remains responsible for the implementation, source choices, scientific framing, and final submission. NASA data and NASA documentation are credited directly in the app and this README.
+AI assistance was used for code, data-pipeline scaffolding, interface iteration, documentation drafting, tests and review. The project team is responsible for the implementation, source choices, scientific framing and final submission. NASA data and documentation are credited in the app and in this README.
 
 ## License
 
-Bilad is released under the Apache License 2.0. See LICENSE.
+Apache License 2.0. See [LICENSE](LICENSE).

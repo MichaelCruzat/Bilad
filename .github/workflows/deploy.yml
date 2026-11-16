@@ -1,7 +1,9 @@
-name: Build and deploy Bilad
+name: Build and deploy TRACE
 
 on:
   push:
+    branches: [main]
+  pull_request:
     branches: [main]
   workflow_dispatch:
 
@@ -11,7 +13,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: pages
+  group: pages-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -33,19 +35,26 @@ jobs:
           cache: pnpm
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      - name: Test
+      - name: Install Python dependencies
+        run: python3 -m pip install -r pipeline/requirements.txt
+      - name: Test (TypeScript)
         run: pnpm test
-      - name: Test asset checks
+      - name: Test (Python pipeline and asset checks)
         run: python3 -m unittest discover -s tests -p 'test_*.py'
+      - name: Recompute shipped headlines independently
+        run: python3 -m pipeline validate
       - name: Lint
         run: pnpm lint
       - name: Build
         run: pnpm build
       - name: Check website size
         run: python3 scripts/bundle_budget.py
+      - name: Browser acceptance (home, case, atlas, brief, world, phone width, reduced motion, witness failure)
+        run: pnpm smoke
 
   deploy:
     needs: verify
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     environment:
       name: github-pages

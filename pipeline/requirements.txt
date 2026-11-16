@@ -1,0 +1,6 @@
+certifi>=2024.2
+netCDF4>=1.7
+numpy>=1.26
+pymannkendall>=1.4
+scipy>=1.11
+shapely>=2.0

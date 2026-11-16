@@ -32,22 +32,22 @@ export const biladTheme = {
     "--font-size-4xl": "3.25rem",
     "--font-size-5xl": "4.25rem",
     "--text-heading-1-size": "var(--font-size-2xl)",
-    "--text-heading-1-weight": "600",
+    "--text-heading-1-weight": "700",
     "--text-heading-1-leading": "1.4194",
     "--text-heading-2-size": "var(--font-size-xl)",
-    "--text-heading-2-weight": "600",
+    "--text-heading-2-weight": "700",
     "--text-heading-2-leading": "1.3333",
     "--text-heading-3-size": "var(--font-size-lg)",
-    "--text-heading-3-weight": "600",
+    "--text-heading-3-weight": "700",
     "--text-heading-3-leading": "1.5556",
     "--text-heading-4-size": "var(--font-size-base)",
-    "--text-heading-4-weight": "600",
+    "--text-heading-4-weight": "700",
     "--text-heading-4-leading": "1.4286",
     "--text-heading-5-size": "var(--font-size-sm)",
-    "--text-heading-5-weight": "600",
+    "--text-heading-5-weight": "700",
     "--text-heading-5-leading": "1.4545",
     "--text-heading-6-size": "var(--font-size-xs)",
-    "--text-heading-6-weight": "600",
+    "--text-heading-6-weight": "700",
     "--text-heading-6-leading": "1.5",
     "--text-body-size": "var(--font-size-base)",
     "--text-body-weight": "var(--font-weight-normal)",
@@ -65,13 +65,13 @@ export const biladTheme = {
     "--text-supporting-weight": "var(--font-weight-normal)",
     "--text-supporting-leading": "1.4545",
     "--text-display-1-size": "var(--font-size-5xl)",
-    "--text-display-1-weight": "600",
+    "--text-display-1-weight": "700",
     "--text-display-1-leading": "1.2353",
     "--text-display-2-size": "var(--font-size-4xl)",
-    "--text-display-2-weight": "600",
+    "--text-display-2-weight": "700",
     "--text-display-2-leading": "1.2308",
     "--text-display-3-size": "var(--font-size-3xl)",
-    "--text-display-3-weight": "600",
+    "--text-display-3-weight": "700",
     "--text-display-3-leading": "1.3",
     "--duration-fast-min": "95ms",
     "--duration-fast": "125ms",
@@ -92,9 +92,9 @@ export const biladTheme = {
     "--_astryx-pre-tempo-duration-slow": "700ms",
     "--_astryx-pre-tempo-duration-slow-max": "935ms",
     "--_astryx-motion-tempo": "1",
-    "--font-family-body": "Figtree, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif",
-    "--font-family-heading": "Figtree, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif",
-    "--font-family-code": "ui-monospace, \"SF Mono\", Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace",
+    "--font-family-body": "\"IBM Plex Sans\", system-ui, sans-serif",
+    "--font-family-heading": "\"Source Serif 4\", Georgia, serif",
+    "--font-family-code": "\"IBM Plex Mono\", ui-monospace, monospace",
     "--color-syntax-keyword": "light-dark(#6b187c, #efa8ff)",
     "--color-syntax-string": "light-dark(#0b5615, #a4d6a3)",
     "--color-syntax-comment": "light-dark(#525252, #b9b9b9)",
@@ -114,24 +114,24 @@ export const biladTheme = {
     "--color-syntax-diff-header": "transparent",
     "--color-syntax-added-marker": "var(--color-syntax-punctuation)",
     "--color-syntax-removed-marker": "var(--color-syntax-punctuation)",
-    "--color-background-surface": "light-dark(#ffffff, #192633)",
-    "--color-background-body": "light-dark(#f1f1f1, #1b1b1b)",
-    "--color-background-card": "light-dark(#ffffff, #121c27)",
-    "--color-background-popover": "light-dark(#ffffff, #121c27)",
-    "--color-background-muted": "light-dark(#e7f2ff, #121c27)",
-    "--color-accent": "light-dark(#e0a84f, #e0a84f)",
-    "--color-accent-muted": "light-dark(#f9c87f, #603f00)",
+    "--color-background-surface": "#ebe3d3",
+    "--color-background-body": "#f3ede1",
+    "--color-background-card": "#f8f4ec",
+    "--color-background-popover": "light-dark(#ffffff, #ffffff)",
+    "--color-background-muted": "light-dark(#f9f3ea, #f8f3eb)",
+    "--color-accent": "light-dark(#b8322a, #b8322a)",
+    "--color-accent-muted": "light-dark(#ffc4bb, #ffc4bb)",
     "--color-neutral": "light-dark(#0000000F, #ffffff1A)",
     "--color-overlay": "light-dark(#00000080, #000000CC)",
-    "--color-overlay-hover": "light-dark(#0000000d, #ffffff0d)",
-    "--color-overlay-pressed": "light-dark(#0000001a, #ffffff1a)",
-    "--color-text-primary": "light-dark(#000000, #ffffff)",
-    "--color-text-secondary": "light-dark(#31445a, #8ea0b5)",
-    "--color-text-disabled": "#9fb1c8",
-    "--color-text-accent": "light-dark(#6f4a00, #ecb867)",
+    "--color-overlay-hover": "light-dark(#0000000d, #0000000d)",
+    "--color-overlay-pressed": "light-dark(#0000001a, #0000001a)",
+    "--color-text-primary": "#1c1a17",
+    "--color-text-secondary": "light-dark(#4b463c, #4a463e)",
+    "--color-text-disabled": "light-dark(#969084, #959086)",
+    "--color-text-accent": "light-dark(#a8231e, #a7251e)",
     "--color-on-dark": "#ffffff",
     "--color-on-light": "#111111",
-    "--color-on-accent": "light-dark(#0a121b, #0b1119)",
+    "--color-on-accent": "light-dark(#ffffff, #ffffff)",
     "--color-on-success": "light-dark(#ffffff, #111111)",
     "--color-on-error": "light-dark(#ffffff, #111111)",
     "--color-on-warning": "#111111",
@@ -146,19 +146,19 @@ export const biladTheme = {
     "--color-on-success-muted": "light-dark(#00490b, #90ca90)",
     "--color-on-warning-muted": "light-dark(#4b3900, #eec448)",
     "--color-on-error-muted": "light-dark(#76000c, #ffaea7)",
-    "--color-icon-accent": "light-dark(#6f4a00, #ecb867)",
-    "--color-icon-primary": "light-dark(#000000, #ffffff)",
-    "--color-icon-secondary": "light-dark(#566b83, #8ea0b5)",
-    "--color-icon-disabled": "light-dark(#7e93ac, #3d5067)",
+    "--color-icon-accent": "light-dark(#a8231e, #a7251e)",
+    "--color-icon-primary": "light-dark(#000000, #000000)",
+    "--color-icon-secondary": "light-dark(#706a5f, #6f6a60)",
+    "--color-icon-disabled": "light-dark(#969084, #959086)",
     "--color-success": "light-dark(#198100, #64af4c)",
     "--color-warning": "#ffce2f",
     "--color-error": "light-dark(#c9303a, #ff705d)",
     "--color-success-muted": "light-dark(#bce0bb, #90ca903D)",
     "--color-error-muted": "light-dark(#ffc4be, #ff98903D)",
     "--color-warning-muted": "light-dark(#fae19e, #e2b6233D)",
-    "--color-border": "light-dark(#00000014, #ffffff1a)",
-    "--color-border-emphasized": "light-dark(#c6d6ea, #3d5067)",
-    "--color-skeleton": "light-dark(#e7f2ff, #3d5067)",
+    "--color-border": "light-dark(#00000014, #00000014)",
+    "--color-border-emphasized": "light-dark(#e1d9ca, #e0d9cb)",
+    "--color-skeleton": "light-dark(#f9f3ea, #f8f3eb)",
     "--color-shadow": "light-dark(#0000001A, #0000004D)",
     "--color-tint-hover": "light-dark(#000000, #ffffff)",
     "--color-background-red": "light-dark(#ffc4be, #5b2b28)",
@@ -215,7 +215,7 @@ export const biladTheme = {
     "--shadow-inset-success": "inset 0px 0px 0px 2px #2f7d334D",
     "--shadow-inset-warning": "inset 0px 0px 0px 2px #f8d36a4D",
     "--shadow-inset-error": "inset 0px 0px 0px 2px #de47454D",
-    "--focus-outline-color": "light-dark(#ae7701, #e0a84f)"
+    "--focus-outline-color": "light-dark(#b8322a, #b8322a)"
   },
   localTokens: {
     "--astryx-theme-neutral-color-status-fill-accent": "light-dark(#0074e2, #6d9cfe)"
@@ -325,22 +325,22 @@ export const biladTheme = {
     },
     "item": {
       "selected": {
-        "--color-text-secondary": "light-dark(#31445a, #b9c8db)"
+        "--color-text-secondary": "light-dark(#4b463c, #565249)"
       }
     },
     "tree-list-item": {
       "selected": {
-        "--color-text-secondary": "light-dark(#31445a, #b9c8db)"
+        "--color-text-secondary": "light-dark(#4b463c, #565249)"
       }
     },
     "file-input": {
       "mode:dropzone": {
-        "--color-text-secondary": "light-dark(#31445a, #b9c8db)"
+        "--color-text-secondary": "light-dark(#4b463c, #565249)"
       }
     },
     "citation": {
       "variant:number": {
-        "--color-text-secondary": "light-dark(#31445a, #b9c8db)"
+        "--color-text-secondary": "light-dark(#4b463c, #565249)"
       }
     },
     "button": {
@@ -402,7 +402,7 @@ export const biladTheme = {
     },
     "segmented-control-item": {
       "base": {
-        "--color-text-secondary": "light-dark(#31445a, #b9c8db)"
+        "--color-text-secondary": "light-dark(#4b463c, #625e54)"
       },
       "size:sm": {
         "height": "calc(var(--size-element-sm) - 8px)"
@@ -478,6 +478,27 @@ export const biladTheme = {
             }
           }
         }
+      },
+      {
+        "when": {
+          "pointer": "coarse",
+          "width": {
+            "below": "lg"
+          }
+        },
+        "value": {
+          "tokens": {
+            "--text-heading-1-weight": "700",
+            "--text-heading-2-weight": "700",
+            "--text-heading-3-weight": "700",
+            "--text-heading-4-weight": "700",
+            "--text-heading-5-weight": "700",
+            "--text-heading-6-weight": "700",
+            "--text-display-1-weight": "700",
+            "--text-display-2-weight": "700",
+            "--text-display-3-weight": "700"
+          }
+        }
       }
     ]
   },
@@ -488,24 +509,24 @@ export const biladTheme = {
         "ratio": 1.3
       },
       "body": {
-        "family": "Figtree",
-        "fallbacks": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif"
+        "family": "IBM Plex Sans",
+        "fallbacks": "system-ui, sans-serif"
       },
       "heading": {
-        "family": "Figtree",
-        "fallbacks": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif",
+        "family": "Source Serif 4",
+        "fallbacks": "Georgia, serif",
         "weights": {
-          "1": "600",
-          "2": "600",
-          "3": "600",
-          "4": "600",
-          "5": "600",
-          "6": "600"
+          "1": "700",
+          "2": "700",
+          "3": "700",
+          "4": "700",
+          "5": "700",
+          "6": "700"
         }
       },
       "code": {
-        "family": "ui-monospace",
-        "fallbacks": "\"SF Mono\", Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace"
+        "family": "IBM Plex Mono",
+        "fallbacks": "ui-monospace, monospace"
       }
     },
     "motion": {
