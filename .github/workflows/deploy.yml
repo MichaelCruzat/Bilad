@@ -1,4 +1,4 @@
-name: Build and deploy Bilad
+name: Build and deploy TRACE
 
 on:
   push:

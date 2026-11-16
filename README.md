@@ -1,24 +1,39 @@
-# Bilad
+# TRACE: Tracking Regional Atmospheric Change on Earth
 
-Bilad is a global Earth-system trend detective. It maps how every land cell on Earth, from 60°S to 84°N, has changed since 1981 using NASA POWER data. It tests each trend with methods built for autocorrelated climate records, then checks it against an independent NASA record before calling it real.
+TRACE is a global Earth-system trend detective. It maps land cells from 60°S to 84°N since 1981 using NASA POWER data. It tests temperature and rainfall trends with methods built for autocorrelated climate records, then compares them with a second NASA record. Agreement supports a trend; disagreement and abrupt jumps identify records that need investigation.
 
 Built for the NASA Space Apps 2026 challenge [Be An Earth System Trend Detective!](https://www.spaceappschallenge.org/2026/challenges/earth-system-trend-detective/).
 
-**Live site:** [michaelcruzat.github.io/Bilad](https://michaelcruzat.github.io/Bilad/)
+**Live site:** [michaelcruzat.github.io/TRACE](https://michaelcruzat.github.io/TRACE/)
 
-*Bilad* (بلاد) is Arabic for "lands".
+*TRACE* stands for Tracking Regional Atmospheric Change on Earth.
+
+## Why this exists
+
+Climate communication and adaptation assessments depend on interpreting trends
+correctly. Statistical significance alone cannot exclude a data discontinuity
+or resolve disagreement between products. TRACE makes those warnings visible:
+one workflow combines trend tests, jump screening, a second record, provenance,
+and exportable evidence for any covered country or land cell.
+
+Researchers and the public can inspect the result without building a pipeline.
+NASA data users can identify locations where products need closer comparison.
+Public agencies can review warming or rainfall evidence, including its
+uncertainty and assumptions, before including it in further assessments.
+Institutional adoption and policy outcomes are not yet demonstrated. This is
+an evidence-screening prototype, not a forecast or causal attribution tool.
 
 ## What it finds
 
-Across 54,425 land cells, temperature has risen by about 0.25 °C per decade since 1981, and 71% of the world's land has warmed beyond chance after a worldwide false-discovery test. Weather stations back that warming over most of the planet. On about 5% of land they contradict the reanalysis, and Bilad flags those trends instead of reporting them. South Asia is the largest such region.
+Across 54,425 land cells, temperature has risen by about 0.25 °C per decade since 1981, and 71% of the world's land is selected as warming by Benjamini–Hochberg at a 10% target false discovery rate. Weather stations back that warming on about 59% of land. TRACE flags 4.8% of land as a likely data artefact for temperature and 13.5% for rainfall. A flag means the witness contradicts a trend, or the reanalysis has a jump the witness does not share and does not corroborate. These are screening flags, not established causes. Across South Asia, stations mostly lean the opposite way to the reanalysis.
 
-The challenge asks what is changing, where, by how much, and whether the change is significant. Bilad also asks whether the change is real, because a significance test only checks the record it is given. The four case files end in four different outcomes:
+The challenge asks what is changing, where, by how much, and whether the change is significant. TRACE also asks whether the change is real, because a significance test only checks the record it is given. The four case files end in four different outcomes:
 
 | Case | Claim tested | Reanalysis (MERRA-2) | Independent witness | Verdict |
 |---|---|---|---|---|
 | 01 Central Chile's missing rain | Rainfall fell after 2010 | −17.1% of normal per decade; 34% less rain in 2010–19 than 1981–2009 | GPCP (partly independent: shares rain gauges): −11.2% per decade; 23% less | **Corroborated** |
-| 02 Two Chiles | Coast and Andes warm differently | Daytime highs: coast −0.01 °C/decade (p = 0.87), Andes +0.29 (p < 0.001) | Witness grids (2°) are wider than Chile | **No witness at this scale** |
-| 03 Bangladesh's phantom cooling | Bangladesh cooled since 1981 | −0.19 °C/decade, p = 0.03, 80% of land "significant"; behaves as a jump in 1997 (ΔBIC 18.7) | GISTEMP: +0.35 °C/decade | **Contradicted: a likely dataset artefact** |
+| 02 Two Chiles | Coast and Andes warm differently | Daytime highs: coast −0.01 °C/decade (p = 0.87), Andes +0.29 °C/decade (p < 0.001) | Witness grids (2°) are wider than Chile | **No witness at this scale** |
+| 03 Bangladesh's phantom cooling | Bangladesh cooled since 1981 | −0.19 °C/decade, p = 0.03, 80% of land "significant"; behaves as a jump in 1997 (ΔBIC 18.7) | GISTEMP: +0.35 °C/decade | **Contradicted: a likely data artefact** |
 | 04 Kenya | Kenya is warming | +0.18 °C/decade | GISTEMP: +0.34 °C/decade | **Same direction, different size** |
 
 In MERRA-2, Bangladesh's temperature, humidity and soil moisture all jump around 1997–98, a period of large changes in the satellite observations the reanalysis assimilates, and weather stations show warming. A significant Mann–Kendall test alone would report that Bangladesh cooled.
@@ -28,20 +43,24 @@ In MERRA-2, Bangladesh's temperature, humidity and soil moisture all jump around
 - **World** (`#/world`): every land cell on a zoomable map over NASA Blue Marble relief, for temperature and rainfall.
   - The verdict layer shows, cell by cell, whether the station or gauge record backs the trend. Other layers show the trend itself, any single year (playable), and the 1991–2020 normal.
   - A strip of yearly global values sits under the map; pointing at a year shows it on the map.
-  - Search any of 223 countries, or click a cell. Bilad builds that country's series from its cells and cross-examines it against the witness on the spot.
+  - Search any of 223 countries, or click a cell. TRACE builds that country's series from its cells and cross-examines it against the witness on the spot.
   - Rankings list the fastest-changing countries and the ones whose reanalysis record is least trustworthy.
-- **Home** (`#/`): opens on the world verdict map at full width, then the scale of the shipped data, how Bilad works, validation figures, the four case files and the seven featured nations on one colour scale with their verdicts.
+- **Home** (`#/`): TRACE's full name, worldwide purpose, coverage, and observation window. A pinned globe follows the evidence as you scroll from reanalysis to stations to agreement. Any picked cell opens its global evidence; the page has no default country or shortlist of nations.
+- **Cases** (`#/cases`): four guided investigations, each linking to its full evidence and verdict.
+- **How we know** (`#/proof?country=&cell=&v=`): a calculation walkthrough for all covered land, any covered country, or one linked cell. It uses the same global annual arrays and footprint aggregation as Explore. Older `?n=<ISO3>` links retain the supplemental monthly walkthrough.
 - **Case files** (`#/case/<id>`): claim → evidence → cross-examination → integrity screen → verdict, with sources. Every number is computed in the browser from the shipped data.
 - **Atlas** (`#/atlas/<ISO3>`): any shipped nation and any of seven variables.
   - Every map sits on NASA GIBS Blue Marble shaded relief with neighbouring borders.
   - Each grid cell coloured by its trend, by one year's anomaly (with a play button), by its signal-to-noise ratio, or by its 1991–2020 normal.
-  - Cells that survive false-discovery control are stippled.
+  - Cells significant at a 10% false discovery rate are stippled.
   - A latitude profile beside the map shares its vertical axis; drag on it to define a band.
   - The evidence panel shows the whole nation, a band, or a single cell. It includes the annual series with its Theil–Sen trend, the independent witness for that exact selection (temperature and rainfall), the ramp-or-jump screen, a month-by-month "season clock", start-year sensitivity, the full test record and every NASA POWER request URL.
   - All atlas state lives in the URL, so any view can be shared.
 - **Method** (`#/method`): formulas, assumptions, limitations and references.
 
-Seven nations also ship with the full seven-variable atlas: Bangladesh, Chile, Kenya, Mexico, Morocco, the Philippines and Spain.
+Seven nations also ship supplemental seven-variable packs: Bangladesh, Chile, Kenya, Mexico, Morocco, the Philippines and Spain. They add detail to a global product; they do not limit which countries can be explored. The primary navigation leads to the worldwide atlas and worldwide walkthrough.
+
+The product and motion contract is [GLOBAL-DIRECTION.md](docs/GLOBAL-DIRECTION.md). Transitions use transform and opacity, preserve native scrolling, stop rotation off-screen, and respect reduced motion. Country/continent outlines and cell colours share the same geographic transform, including the globe texture's nonstandard aspect ratio.
 
 ## How a trend earns a verdict
 
@@ -50,11 +69,11 @@ Seven nations also ship with the full seven-variable atlas: Bangladesh, Chile, K
 | Measure | NASA POWER monthly MERRA-2 on its native 0.5° × 0.625° grid; each cell weighted by its true land area | Point samples standing in for a nation |
 | Deseasonalise | Monthly anomalies against the WMO 1991–2020 normal; rainfall as % of each cell's own normal | The seasonal cycle swamping the trend; wet regions dominating |
 | Test each cell | Theil–Sen slope with Gilbert (1987) interval; Mann–Kendall with Hamed–Rao (1998) correction for serial correlation | Outliers; persistence posing as a trend |
-| Test the map | Benjamini–Hochberg false-discovery control, α = 0.10 (Wilks 2016) | Hundreds of tests producing "significant" cells by chance |
+| Test the map | Benjamini–Hochberg false-discovery control, α = 0.10 (Wilks 2016) | Tens of thousands of tests (54,425 cells per variable) producing "significant" cells by chance |
 | Screen integrity | Straight line versus single step compared by BIC; co-breaks across a nation's seven variables | A change in satellites or processing posing as climate |
 | Cross-examine | Same footprint in GISTEMP v4 (stations) and GPCP v2.3 (gauges + satellites, partly independent), for any selection down to one cell | Trusting a single dataset |
 
-For trends that are not yet significant, Bilad estimates how many more years of record would be needed at the current rate and noise.
+For trends that are not yet significant, TRACE estimates how many more years of record would be needed at the current rate and noise.
 
 ## Architecture
 
@@ -78,7 +97,7 @@ The project uses Python, TypeScript and Make:
 - **Python, again, as an independent check.** `pipeline/validate.py` rebuilds every nation-variable headline and a random sample of global cells from the raw binaries with different code (`scipy.stats.theilslopes`, `pymannkendall`, a separate Benjamini–Hochberg). Two implementations in two languages must agree before CI passes. Values are rounded to 1e-9 before testing in both, so ties are detected the same way despite different floating-point summation.
 - **Make** as the single entry point.
 
-Per-cell statistics for the whole globe are precomputed (17 seconds for both variables), so the World page only draws. A rerun of the heaviest featured nation (Mexico, 688 cells) takes about 55 ms in the browser and is cached, so a WebAssembly kernel was not worth its build complexity. The world map is drawn on a canvas, batched by colour, so all 54,425 cells pan and zoom smoothly.
+Per-cell global statistics are precomputed; the browser loads them without rerunning 54,425 trend tests. The globe projects a cached geographic texture through WebGL, with a batched 2D fallback. The World map caches its geographic layer for pointer feedback and computes the annual colour scale once per dataset. Reproducible measurements and remaining limits are in [the performance notes](docs/PERFORMANCE.md).
 
 ## Run locally
 
@@ -113,10 +132,10 @@ Values are MERRA-2 (NASA GMAO) served by NASA POWER at native resolution, quanti
 
 ## Limitations
 
-- A detected trend says what changed, where and by how much. It does not say why. Bilad does not attribute causes, forecast or downscale.
+- A detected trend says what changed, where and by how much. It does not say why. TRACE does not attribute causes, forecast or downscale.
 - A 0.5° cell averages over valleys and peaks. Coastal cells that are mostly sea carry an ocean influence; they are weighted by land area and flagged when selected.
 - MERRA-2's precipitation correction uses gauge analyses (satellite–gauge over Africa) and fades out poleward of about 42°, so rainfall trends in Patagonia rest more on the model. Soil wetness is modelled from that same precipitation, so it is not an independent witness to a rainfall trend.
-- The witnesses are coarser (2° and 2.5°) and are estimates themselves. GPCP and MERRA-2's corrected precipitation both draw on rain gauges, so their agreement rules out a reanalysis artefact but not a problem shared by the gauges.
+- The witnesses are coarser (2° and 2.5°) and are estimates themselves. GPCP and MERRA-2's corrected precipitation both draw on rain gauges, so their agreement cannot exclude a shared error.
 - Neighbouring reanalysis cells are not independent, so shares of significant area are descriptive.
 
 ## Sources
@@ -129,7 +148,7 @@ Values are MERRA-2 (NASA GMAO) served by NASA POWER at native resolution, quanti
 - Coastal cooling in Chile: Falvey & Garreaud (2009), [doi:10.1029/2008JD010519](https://doi.org/10.1029/2008JD010519)
 - Methods: Mann (1945); Sen (1968); Gilbert (1987); Hamed & Rao (1998); Benjamini & Hochberg (1995); Wilks (2016); Hawkins & Sutton (2012). Full links are on the in-app Method page.
 - [NASA GIBS](https://www.earthdata.nasa.gov/engage/open-data-services-software/earthdata-developer-portal/gibs-api) Blue Marble relief imagery.
-- [Natural Earth](https://www.naturalearthdata.com/) boundaries via [world-atlas](https://github.com/topojson/world-atlas). UI built with Astryx; type set in Space Grotesk, IBM Plex Sans and IBM Plex Mono.
+- [Natural Earth](https://www.naturalearthdata.com/) boundaries via [world-atlas](https://github.com/topojson/world-atlas). UI built with Astryx; type set in Source Serif 4, IBM Plex Sans and IBM Plex Mono.
 
 ## Judging criteria
 

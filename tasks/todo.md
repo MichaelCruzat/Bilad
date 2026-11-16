@@ -1,4 +1,37 @@
-# Bilad V1 Task List
+# TRACE continuation checklist
+
+Current scope: global temperature and rainfall, evidence exports and a worldwide
+walkthrough for any covered country or cell. Seven national packs add variables
+as supplemental deep links. The global correction in
+[GLOBAL-DIRECTION.md](../docs/GLOBAL-DIRECTION.md) controls the primary product.
+
+- [x] Review Claude's unfinished TRACE rename, globe home, and proof page.
+- [x] Keep World cell selections to one cell instead of a national footprint.
+- [x] Match the ten-year witness minimum for globe trends and verdicts.
+- [x] Recover from failed proof, home, and annual-series requests with retry.
+- [x] Move the camera to a selection made before the globe finishes loading.
+- [x] Add rotation pause, keyboard announcements, and flight cleanup.
+- [x] Correct FDR wording and remove unrecorded audit claims.
+- [x] Reject non-finite validation differences instead of silently passing them.
+- [x] Preserve binary UI fixtures and add regression tests.
+- [x] Simplify home; move the case list to its own route and remove repeated sections.
+- [x] Profile and optimize globe rotation and World year playback; retain a 2D fallback.
+- [x] Replace sentence/verdict badges with text labels under the project UI rules.
+- [x] Restore the full acronym and vital global context; remove seeded national home content.
+- [x] Add a pinned scroll-led evidence trail, route transitions, and sliding selection feedback.
+- [x] Extend the default statistical walkthrough to worldwide footprints and any covered country.
+- [x] Align globe data and boundary texture projections; test latitudes and the antimeridian.
+- [x] Complete final browser acceptance, visual review, and demo regeneration.
+- [x] Record final verification results in the handoff.
+- [ ] Review and commit the application changes on `rebuild/national-atlas`.
+- [ ] Confirm remote CI for that exact commit.
+- [ ] Merge to `main` and verify GitHub Pages after an authorized release.
+
+The older V1 tasks below are historical. They are superseded by the current
+README and [handoff](../docs/HANDOFF.md); their unchecked boxes are not an
+assessment of the present implementation.
+
+## Historical V1 task list
 
 ## Scope correction
 

@@ -1,4 +1,4 @@
-# Spec: Bilad — Earth System Trend Detective V1
+# Spec: TRACE — Earth System Trend Detective V1
 
 Status: superseded. V2 (national atlas, casebook, independent witnesses, Python pipeline) is described in [tasks/plan.md](tasks/plan.md) and the [README](README.md). This file records the V1 scope for history.
 
@@ -6,7 +6,7 @@ Status: superseded. V2 (national atlas, casebook, independent witnesses, Python 
 
 Build a public, deployment-ready web application for NASA Space Apps 2026 challenge [Be An Earth System Trend Detective!](https://www.spaceappschallenge.org/2026/challenges/earth-system-trend-detective/).
 
-Bilad helps students, educators, and Earth-science audiences answer four questions: **What is changing, where is it changing, by how much, and is the change statistically meaningful?** It turns NASA Earth science variables and regions into transparent, readable investigations rather than mysterious charts or unsupported conclusions.
+TRACE helps students, educators, and Earth-science audiences answer four questions: **What is changing, where is it changing, by how much, and is the change statistically meaningful?** It turns NASA Earth science variables and regions into transparent, readable investigations rather than mysterious charts or unsupported conclusions.
 
 The experience must feel like a guided investigation:
 
@@ -25,7 +25,7 @@ The experience must feel like a guided investigation:
 
 ## NASA alignment and submission compliance
 
-| Criterion | Bilad evidence |
+| Criterion | TRACE evidence |
 | --- | --- |
 | Impact | Makes difficult Earth-system data legible to mission teams, educators, and the public; helps people ask better questions about a changing planet. |
 | Creativity | Treats trend analysis as an investigation: users choose the variable and place, inspect the signal, and see how statistical evidence changes the verdict. |

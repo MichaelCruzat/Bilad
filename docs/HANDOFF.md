@@ -1,11 +1,62 @@
-# Bilad handoff
+# TRACE handoff
 
-State of the project at the end of the first long working session (2026-11-15), for picking up in a new chat. Everything below is on the branch `rebuild/national-atlas`, pushed to GitHub. `main` and the live site still show the old v1 until the pull request is merged.
+The continuation is on `rebuild/national-atlas`. It completes the TRACE rename,
+paper theme, global globe home, worldwide proof walkthrough, motion, and the
+correctness fixes below. The user's global direction supersedes the older
+nation-led product plan. Treat the exact GitHub commit and its Actions results
+as the release record; do not infer deployment from a local build alone.
+GitHub has been renamed to `MichaelCruzat/TRACE`. The checkout folder and
+internal theme slug still use Bilad for compatibility; public links use TRACE.
 
-- Open the pull request: https://github.com/MichaelCruzat/Bilad/compare/main...rebuild/national-atlas (the `gh` CLI is not installed on this machine, so it was never opened from the terminal).
+## Continuation review, 2026-11-15
+
+The continuation preserves the TRACE direction recorded here. It fixes an
+explicit World cell selection being expanded to a country, mismatched witness
+coverage thresholds, camera selections made before the globe loaded, missing
+request-error states, and flight cleanup. Globe rotation has a pause control,
+and keyboard exploration announces cell descriptions. Regression tests cover
+cell scope, witness coverage, retry, and animation cleanup.
+
+The user's latest correction makes the product explicitly global. Home retains
+the full acronym, purpose, worldwide scope, and observation window, with no
+seeded nation. A pinned globe follows a three-stage evidence trail as the page
+scrolls. Primary navigation is Explore, Cases, How we know, and Method. The
+default proof route supports all covered land, any country, and linked cells;
+the seven national packs remain supplemental deep links. The globe uses a
+cached geographic texture with WebGL,
+retaining a substantially faster batched 2D fallback. World-map hover feedback
+reuses a cached scene, and annual colour scales are computed once per dataset.
+See [PERFORMANCE.md](PERFORMANCE.md) for measured conditions and limitations.
+See [GLOBAL-DIRECTION.md](GLOBAL-DIRECTION.md) for the controlling product scope.
+An outline mismatch was traced to a standard 2:1 boundary projection being
+painted into a 1152×720 native-grid texture. The corrected projection scales
+latitude to the actual texture height; tests compare data and boundary points
+across latitudes and verify antimeridian clipping.
+
+The proof page now distinguishes calculations for the current selection from
+software-validation notes. FDR is an expected fraction under assumptions,
+not a cap on errors in one map. Claims about an unrecorded audit and five
+alternative corrections were removed. The Python comparison rejects NaN and
+infinite differences. The global summaries were rebuilt to apply the same
+witness-jump guard as the interactive comparison: 123 temperature and 392
+rainfall cells lose an artefact flag because both records contain a jump.
+Slopes, intervals, p-values, and agreement classes are unchanged. Global
+monthly-data validation is optional when the
+build cache is absent, including in a clean CI checkout.
+
+See [tasks/todo.md](../tasks/todo.md) for final checks and release status. The
+older session results below are historical, not results for this working tree.
+
+- Review the branch: https://github.com/MichaelCruzat/TRACE/compare/main...rebuild/national-atlas.
 - CI runs on pull requests and only deploys on `main`.
 
-## What Bilad is now
+## What TRACE is now
+
+The product exists to screen climate evidence before it enters communication
+or adaptation assessments. Home explains why a significant trend can still
+need scrutiny, and the intended benefits for researchers, NASA data users, and
+government analysts. Institutional adoption and policy outcomes are not yet
+demonstrated; [GLOBAL-DIRECTION.md](GLOBAL-DIRECTION.md) records that boundary.
 
 A global Earth-system trend detective for the NASA Space Apps 2026 challenge "Be An Earth System Trend Detective". It maps how every land cell on Earth (60°S–84°N, 54,425 MERRA-2 cells, 223 countries) changed from 1981 to 2024 using NASA POWER. It tests each trend properly, then checks it against a second, independent NASA record:
 
@@ -18,7 +69,7 @@ Seven featured nations also ship with the full seven-variable atlas: Bangladesh,
 
 ### Key numbers (all computed from shipped data)
 
-- Global land temperature trend: +0.25 °C/decade; 71% of land warmed significantly after worldwide FDR; 5.0% of land flagged as likely artefact for temperature, 14.2% for rainfall.
+- Global land temperature trend: +0.25 °C/decade; 71% of land selected as warming at a 10% target FDR; 4.8% of land flagged as likely artefact for temperature, 13.5% for rainfall after the shared-jump correction.
 - Chile: MERRA-2 +0.110 = GISTEMP +0.110 °C/decade. Central Chile rainfall: 34% (MERRA-2) and 23% (GPCP) less in 2010–19 than 1981–2009; −17.1 vs −11.2 % of normal per decade (corroborated).
 - Kenya: +0.18 vs +0.34 °C/decade (same direction, different size). Chile coast vs Andes daytime highs: −0.01 vs +0.29 °C/decade (no witness verdict; 2° witness grid too coarse).
 - Least trustworthy reanalysis records (share of land flagged): Honduras 94%, Bangladesh 91%, South Sudan 81%.
@@ -27,7 +78,9 @@ Seven featured nations also ship with the full seven-variable atlas: Bangladesh,
 
 | Route | What it is |
 |---|---|
-| `#/` | Home: big logo and wordmark, plain statement leading with the Bangladesh hook, full-width world verdict map, scale facts, how it works, validation receipts, case files, featured nations strip and ledger |
+| `#/` | Global identity and scope, scroll-led interactive globe, evidence trail, global temperature highlights, and a direct route into Explore |
+| `#/cases` | The four guided investigations, each linking to its case file |
+| `#/proof?country=&cell=&v=` | Global statistical walkthrough: all covered land, any country, or one cell; `?n=<ISO3>` preserves older monthly-pack links |
 | `#/world?v=&layer=&year=&cell=&country=` | Global atlas on canvas: verdict / trend / year (playable) / normal layers, T2M and rainfall, zoom and pan, search any of 223 countries, click a cell, year strip under the map that drives the year layer, country rankings, verdict strip and cross-examination per country or cell |
 | `#/atlas/<ISO3>?v=&layer=&from=&to=&cell=&band=&region=&sig=&year=` | Featured-nation atlas: seven variables, NASA GIBS relief basemap, zoom/pan, latitude profile with band brushing, year playback, verdict strip, copy link, download evidence JSON, diagnostics behind "Inspect" sections |
 | `#/case/<id>` | Four case files: `chile-megadrought`, `chile-coast-andes`, `bangladesh-phantom-cooling`, `kenya-half-the-warming` |
@@ -55,9 +108,10 @@ scripts/smoke.mjs           Playwright browser acceptance against the production
   - `src/features/EvidencePanel.tsx`
   - `src/viz/NationMap.tsx` (SVG + d3-zoom)
   - `src/viz/WorldMap.tsx` (canvas, colour-batched)
+  - `src/viz/GlobeMap.tsx` and `globeRenderer.ts` (WebGL texture projection with a 2D fallback)
   - `src/viz/YearStrip.tsx`, `src/viz/MonthStrip.tsx`, `src/viz/SeriesChart.tsx`
   - `src/brand/Logo.tsx`: the `APP_NAME` constant, so a rename is one line
-- Theme: graphite with a mint accent, ivory text, Space Grotesk headings, IBM Plex Sans/Mono, set with the Astryx theme editor. Fonts load through `src/themes/bilad/bilad.fonts.css`.
+- Theme: cream paper, dark ink, red accent, Source Serif 4 headings and IBM Plex Sans/Mono, set with the Astryx theme editor. Fonts load through `src/themes/bilad/bilad.fonts.css`.
 
 ## How to run (this machine)
 
@@ -67,7 +121,7 @@ Node and pnpm are not on the default PATH here. Prefix commands with:
 export PATH=/Users/michaelc/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin:/Users/michaelc/.cache/codex-runtimes/codex-primary-runtime/dependencies/bin/fallback:$PATH
 ```
 
-- The Python venv used during the session lived in the session scratchpad and will be gone. Recreate it: `python3 -m venv .venv && .venv/bin/pip install -r pipeline/requirements.txt`, then pass `PY=.venv/bin/python` to make.
+- This checkout has `.venv`. On a new machine, create one with `python3 -m venv .venv && .venv/bin/pip install -r pipeline/requirements.txt`, then pass `PY=.venv/bin/python` to make.
 - Python from python.org lacks certificates, so `pipeline/net.py` uses certifi.
 - NASA POWER responses are cached in `pipeline/.cache/` (gitignored). That cache is about 900 files plus GISTEMP/GPCP netCDF. Rebuilding from cache takes minutes; from scratch, the global fetch is about 700 requests.
 
@@ -79,7 +133,29 @@ make global PY=...       # rebuild the global atlas
 pnpm exec astryx doctor --built .   # must have 0 failures before delivery
 ```
 
-At the end of the session:
+## Continuation verification, 2026-11-15
+
+- 60 TypeScript tests and 17 Python tests pass; lint, typecheck, production
+  build, and `git diff --check` pass.
+- 24 production-browser acceptance checks pass, including scroll-driven
+  globe stages, keyboard selection, forced 2D fallback, reduced motion,
+  phone layouts, failures/retries, and global walkthroughs for India and
+  Canada. A focused export check also confirms that a selected global cell
+  downloads a one-cell receipt, 44-year series, finite trend, and exact URL.
+- Independent Python recomputation agrees on all 49 supplemental headlines
+  and the cached global sample: 400 temperature and 383 eligible rainfall
+  cells. A clean CI checkout skips the optional global-cache sample.
+- Compressed assets: 495.5 KiB all-route JS, 215.4 KiB initial JS, 48.0 KiB
+  CSS, within the unchanged 520/240/55 KiB budgets.
+- Astryx doctor: source 20 pass / 3 warn / 0 fail; built output 20 pass /
+  2 warn / 0 fail. Warnings concern font-loading proof and native visual /
+  generated-theme source patterns. Desktop and phone output was inspected.
+- Final motion build: globe median 16.7 ms, p95 16.7–16.8 ms in software
+  WebGL at 4× CPU throttle. World playback p95 33.3–33.4 ms in the original
+  2D launch mode; a separate software-WebGL session retained larger World
+  spikes. See the complete conditions and raw records in PERFORMANCE.md.
+
+Historical verification before this continuation (not the current build):
 
 - 42 TypeScript tests, 16 Python tests, 10/10 browser checks.
 - Lint and typecheck clean.
@@ -99,7 +175,7 @@ At the end of the session:
 9. Global atlas: 54,425 cells, World page, home hero on the world map. Antimeridian bug fixed: dropping wrapped polygons had silently removed Afro-Eurasia.
 10. Copy pass with two independent reviewer agents applied; README and submission notes updated for global.
 11. Benchmark P0/P1: verdict strip, typed witness states, copy link, evidence JSON, `#/brief/<ISO3>` with CSV/JSON, progressive disclosure, method reading guide, release-truth test.
-12. Benchmark P2: browser smoke test in CI, demo PDF regenerated from the current build (`public/bilad-demo.pdf`, six pages).
+12. Benchmark P2: browser smoke test in CI, demo PDF regenerated from the current build (`public/trace-demo.pdf`, six pages).
 
 ## Benchmark checklist (docs/HACKATHON-WINNER-BENCHMARK.md)
 
@@ -133,14 +209,14 @@ At the end of the session:
    - Groundtruth: the remote-sensing term for checking against measurements.
    - Shiftwatch: watching for shifts, and for fake ones.
    - Tandem: two records riding together.
-   - Bilad: keep it. It's Arabic for "lands", which fits a global atlas.
+   - (Decided 2026-11-15: the project is now TRACE, Tracking Regional Atmospheric Change on Earth.)
 2. **Hero "Real or fake?" switch** (Chile corroborated vs Bangladesh artefact). The user said to hold off and didn't fully understand the idea, so explain it before building.
 3. **The user said they would send more design ideas.** Don't copy GRIME (see `docs/GRIME-WORLD-REFERENCE.md`, the user's file, untracked).
-4. **Merge the PR** after review, so the live site updates. `docs/GRIME-WORLD-REFERENCE.md` and `docs/HACKATHON-WINNER-BENCHMARK.md` are the user's untracked files; ask before committing them.
+4. **Publish the reviewed changes and information.** The user explicitly authorized updating GitHub with the new implementation and project information, including the reference and benchmark documents. Verify CI before merging and check Pages after deployment.
 5. **Global coverage is two variables** (T2M, rainfall), because those have witnesses. Adding more global variables is a cache/fetch run (`GLOBAL_VARIABLES` in `pipeline/global_grid.py`) plus summary changes; they would be single-dataset claims.
 6. **Witness independence.** GPCP is only partly independent. A fully independent rainfall witness (GPM IMERG, 2000–) or groundwater (GRACE) needs a NASA Earthdata login.
 7. **Phone layout.** It works, with no overflow, but the world map is small on phones, and the nation hero map was narrow for Chile.
-8. **Data size.** `public/data` is about 30 MB. Home loads about 2.5 MB of global data (cells + T2M stats + relief); annual series (about 4.8 MB per variable) load only on demand.
+8. **Data size.** `public/data` is about 30 MB. Home loads the cells, temperature statistics, station witness, and country geometry. Global annual series (about 4.8 MB per variable) load only on demand in World; the globe does not fetch the relief image.
 9. **Doctor warnings** (non-blocking): theme font-proof and purity notes on SVG charts.
 10. **GitHub pushes** from this machine sometimes fail once with "could not read Username", and retrying works.
 

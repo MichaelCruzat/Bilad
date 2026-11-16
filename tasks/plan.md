@@ -1,4 +1,10 @@
-# Bilad v2 — National Earth-System Trend Atlas
+# TRACE v2 — National Earth-System Trend Atlas
+
+Status: historical build plan. The application has since added global coverage,
+TRACE branding, the two-record globe, national briefs, exports, and the
+`#/proof` walkthrough. Use [README.md](../README.md) for current behavior,
+[docs/HANDOFF.md](../docs/HANDOFF.md) for implementation context, and
+[tasks/todo.md](todo.md) for current verification and release work.
 
 Challenge: NASA Space Apps 2026, "Be An Earth System Trend Detective!"
 (what is changing, where, how much, is it statistically significant).
@@ -11,7 +17,7 @@ dropdown. It had no map, no field significance, and no story beyond hedging copy
 
 ## Product
 
-*Bilad* (Arabic: "land, country") produces a climate-change ledger for a nation:
+*TRACE* (Tracking Regional Atmospheric Change on Earth) produces a climate-change ledger for a nation:
 a gridded map of where each Earth-system variable has changed since 1981, by how
 much, and whether the change survives a field-significance test, plus a
 printable national evidence brief. The pipeline is nation-agnostic: adding a

@@ -1,0 +1,298 @@
+{
+  "date": "2026-11-15",
+  "note": "before and fallback use 2D; webgl separately enables SwiftShader, not hardware GPU. Frame intervals measure main-thread requestAnimationFrame responsiveness, not presentation FPS.",
+  "before": {
+    "conditions": "Chrome headless, 1440x900, 4x CPU throttle, warm data, 3x3-second samples",
+    "results": [
+      {
+        "scenario": "globe",
+        "repeat": 1,
+        "frames": 2,
+        "medianFrameMs": 4116.5,
+        "p95FrameMs": 4116.5,
+        "scriptMs": 13332,
+        "taskMs": 13912
+      },
+      {
+        "scenario": "globe",
+        "repeat": 2,
+        "frames": 2,
+        "medianFrameMs": 3733.2000000000044,
+        "p95FrameMs": 3733.2000000000044,
+        "scriptMs": 7352,
+        "taskMs": 7645
+      },
+      {
+        "scenario": "globe",
+        "repeat": 3,
+        "frames": 3,
+        "medianFrameMs": 2749.800000000003,
+        "p95FrameMs": 3166.5999999999985,
+        "scriptMs": 8502,
+        "taskMs": 8823
+      },
+      {
+        "scenario": "world-years",
+        "repeat": 1,
+        "frames": 19,
+        "medianFrameMs": 16.69999999999709,
+        "p95FrameMs": 2833.199999999997,
+        "scriptMs": 2845,
+        "taskMs": 2868
+      },
+      {
+        "scenario": "world-years",
+        "repeat": 2,
+        "frames": 19,
+        "medianFrameMs": 16.60000000000582,
+        "p95FrameMs": 2933.300000000003,
+        "scriptMs": 2959,
+        "taskMs": 3061
+      },
+      {
+        "scenario": "world-years",
+        "repeat": 3,
+        "frames": 20,
+        "medianFrameMs": 16.69999999999709,
+        "p95FrameMs": 3499.899999999994,
+        "scriptMs": 3530,
+        "taskMs": 3622
+      }
+    ]
+  },
+  "fallback": {
+    "conditions": "Chrome headless, 1440x900, 4x CPU throttle, warm data, 3x3-second samples",
+    "results": [
+      {
+        "scenario": "globe",
+        "repeat": 1,
+        "frames": 27,
+        "medianFrameMs": 133.30000000000018,
+        "p95FrameMs": 133.40000000000055,
+        "scriptMs": 772,
+        "taskMs": 3056
+      },
+      {
+        "scenario": "globe",
+        "repeat": 2,
+        "frames": 26,
+        "medianFrameMs": 116.70000000000073,
+        "p95FrameMs": 133.40000000000055,
+        "scriptMs": 822,
+        "taskMs": 3140
+      },
+      {
+        "scenario": "globe",
+        "repeat": 3,
+        "frames": 28,
+        "medianFrameMs": 116.60000000000036,
+        "p95FrameMs": 133.29999999999927,
+        "scriptMs": 847,
+        "taskMs": 3167
+      }
+    ]
+  },
+  "webgl": {
+    "conditions": "Chrome headless, 1440x900, 4x CPU throttle, warm data, 3x3-second samples",
+    "browser": "157.0.8103.51",
+    "swiftshader": true,
+    "renderers": {
+      "globe": {
+        "attempts": 1,
+        "available": true,
+        "draws": 372,
+        "errors": []
+      }
+    },
+    "results": [
+      {
+        "scenario": "globe",
+        "repeat": 1,
+        "frames": 137,
+        "medianFrameMs": 16.699999999999818,
+        "p95FrameMs": 33.399999999999636,
+        "gpuDraws": 114,
+        "scriptMs": 200,
+        "taskMs": 300
+      },
+      {
+        "scenario": "globe",
+        "repeat": 2,
+        "frames": 152,
+        "medianFrameMs": 16.69999999999891,
+        "p95FrameMs": 33.399999999999636,
+        "gpuDraws": 131,
+        "scriptMs": 208,
+        "taskMs": 318
+      },
+      {
+        "scenario": "globe",
+        "repeat": 3,
+        "frames": 138,
+        "medianFrameMs": 16.700000000000728,
+        "p95FrameMs": 33.399999999999636,
+        "gpuDraws": 121,
+        "scriptMs": 203,
+        "taskMs": 311
+      }
+    ]
+  },
+  "world": {
+    "conditions": "Chrome headless, 1440x900, 4x CPU throttle, warm data, 3x3-second samples",
+    "results": [
+      {
+        "scenario": "world-years",
+        "repeat": 1,
+        "frames": 154,
+        "medianFrameMs": 16.700000000000728,
+        "p95FrameMs": 33.39999999999782,
+        "scriptMs": 773,
+        "taskMs": 859
+      },
+      {
+        "scenario": "world-years",
+        "repeat": 2,
+        "frames": 149,
+        "medianFrameMs": 16.700000000000728,
+        "p95FrameMs": 50,
+        "scriptMs": 832,
+        "taskMs": 950
+      },
+      {
+        "scenario": "world-years",
+        "repeat": 3,
+        "frames": 148,
+        "medianFrameMs": 16.700000000000728,
+        "p95FrameMs": 66.59999999999854,
+        "scriptMs": 859,
+        "taskMs": 986
+      }
+    ]
+  },
+  "globalMotionFinal": {
+    "conditions": "Chrome headless, 1440x900, 4x CPU throttle, warm data, 3x3-second samples",
+    "browser": "157.0.8103.51",
+    "swiftshader": true,
+    "renderers": {
+      "globe": {
+        "attempts": 1,
+        "available": true,
+        "draws": 624,
+        "errors": []
+      },
+      "world-years": {
+        "attempts": 1,
+        "available": true,
+        "draws": 625,
+        "errors": []
+      }
+    },
+    "results": [
+      {
+        "scenario": "globe",
+        "repeat": 1,
+        "frames": 181,
+        "medianFrameMs": 16.699999999999818,
+        "p95FrameMs": 16.700000000000728,
+        "gpuDraws": 180,
+        "scriptMs": 244,
+        "taskMs": 405
+      },
+      {
+        "scenario": "globe",
+        "repeat": 2,
+        "frames": 171,
+        "medianFrameMs": 16.69999999999891,
+        "p95FrameMs": 16.799999999999272,
+        "gpuDraws": 170,
+        "scriptMs": 244,
+        "taskMs": 419
+      },
+      {
+        "scenario": "globe",
+        "repeat": 3,
+        "frames": 181,
+        "medianFrameMs": 16.69999999999891,
+        "p95FrameMs": 16.799999999999272,
+        "gpuDraws": 180,
+        "scriptMs": 230,
+        "taskMs": 394
+      },
+      {
+        "scenario": "world-years",
+        "repeat": 1,
+        "frames": 70,
+        "medianFrameMs": 16.700000000000728,
+        "p95FrameMs": 100.09999999999854,
+        "gpuDraws": 0,
+        "scriptMs": 422,
+        "taskMs": 477
+      },
+      {
+        "scenario": "world-years",
+        "repeat": 2,
+        "frames": 162,
+        "medianFrameMs": 16.700000000000728,
+        "p95FrameMs": 33.39999999999782,
+        "gpuDraws": 0,
+        "scriptMs": 386,
+        "taskMs": 465
+      },
+      {
+        "scenario": "world-years",
+        "repeat": 3,
+        "frames": 67,
+        "medianFrameMs": 16.700000000000728,
+        "p95FrameMs": 283.3000000000029,
+        "gpuDraws": 0,
+        "scriptMs": 437,
+        "taskMs": 496
+      }
+    ]
+  },
+  "globalMotionWorld2d": {
+    "conditions": "Chrome headless, 1440x900, 4x CPU throttle, warm data, 3x3-second samples",
+    "browser": "157.0.8103.51",
+    "swiftshader": false,
+    "renderers": {
+      "world-years": {
+        "attempts": 0,
+        "available": false,
+        "draws": 0,
+        "errors": []
+      }
+    },
+    "results": [
+      {
+        "scenario": "world-years",
+        "repeat": 1,
+        "frames": 157,
+        "medianFrameMs": 16.699999999999818,
+        "p95FrameMs": 33.399999999999636,
+        "gpuDraws": 0,
+        "scriptMs": 736,
+        "taskMs": 808
+      },
+      {
+        "scenario": "world-years",
+        "repeat": 2,
+        "frames": 158,
+        "medianFrameMs": 16.69999999999891,
+        "p95FrameMs": 33.400000000000546,
+        "gpuDraws": 0,
+        "scriptMs": 704,
+        "taskMs": 767
+      },
+      {
+        "scenario": "world-years",
+        "repeat": 3,
+        "frames": 158,
+        "medianFrameMs": 16.69999999999891,
+        "p95FrameMs": 33.30000000000109,
+        "gpuDraws": 0,
+        "scriptMs": 717,
+        "taskMs": 808
+      }
+    ]
+  }
+}

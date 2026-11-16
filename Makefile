@@ -1,4 +1,4 @@
-# Bilad: one entry point for the data pipeline (Python), the statistics
+# TRACE: one entry point for the data pipeline (Python), the statistics
 # summary (TypeScript, shared with the browser) and the site.
 #
 #   make install                 Node and Python dependencies
