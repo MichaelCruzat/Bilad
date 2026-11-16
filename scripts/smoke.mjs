@@ -76,13 +76,20 @@ try {
     await capture(page, 'home-desktop.png');
   });
 
-  await check('scroll advances the evidence while the globe stays in view', async () => {
+  await check('scroll preserves the globe view and continuous rotation', async () => {
     const p = await context.newPage();
     await p.goto(BASE);
     await p.getByRole('application', {name: /Globe of land temperature/}).waitFor({timeout: 20000});
-    for (const [heading, value] of [['Start with what the reanalysis says.', 'claim'], ['Then ask a second witness.', 'witness'], ['Look where they disagree.', 'verdict']]) {
+    await p.getByRole('button', {name: 'Pause globe rotation', exact: true}).waitFor({timeout: 3000});
+    const original = await p.getByRole('application', {name: /Globe of land temperature/}).elementHandle();
+    for (const heading of ['Start with what the reanalysis says.', 'Then ask a second witness.', 'Look where they disagree.']) {
+      const before = await original.evaluate(node => node.toDataURL());
       await p.getByRole('heading', {name: heading, exact: true}).scrollIntoViewIfNeeded();
-      await p.waitForFunction(v => document.querySelector(`[role="radio"][data-value="${v}"]`)?.getAttribute('aria-checked') === 'true', value);
+      await p.waitForTimeout(650);
+      if (before === await original.evaluate(node => node.toDataURL())) throw new Error('globe stopped painting new orientations');
+      if (await p.locator('[role="radio"][data-value="claim"]').getAttribute('aria-checked') !== 'true') throw new Error('scroll changed the selected globe data');
+      if (!await p.getByRole('button', {name: 'Pause globe rotation', exact: true}).count()) throw new Error('scroll stopped the globe');
+      if (!await original.evaluate(node => node.isConnected && node === document.querySelector('canvas[role="application"]'))) throw new Error('scroll replaced the globe canvas');
       const rect = await p.getByRole('application', {name: /Globe of land temperature/}).boundingBox();
       if (!rect || rect.y < -10 || rect.y + rect.height > 910) {
         await capture(p, 'scroll-pin-failure.png');

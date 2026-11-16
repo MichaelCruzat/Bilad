@@ -1,4 +1,4 @@
-import {useEffect, useMemo, useRef, useState} from 'react';
+import {useEffect, useRef, useState} from 'react';
 import {Banner} from '@astryxdesign/core/Banner';
 import {Button} from '@astryxdesign/core/Button';
 import {Divider} from '@astryxdesign/core/Divider';
@@ -53,25 +53,11 @@ export function Casebook({section}: {section?: 'cases'}) {
   const ready = bundle.status === 'ready' && summary.status === 'ready' && countries.status === 'ready';
   const failed = [bundle, summary, countries].find(s => s.status === 'error');
   const [mode, setMode] = useState<Mode>('claim');
-  const [follow, setFollow] = useState(true);
   const [cell, setCell] = useState<number | null>(null);
   const [spinning, setSpinning] = useState(() => !prefersReducedMotion());
   const globe = useRef<GlobeControls | null>(null);
-  const sections = useRef<(HTMLElement | null)[]>([]);
   const story = useRef<HTMLElement>(null);
   const figure = useRef<HTMLElement>(null);
-  const focus = useMemo(() => mode === 'claim' ? {lon: 20, lat: 15} : mode === 'witness' ? {lon: 60, lat: 18} : null, [mode]);
-  useEffect(() => {
-    if (!follow || narrow || typeof IntersectionObserver === 'undefined') return;
-    const observer = new IntersectionObserver(entries => {
-      for (const entry of entries) if (entry.isIntersecting) {
-        const i = sections.current.indexOf(entry.target as HTMLElement);
-        if (i >= 0) setMode(PHASES[i].mode);
-      }
-    }, {rootMargin: '-25% 0px -45% 0px', threshold: 0});
-    sections.current.forEach(node => node && observer.observe(node));
-    return () => observer.disconnect();
-  }, [follow, narrow]);
   const colorOf = (c: number) => {
     if (!ready) return null;
     const {stats, witnessSlope} = bundle.data;
@@ -99,27 +85,26 @@ export function Casebook({section}: {section?: 'cases'}) {
         </HStack>
         <Text type="supporting">Rainfall trends are in Explore.</Text>
       </HStack>
-      <SegmentedControl label="What the globe shows" value={mode} onChange={v => { setFollow(false); setMode(v as Mode); }} layout="fill">
+      <SegmentedControl label="What the globe shows" value={mode} onChange={v => setMode(v as Mode)} layout="fill">
         <SegmentedControlItem value="claim" label={narrow ? 'Reanalysis' : 'Reanalysis says'} />
         <SegmentedControlItem value="witness" label={narrow ? 'Stations' : 'Stations say'} />
         <SegmentedControlItem value="verdict" label={narrow ? 'Agree?' : 'Do they agree?'} />
       </SegmentedControl>
-      <MotionStack motionKey={mode} height={narrow ? '58vh' : 'min(56vh, 44rem)'}>
+      <VStack height={narrow ? '58vh' : 'min(56vh, 44rem)'}>
         {ready ? <GlobeMap cells={bundle.data.cells} colorOf={colorOf} colorKey={mode}
           world={world.status === 'ready' ? world.data : null}
-          selectedCell={cell} selectedCountryId={null} onSelectCell={c => { setFollow(false); setCell(c); }}
-          describeCell={describeCell} controls={globe} focus={focus}
-          spinning={spinning} onSpinningChange={setSpinning} onInteract={() => setFollow(false)}
+          selectedCell={cell} selectedCountryId={null} onSelectCell={setCell}
+          describeCell={describeCell} controls={globe}
+          spinning={spinning} onSpinningChange={setSpinning}
           title="Globe of land temperature trends since 1981" />
         : failed?.status === 'error' ? <Banner status="error" title="Could not load the globe" description={failed.error.message} endContent={<Button label="Retry" onClick={failed.retry} />} />
         : <HStack gap={2} vAlign="center"><Spinner size="sm" /><Text>Loading the global record…</Text></HStack>}
-      </MotionStack>
+      </VStack>
       <GlobeLegend mode={mode} />
       <HStack gap={2} wrap="wrap">
-        <Button size="sm" variant="secondary" label="Zoom in" onClick={() => { setFollow(false); globe.current?.zoomBy(1.5); }} />
-        <Button size="sm" variant="secondary" label="Zoom out" onClick={() => { setFollow(false); globe.current?.zoomBy(1 / 1.5); }} />
-        <Button size="sm" variant="secondary" label={spinning ? 'Pause globe rotation' : 'Rotate globe'} onClick={() => { setFollow(false); setSpinning(v => !v); }} />
-        {!narrow && <Button size="sm" variant="secondary" icon={follow ? <Icon icon="check" /> : undefined} label={follow ? 'Globe follows your scroll' : 'Let the globe follow your scroll'} onClick={() => setFollow(v => !v)} />}
+        <Button size="sm" variant="secondary" label="Zoom in" onClick={() => globe.current?.zoomBy(1.5)} />
+        <Button size="sm" variant="secondary" label="Zoom out" onClick={() => globe.current?.zoomBy(1 / 1.5)} />
+        <Button size="sm" variant="secondary" label={spinning ? 'Pause globe rotation' : 'Rotate globe'} onClick={() => setSpinning(v => !v)} />
       </HStack>
       {ready && cell !== null && <MotionStack key={cell} gap={3}>
         <Divider /><Heading level={2}>{describeCell(cell)[0]}</Heading>
@@ -157,7 +142,7 @@ export function Casebook({section}: {section?: 'cases'}) {
           <HStack><Button variant="secondary" label="Who it’s for, and why" href="#/impact" /></HStack>
         </MotionStack>
         <VStack gap={8} ref={story}>
-          {PHASES.map((phase, i) => <VStack as="section" key={phase.mode} ref={node => { sections.current[i] = node; }} aria-labelledby={`phase-${phase.mode}`}>
+          {PHASES.map((phase, i) => <VStack as="section" key={phase.mode} aria-labelledby={`phase-${phase.mode}`}>
             <MotionStack reveal gap={4} minHeight={narrow ? undefined : '52vh'} vAlign="center">
               <Divider /><Text type="code" color="accent">0{i + 1} / The evidence trail</Text>
               <Heading id={`phase-${phase.mode}`} level={2} type="display-3">{phase.title}</Heading>
@@ -168,7 +153,6 @@ export function Casebook({section}: {section?: 'cases'}) {
                   icon={mode === phase.mode ? <Icon icon="check" /> : undefined}
                   label={`${mode === phase.mode ? 'Showing' : 'Show'} ${PHASE_SUBJECT[phase.mode]} on the globe`}
                   onClick={() => {
-                    setFollow(false);
                     setMode(phase.mode);
                     // On a phone the globe sits above the trail; bring it into view so the change is visible.
                     if (narrow) figure.current?.scrollIntoView({behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start'});
@@ -243,7 +227,7 @@ function globeHelp(mode: Mode): Help {
   return {
     title: 'Evidence globe',
     what: what[mode],
-    how: 'Drag to turn the globe and use the buttons to zoom. Click a land cell to compare both records there. Keyboard: focus the globe, turn it with the arrow keys, and press Enter to select the cell under the crosshair. While the globe follows your scroll it changes view with the evidence trail; choosing a view yourself stops that.',
+    how: 'The globe keeps turning as you scroll. Choose a data view with the buttons; scrolling keeps your choice and camera position. Drag to turn it, use the zoom buttons, or pause rotation. Click a land cell to compare both records there. Keyboard: arrow keys turn the globe and Enter selects the cell under the crosshair. Direct map interaction pauses rotation so you can inspect a place.',
     detail: 'MERRA-2 from NASA POWER on its native 0.5° × 0.625° grid, 1981–2024. Witness: GISTEMP v4 (2°, 250 km smoothing, land stations), sampled at each cell’s centre. Trends: Theil–Sen; significance: Hamed–Rao-corrected Mann–Kendall. Verdicts compare direction, significance and overlap of the two 95% ranges.',
     method: mode === 'verdict' ? 'witnesses' : 'theil-sen',
   };
