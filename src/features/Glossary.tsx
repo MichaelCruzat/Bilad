@@ -15,6 +15,8 @@ export const GLOSSARY: [term: string, meaning: string][] = [
   ['GPCP v2.3', 'Global Precipitation Climatology Project, version 2.3: monthly rainfall from rain gauges and satellites. Partly independent of MERRA-2, which also leans on gauges.'],
   ['Witness', 'A second record, built a different way, that TRACE checks each trend against: GISTEMP for temperature, GPCP for rainfall.'],
   ['Data artefact', 'A change that comes from how a dataset was produced, for example new satellites fed into the model, not from the climate.'],
+  ['Anomaly', 'How far a year was above or below its 1991–2020 normal. Rainfall anomalies are given as a percentage of that normal.'],
+  ['Trend per decade', 'The typical change over ten years, worked out from the whole 1981–2024 record. +0.25 °C per decade is about 1.1 °C over the 44 years. For rainfall it is a share of the normal: −17% per decade means about a sixth of a normal year’s rain lost every ten years.'],
   ['p-value', 'How often a trend this strong would appear by chance in a record with no real trend. Below 0.05 counts as significant.'],
   ['95% range', 'The span the true trend most likely lies in. If it excludes zero, the direction is clear.'],
   ['Map-wide check', 'With thousands of cells, some pass a significance test by luck. This check (Benjamini–Hochberg) sets the significance threshold so that at most about 1 in 10 of the cells it marks is expected to be a false alarm (a 10% false discovery rate).'],

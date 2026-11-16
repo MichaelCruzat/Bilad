@@ -29,9 +29,9 @@ type Mode = 'claim' | 'witness' | 'verdict';
 const PHASE_SUBJECT: Record<Mode, string> = {claim: 'the reanalysis', witness: 'the stations', verdict: 'the agreement map'};
 const GLOBE_LIMIT = 0.6;
 const PHASES: {mode: Mode; title: string; text: string}[] = [
-  {mode: 'claim', title: 'First, trace the change.', text: 'Start with 44 years of NASA’s reanalysis. Each land cell carries a temperature trend, from cooling blue to warming red.'},
-  {mode: 'witness', title: 'Then, ask a second record.', text: 'Weather-station estimates cover the same ground at a coarser scale. The globe keeps the same colour scale so you can compare the two records.'},
-  {mode: 'verdict', title: 'Follow the disagreement.', text: 'Agreement adds support. Opposite trends and abrupt jumps mark places to investigate. A flag asks for scrutiny; it does not establish a cause.'},
+  {mode: 'claim', title: 'Start with what the reanalysis says.', text: 'NASA’s MERRA-2 reanalysis rebuilds past weather by feeding satellite and weather-station observations into a weather model. Each land cell on the globe shows its temperature trend since 1981: blue where it has cooled, red where it has warmed.'},
+  {mode: 'witness', title: 'Then ask a second witness.', text: 'GISTEMP, NASA’s temperature record built from thousands of weather stations, covers the same places on a coarser grid. The colours mean the same thing, so you can compare the two globes directly.'},
+  {mode: 'verdict', title: 'Look where they disagree.', text: 'Where both records show the same change, the trend is well supported. Where they point in opposite directions, or one record jumps in a single year, the data deserve a closer look. A flag is a reason to check, not proof of what went wrong.'},
 ];
 
 export function Casebook({section}: {section?: 'cases'}) {
@@ -52,14 +52,15 @@ export function Casebook({section}: {section?: 'cases'}) {
   }, []);
   const ready = bundle.status === 'ready' && summary.status === 'ready' && countries.status === 'ready';
   const failed = [bundle, summary, countries].find(s => s.status === 'error');
-  const [mode, setMode] = useState<Mode>('verdict');
+  const [mode, setMode] = useState<Mode>('claim');
   const [follow, setFollow] = useState(true);
   const [cell, setCell] = useState<number | null>(null);
   const [spinning, setSpinning] = useState(() => !prefersReducedMotion());
   const globe = useRef<GlobeControls | null>(null);
   const sections = useRef<(HTMLElement | null)[]>([]);
   const story = useRef<HTMLElement>(null);
-  const focus = useMemo(() => mode === 'claim' ? {lon: -25, lat: 20} : mode === 'witness' ? {lon: 60, lat: 18} : null, [mode]);
+  const figure = useRef<HTMLElement>(null);
+  const focus = useMemo(() => mode === 'claim' ? {lon: 20, lat: 15} : mode === 'witness' ? {lon: 60, lat: 18} : null, [mode]);
   useEffect(() => {
     if (!follow || narrow || typeof IntersectionObserver === 'undefined') return;
     const observer = new IntersectionObserver(entries => {
@@ -90,13 +91,13 @@ export function Casebook({section}: {section?: 'cases'}) {
     ];
   };
   const globeFigure = (
-    <VStack as="figure" gap={4} style={{position: narrow ? 'relative' : 'sticky', top: 'var(--spacing-6)', alignSelf: 'start', margin: 0, minWidth: 0, maxWidth: '100%'}}>
+    <VStack as="figure" ref={figure} gap={4} style={{position: narrow ? 'relative' : 'sticky', top: 'var(--spacing-6)', alignSelf: 'start', margin: 0, minWidth: 0, maxWidth: '100%'}}>
       <HStack gap={3} vAlign="center" hAlign="between" wrap="wrap">
         <HStack gap={1} vAlign="center">
           <Text type="label" color="accent">Temperature · 1981–2024</Text>
           <HelpTip help={globeHelp(mode)} />
         </HStack>
-        <Text type="supporting">Rainfall is also available in Explore.</Text>
+        <Text type="supporting">Rainfall trends are in Explore.</Text>
       </HStack>
       <SegmentedControl label="What the globe shows" value={mode} onChange={v => { setFollow(false); setMode(v as Mode); }} layout="fill">
         <SegmentedControlItem value="claim" label={narrow ? 'Reanalysis' : 'Reanalysis says'} />
@@ -135,20 +136,25 @@ export function Casebook({section}: {section?: 'cases'}) {
           <Text type="label" color="accent">An atlas of a changing Earth</Text>
           <Heading level={1} type="display-1">TRACE</Heading>
           <Text type="large" weight="semibold">Tracking Regional Atmospheric Change on Earth</Text>
-          <Heading level={2} type={narrow ? 'display-3' : 'display-2'}>Check the evidence before it becomes a decision.</Heading>
-          <Text type="large" color="secondary">Water, farming, and infrastructure plans depend on how temperature and rainfall are changing. A significant trend can still reflect a data discontinuity or conflict with another record. TRACE makes those warnings visible, worldwide.</Text>
+          <Heading level={2} type={narrow ? 'display-3' : 'display-2'}>Check climate evidence before anyone acts on it.</Heading>
+          {summary.status === 'ready' && (
+            <Text type="large">
+              Since 1981 the world’s land has warmed by about {totalWarming(summary.data.variables.T2M.slopePerDecade)} °C on average. TRACE shows where, and how far each local trend can be trusted.
+            </Text>
+          )}
+          <Text type="large" color="secondary">Plans for water, farming and infrastructure depend on how temperature and rainfall are changing. But a trend that passes a statistical test can still come from a glitch in the data, or disagree with another record. TRACE checks for both across almost all of the world’s land.</Text>
           <HStack gap={4} wrap="wrap"><Text type="code">{ready ? bundle.data.cells.n.toLocaleString('en-US') : '54,425'} land cells</Text><Text type="code">1981–2024</Text><Text type="code">60°S–84°N</Text></HStack>
           <HStack gap={3} wrap="wrap"><Button variant="primary" label="Explore the world" href="#/world" /><Button variant="secondary" label="Follow the evidence ↓" onClick={() => story.current?.scrollIntoView({behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start'})} /></HStack>
           <Link href="#/?section=cases">Read the case files</Link>
-          <Text type="supporting">A region can be a country or a single grid cell. Coverage spans global land, including every country with cells in this latitude range.</Text>
+          <Text type="supporting">Look at a whole country or a single grid cell, roughly 50 to 70 km across. Every country with land between 60°S and 84°N is included. TRACE was built for the NASA Space Apps Challenge 2026 from open NASA data; it is not an official NASA product.</Text>
         </MotionStack>
         {narrow && globeFigure}
         <MotionStack reveal as="section" gap={4}>
           <Divider />
           <Text type="label" color="accent">Why this work matters</Text>
-          <Heading level={2} type="display-3">Make climate claims easier to examine.</Heading>
-          <Text type="large">TRACE puts trend tests, jump warnings, and a second NASA record in one workflow, so people can examine the evidence behind a climate claim.</Text>
-          <HStack><Button variant="secondary" label="Why TRACE matters" href="#/impact" /></HStack>
+          <Heading level={2} type="display-3">Climate claims should be easy to check.</Heading>
+          <Text type="large">TRACE puts the trend test, a check for sudden jumps and a second NASA record on one screen, so anyone can see the evidence behind a claim and judge how much weight it can bear.</Text>
+          <HStack><Button variant="secondary" label="Who it’s for, and why" href="#/impact" /></HStack>
         </MotionStack>
         <VStack gap={8} ref={story}>
           {PHASES.map((phase, i) => <VStack as="section" key={phase.mode} ref={node => { sections.current[i] = node; }} aria-labelledby={`phase-${phase.mode}`}>
@@ -161,7 +167,12 @@ export function Casebook({section}: {section?: 'cases'}) {
                   variant={mode === phase.mode ? 'primary' : 'secondary'}
                   icon={mode === phase.mode ? <Icon icon="check" /> : undefined}
                   label={`${mode === phase.mode ? 'Showing' : 'Show'} ${PHASE_SUBJECT[phase.mode]} on the globe`}
-                  onClick={() => { setFollow(false); setMode(phase.mode); }}
+                  onClick={() => {
+                    setFollow(false);
+                    setMode(phase.mode);
+                    // On a phone the globe sits above the trail; bring it into view so the change is visible.
+                    if (narrow) figure.current?.scrollIntoView({behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start'});
+                  }}
                 />
               </HStack>
             </MotionStack>
@@ -173,11 +184,11 @@ export function Casebook({section}: {section?: 'cases'}) {
     <MotionStack reveal gap={6}>
       <Divider /><Text type="label" color="accent">The global temperature record</Text>
       <Grid columns={{minWidth: 240, max: 3}} gap={6}>
-        <Figure value={summary.status === 'ready' ? signed(summary.data.variables.T2M.slopePerDecade, 2) : '…'} unit="°C per decade" caption="Area-weighted land temperature trend, 1981–2024." />
-        <Figure value={summary.status === 'ready' ? percent(summary.data.variables.T2M.areaUp) : '…'} unit="of land selected as warming" caption="At a 10% target false discovery rate across the global map." />
-        <Figure value={summary.status === 'ready' ? percent(summary.data.variables.T2M.agreement.corroborated + summary.data.variables.T2M.agreement['same-direction']) : '…'} unit="of land backed by stations" caption="Same-direction, significant trends in both records." />
+        <Figure value={summary.status === 'ready' ? signed(summary.data.variables.T2M.slopePerDecade, 2) : '…'} unit="°C per decade" caption={summary.status === 'ready' ? `About ${totalWarming(summary.data.variables.T2M.slopePerDecade)} °C in total since 1981, averaged over covered land and weighted by area.` : 'Average warming across covered land since 1981.'} />
+        <Figure value={summary.status === 'ready' ? percent(summary.data.variables.T2M.areaUp) : '…'} unit="of land with a clear warming trend" caption="Still significant after allowing for testing tens of thousands of cells at once (10% false discovery rate)." />
+        <Figure value={summary.status === 'ready' ? percent(summary.data.variables.T2M.agreement.corroborated + summary.data.variables.T2M.agreement['same-direction']) : '…'} unit="of land where stations agree" caption="Both records show a significant trend in the same direction." />
       </Grid>
-      <Text type="supporting">Witnesses are coarser estimates, not ground truth at each cell. GPCP rainfall shares some rain-gauge inputs with MERRA-2. Coverage ends at 60°S and 84°N.</Text>
+      <Text type="supporting">The station record is an estimate too, on a coarser grid, so neither record is the final word for a single cell. Coverage stops at 60°S and 84°N.</Text>
       <HStack gap={3} wrap="wrap"><Button variant="primary" label="Open the global atlas" href="#/world" /><Button variant="secondary" label="How the global checks work" href="#/proof" /></HStack>
     </MotionStack>
     <VStack as="section" ref={caseFiles} aria-labelledby="case-files-heading" style={{scrollMarginBlockStart: 'var(--spacing-6)'}}>
@@ -227,7 +238,7 @@ function globeHelp(mode: Mode): Help {
   const what: Record<Mode, string> = {
     claim: 'Each land cell’s temperature trend per decade since 1981 in NASA’s MERRA-2 reanalysis, from cooling blue to warming red.',
     witness: 'The same trend measured by an independent record, GISTEMP v4, built from weather stations on a coarser grid. Compare it with the reanalysis view: the colours mean the same thing.',
-    verdict: 'Whether the two records agree for each land cell. Green: both show the same significant change. Red: they point in opposite directions, so the reanalysis there is suspect. The legend below lists every outcome.',
+    verdict: 'Whether the two records agree for each land cell. Green: both show the same significant change. Red: they point in opposite directions, so the reanalysis there is suspect. The legend below lists every outcome. In practice: green means you can lean on the trend; yellow or olive means the direction holds but the size is uncertain; red or orange means do not rely on it until someone has looked into it.',
   };
   return {
     title: 'Evidence globe',
@@ -236,4 +247,9 @@ function globeHelp(mode: Mode): Help {
     detail: 'MERRA-2 from NASA POWER on its native 0.5° × 0.625° grid, 1981–2024. Witness: GISTEMP v4 (2°, 250 km smoothing, land stations), sampled at each cell’s centre. Trends: Theil–Sen; significance: Hamed–Rao-corrected Mann–Kendall. Verdicts compare direction, significance and overlap of the two 95% ranges.',
     method: mode === 'verdict' ? 'witnesses' : 'theil-sen',
   };
+}
+
+/** Total change over 1981–2024 from a per-decade trend, e.g. +0.25 → "1.1". */
+function totalWarming(perDecade: number): string {
+  return (perDecade * 4.3).toFixed(1);
 }

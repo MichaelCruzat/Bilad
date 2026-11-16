@@ -37,7 +37,7 @@ export function SeriesChart({years, series, analysis, variable, unit, witness, w
   // charts; widths are estimated from character count.
   const legendItems: {key: string; label: string; mark: 'bars' | 'trend' | 'witness'}[] = [
     {key: 'bars', label: 'yearly value', mark: 'bars'},
-    {key: 'trend', label: analysis.trend.p < 0.05 ? 'Sen trend' : 'Sen trend (not significant)', mark: 'trend'},
+    {key: 'trend', label: analysis.trend.p < 0.05 ? 'trend line' : 'trend line (not significant)', mark: 'trend'},
     ...(witness ? [{key: 'witness', label: witnessLabel ?? 'Independent record', mark: 'witness' as const}] : []),
   ];
   const ROW = 18 * TS;
@@ -97,7 +97,7 @@ export function SeriesChart({years, series, analysis, variable, unit, witness, w
       String(yr),
       `yearly value  ${Number.isFinite(v) ? `${num(v, 2)} ${unit}` : 'no data'}`,
       ...(witness ? [`${witnessLabel ?? 'Independent record'}  ${w !== undefined && Number.isFinite(w) ? `${num(w, 2)} ${unit}` : 'no data'}`] : []),
-      ...(Number.isFinite(trend.slope) ? [`Sen trend  ${num(senAt(yr), 2)} ${unit}`] : []),
+      ...(Number.isFinite(trend.slope) ? [`trend line  ${num(senAt(yr), 2)} ${unit}`] : []),
     ];
     return {x: x(yr), y: y(Number.isFinite(v) ? v : 0), lines};
   })();
@@ -207,7 +207,7 @@ function seriesHelp(unit: string, witnessLabel: string | null, jump: boolean): H
     what: (
       <>
         Each bar is one year compared with its 1991–2020 normal{relative ? ', as a percentage of that normal' : ` (${unit})`}: above the zero line is higher than normal, below is lower. The straight line is the long-term trend, the typical change per decade, estimated so that one extreme year cannot drag it. The shaded band is its 95% range: where the true trend probably lies. If the band stays on one side of zero, the direction is clear. The line is solid when the trend is statistically significant and dashed when it is not.
-        {witnessLabel && ` The blue line and dots are ${witnessLabel}, built independently for the same area, so you can see whether the two records tell the same story.`}
+        {witnessLabel && ` The blue line and dots are ${witnessLabel}, built a different way for the same area, so you can see whether the two records tell the same story.${relative ? ' For rainfall the two share some rain-gauge data, so they are only partly independent.' : ''}`}
         {jump && ' The dashed vertical line marks a year where the record jumps rather than drifts, which can signal a change in how the data were produced.'}
       </>
     ),

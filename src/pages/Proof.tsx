@@ -223,7 +223,7 @@ function Walkthrough({iso3, variable}: {iso3: string; variable: string}) {
             <Rule pass={!step.stepDominated}>
               {step.stepDominated
                 ? `Jump-shaped: the jump explains the record far better than a ramp, and no trend is left without it. The trend may come from the data.`
-                : `Not step-dominated: the jump does not meet both flagging criteria. This does not establish that the record is a steady ramp.`}
+                : `No sudden jump flagged: the record does not meet both tests, though that alone does not prove a steady ramp.`}
             </Rule>
           </>
         ) : (
@@ -355,7 +355,7 @@ function WhyBelieve({headlines}: {headlines: number | null}) {
         <VStack gap={2}>
           <Heading level={3}>What these checks cannot do</Heading>
           <Text color="secondary">
-            A detected trend does not establish its cause or predict the future. The 10% false discovery rate is a target for an expected fraction under statistical assumptions, not a bound on this map’s errors. Verdict shares across neighbouring cells are descriptive. Agreement with GPCP cannot rule out a problem shared by rain gauges. A jump can reflect either a physical shift or a dataset change, so it needs further investigation and a second record.
+            A detected trend does not explain its cause or predict the future. The 10% false discovery rate is the share of false alarms to expect under the method’s assumptions, not a limit on this map’s errors. Neighbouring cells are correlated, so verdict shares describe the map rather than counting independent results. Agreement with GPCP cannot rule out a problem shared by the rain gauges. A jump can come from a real shift in climate or from a change in the dataset, so it needs further investigation and a second record.
           </Text>
         </VStack>
       </Card>

@@ -58,7 +58,7 @@ export function describe(variable: string, unit: string, a: SeriesAnalysis, year
     : context.doubted && s >= 1
       ? `On its own the change is ${s.toFixed(1)}× the typical year-to-year swing and would look clear, but the cross-examination below does not back it.`
       : s >= 2
-      ? `The change across the window is ${s.toFixed(1)}× the typical year-to-year swing: it has clearly emerged from the noise.`
+      ? `The change across the window is ${s.toFixed(1)}× the typical year-to-year swing, far larger than the normal ups and downs.`
       : s >= 1
         ? `The change across the window is ${s.toFixed(1)}× the typical year-to-year swing: it has emerged, but a single unusual year can still hide it.`
         : `The change across the window is smaller than a typical year-to-year swing (${s.toFixed(1)}×).`;

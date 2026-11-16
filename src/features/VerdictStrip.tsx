@@ -1,12 +1,12 @@
 import {Button} from '@astryxdesign/core/Button';
 import {Card} from '@astryxdesign/core/Card';
 import {MetadataList, MetadataListItem} from '@astryxdesign/core/MetadataList';
-import {Link} from '@astryxdesign/core/Link';
 import {HStack, VStack} from '@astryxdesign/core/Stack';
 import {Text} from '@astryxdesign/core/Text';
 import {getVariable} from '../data/variables';
 import {VerdictTag} from './VerdictTag';
-import {overallVerdict, productName, VERDICT_TEXT, type WitnessState} from '../lib/evidence';
+import {HelpTip, type Help} from './HelpTip';
+import {overallVerdict, productName, VERDICT_ORDER, VERDICT_TEXT, type WitnessState} from '../lib/evidence';
 import type {SeriesAnalysis, StepScreen} from '../lib/stats';
 import {pPhrase, signed} from '../lib/format';
 
@@ -50,7 +50,7 @@ export function VerdictStrip({place, variable, window, result, unit, witness, st
             Verdict
           </Text>
           <VerdictTag label={verdict.label} />
-          <Link href="#/method?s=verdicts">What the verdicts mean</Link>
+          <HelpTip help={VERDICTS_HELP} />
         </HStack>
         <HStack gap={10} wrap="wrap" vAlign="end">
           <Figure value={signed(t.slope * 10, digits)} unit={`${unit} per decade`} caption={`NASA reanalysis (MERRA-2), ${pPhrase(t.p)}`} />
@@ -64,7 +64,7 @@ export function VerdictStrip({place, variable, window, result, unit, witness, st
         </HStack>
         <VStack gap={1}>
           <Text type="large" weight="semibold">
-            {place}: {direction}, {signed(t.slope * 10, digits)} {unit} per decade (95% range {signed(t.slopeLow * 10, digits)} to {signed(t.slopeHigh * 10, digits)}), {window.from}–{window.to}.
+            {place}: {sig ? direction : `no clear trend (a slight lean towards ${direction})`}, {signed(t.slope * 10, digits)} {unit} per decade (95% range {signed(t.slopeLow * 10, digits)} to {signed(t.slopeHigh * 10, digits)}), {window.from}–{window.to}.
           </Text>
           <Text type="large" color="secondary">
             {verdict.sentence}
@@ -74,7 +74,7 @@ export function VerdictStrip({place, variable, window, result, unit, witness, st
           <Text weight="semibold">{sig ? `Significant, ${pPhrase(t.p)}` : `Not significant, ${pPhrase(t.p)}`}</Text>
           {fieldSignificant !== undefined && <Text weight="semibold">{`${fieldSignificant ? 'Selected' : 'Not selected'} at a 10% target false discovery rate ${fieldScope === 'global' ? 'worldwide' : 'across the nation'}`}</Text>}
           <WitnessLabel witness={witness} variable={variable} />
-          {step && <Text weight="semibold">{step.stepDominated ? `Jump in ${step.breakAt}, not a ramp` : 'No step-dominated flag'}</Text>}
+          {step && <Text weight="semibold">{step.stepDominated ? `Jump in ${step.breakAt}, not a ramp` : 'No sign of a sudden data jump'}</Text>}
         </VStack>
         {witness.kind === 'failed' && (
           <HStack gap={2} vAlign="center" wrap="wrap">
@@ -132,3 +132,15 @@ function WitnessLabel({witness, variable}: {witness: WitnessState; variable: str
       return <Text weight="semibold">{`${productName(variable)}: ${VERDICT_TEXT[witness.exam.verdict].label.toLowerCase()}`}</Text>;
   }
 }
+
+const VERDICTS_HELP: Help = {
+  title: 'What the verdicts mean',
+  what: (
+    <>
+      {VERDICT_ORDER.map(v => `${VERDICT_TEXT[v].label}: ${VERDICT_TEXT[v].plain}`).join(' ')} Likely data artefact: the independent record contradicts the trend, or the record jumps in one year and the independent record does not.
+    </>
+  ),
+  how: 'In practice: “Corroborated” means you can lean on the trend. “Same direction, different size” and “Only one record significant” mean the direction holds but the size is uncertain. “Contradicted”, “Not supported” and “Likely data artefact” mean do not rely on the trend until someone has looked into it.',
+  detail: 'The verdict compares the two records’ direction, their significance (Hamed–Rao-corrected Mann–Kendall, p < 0.05) and whether their 95% ranges overlap. Overlapping ranges are a lenient test: two trends can differ and still overlap.',
+  method: 'witnesses',
+};

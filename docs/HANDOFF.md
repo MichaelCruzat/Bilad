@@ -101,6 +101,18 @@ older session results below are historical, not results for this working tree.
   control no longer stretches to 56px, the phone menu stacks its links, map
   zoom controls are HTML buttons, chart legends wrap, and verdicts carry
   their map colour (`VerdictTag`).
+- Copy pass, 2026-11-15: site text rewritten for plain, professional
+  English, then checked by four reader personas (two judges, two citizens).
+  Home now opens on the reanalysis view and states total land warming
+  (about 1.1 °C since 1981); each case file has an "In short" summary;
+  country search accepts common aliases (USA, UK, DRC, Ivory Coast);
+  non-significant trends no longer headline a direction.
+- Open questions from the technical judge, not yet addressed: MERRA-2's
+  global land trend (+0.25) is about 30% below GISTEMP (+0.35) yet labelled
+  corroborated because the ranges overlap; the BIC step test does not
+  penalise the break-point search; "least trustworthy" countries may
+  reflect sparse stations in the witness; the World map does not zoom to a
+  searched country.
 - Verification and regional rendering costs are recorded in
   [PERFORMANCE.md](PERFORMANCE.md). For release state, use the exact commit's
   GitHub Actions results and live Pages build.

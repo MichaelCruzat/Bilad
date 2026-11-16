@@ -120,6 +120,6 @@ const YEAR_STRIP_HELP: Help = {
   title: 'Global yearly record',
   what: 'Each bar is one year of the average over all covered land, compared with the 1991–2020 normal: above the line is higher than normal, below is lower. The outlined bar is the year shown on the map.',
   how: 'Point at a bar to read its value. Click or drag along the strip to show that year on the map; with the strip focused, the left and right arrow keys step through the years.',
-  detail: 'Area-weighted mean of every covered land cell’s annual anomaly, 60°S–84°N; rainfall is a percentage of each cell’s own normal. The colour scale is clipped at a robust limit, marked at the left.',
+  detail: 'Area-weighted mean of every covered land cell’s annual anomaly, 60°S–84°N; rainfall is a percentage of each cell’s own normal. The colour scale stops at the 95th percentile of the yearly values, marked at the left, so one extreme year does not wash out the rest.',
   method: 'anomalies',
 };

@@ -239,7 +239,7 @@ export function EvidencePanel({meta, grid, analysis, witnessStatus, selection}: 
                 }`
               : step.deltaBic > 2
                 ? `There is some evidence of a jump around ${step.breakAt} (ΔBIC ${num(step.deltaBic, 1)}), but a trend survives within the two periods, so the record is not explained by the jump alone.`
-                : `The record does not meet both jump-flag criteria (ΔBIC ${num(step.deltaBic, 1)}). This does not establish a steady ramp.`}
+                : `The record does not meet both tests for a jump (ΔBIC ${num(step.deltaBic, 1)}), though that alone does not prove a steady ramp.`}
           </Text>
         ) : (
           <Text color="secondary">Window too short to screen for a step change.</Text>
@@ -318,7 +318,7 @@ export function EvidencePanel({meta, grid, analysis, witnessStatus, selection}: 
         <VStack gap={1}>
           <Text type="supporting">{LIMITATION[analysis.variable]}</Text>
           <Text type="supporting">A trend says what changed, where and by how much. It does not say why, and it is not a forecast.</Text>
-          <Text type="supporting">Neighbouring reanalysis cells are not independent, so shares of significant area are descriptive.</Text>
+          <Text type="supporting">Neighbouring reanalysis cells are not independent, so the share of land with a significant trend describes the map rather than counting separate results.</Text>
           <Text type="supporting">Values were quantised to {def.scale} {def.sourceUnit} for shipping; the tests run on the annual means.</Text>
         </VStack>
       </Collapsible>

@@ -68,7 +68,7 @@ const BLOCKS: Block[] = [
     summary: 'Across a whole map, a 10% target false discovery rate decides which cells are stippled.',
     sources: [4, 5],
     body: [
-      'TRACE applies Benjamini–Hochberg with a target false discovery rate of 10%. The test family is all global cells for a World map, or the selected nation’s cells and analysis window for a national map. FDR concerns the expected fraction of false rejections among selected tests across repeated analyses, under the procedure’s assumptions. It does not guarantee that at most 10% of this map’s stippled cells are false alarms, and it differs from the probability of any false alarm across the field. Spatial dependence can affect control; shares of significant area are descriptive, not independent votes. Wilks (2016) discusses this distinction for climate fields.',
+      'When thousands of cells are tested at once, some will pass by luck. TRACE uses the Benjamini–Hochberg procedure with a 10% target false discovery rate to decide which cells to stipple. On a World map the cells tested together are every land cell; on a national map they are the nation’s cells for the chosen window. The 10% is the share of false alarms to expect among stippled cells over many repeated analyses, if the procedure’s assumptions hold. It is not a promise that this particular map has no more than 10% false alarms, nor the chance of any false alarm at all. Neighbouring cells are correlated, which can weaken that control, so the share of significant area describes the map rather than counting independent results. Wilks (2016) discusses this for climate maps.',
     ],
     formula: 'p_(1) ≤ … ≤ p_(m);  k* = max{k : p_(k) ≤ (k/m) · α_FDR};  significant ⇔ p ≤ p_(k*)',
   },

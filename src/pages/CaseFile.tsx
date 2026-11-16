@@ -64,6 +64,12 @@ export function CaseFile({id}: {id: string}) {
           <Text type="large" color="secondary">
             {def.question}
           </Text>
+          <Text type="large">
+            <Text type="large" weight="semibold">
+              In short:
+            </Text>{' '}
+            {def.inShort}
+          </Text>
         </VStack>
         {failed && failed.status === 'error' ? (
           <Banner status="error" title="Could not load the evidence" description={failed.error.message} endContent={<Button label="Retry" onClick={failed.retry} />} />
@@ -286,7 +292,7 @@ function CaseBody({def, bundle, analysis, crosscheck, index, witnessGrid}: {def:
             <Text color="secondary">
               {step.stepDominated
                 ? `In ${step.breakAt} the record shifts by ${signed(step.step, digits)} ${chartUnit} at once. A one-time shift fits far better than a steady trend (score ${num(step.deltaBic, 1)}; above 6 counts as strong), and once it is taken out no trend is left (${pPhrase(step.residualTrendP)}).`
-                : `The best single shift, in ${step.breakAt} (${signed(step.step, digits)} ${chartUnit}), fits no better than a steady trend (score ${num(step.deltaBic, 1)}; a jump needs above 6).`}
+                : `The best single shift, in ${step.breakAt} (${signed(step.step, digits)} ${chartUnit}), fits no better than a steady trend (jump score ${num(step.deltaBic, 1)}; it would need to be above 6 to count as a sudden jump).`}
             </Text>
           )}
           {breaks.length > 0 && (

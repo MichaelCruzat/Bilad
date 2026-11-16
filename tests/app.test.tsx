@@ -77,8 +77,8 @@ describe('global home', () => {
     renderAt('#/');
     expect(await screen.findByRole('heading', {level: 1, name: 'TRACE'}, {timeout: 10000})).toBeInTheDocument();
     expect(screen.getByText('Tracking Regional Atmospheric Change on Earth')).toBeInTheDocument();
-    expect(screen.getByRole('heading', {name: 'Check the evidence before it becomes a decision.'})).toBeInTheDocument();
-    expect(screen.getByRole('link', {name: 'Why TRACE matters'})).toHaveAttribute('href', '#/impact');
+    expect(screen.getByRole('heading', {name: 'Check climate evidence before anyone acts on it.'})).toBeInTheDocument();
+    expect(screen.getByRole('link', {name: 'Who it’s for, and why'})).toHaveAttribute('href', '#/impact');
     expect(screen.getByText('54,425 land cells')).toBeInTheDocument();
     expect(screen.getByText('60°S–84°N')).toBeInTheDocument();
     expect(screen.getByRole('link', {name: 'Explore the world'})).toHaveAttribute('href', '#/world');
@@ -131,7 +131,7 @@ describe('case file', () => {
     expect(await screen.findByRole('heading', {level: 1, name: 'Why climate evidence needs a second look'})).toBeInTheDocument();
     expect(screen.getByRole('heading', {name: 'Why cross-reference temperature records?'})).toBeInTheDocument();
     expect(screen.getByRole('heading', {name: 'Governments and public agencies'})).toBeInTheDocument();
-    expect(screen.getByText('Institutional adoption and policy outcomes have not yet been demonstrated.')).toBeInTheDocument();
+    expect(screen.getByText('No institution has adopted TRACE yet, and it has no policy outcomes to show.')).toBeInTheDocument();
     expect(screen.getByRole('link', {name: 'Explore the global evidence'})).toHaveAttribute('href', '#/world');
   });
 
@@ -167,7 +167,7 @@ describe('navigation between cases', () => {
 describe('world atlas', () => {
   it('keeps an explicit cell selection local rather than aggregating its country', async () => {
     renderAt('#/world?cell=1508');
-    expect(await screen.findByRole('heading', {level: 2, name: /^Cell at/}, {timeout: 10000})).toBeInTheDocument();
+    expect(await screen.findByRole('heading', {level: 2, name: /grid cell at/i}, {timeout: 10000})).toBeInTheDocument();
     expect(screen.queryByRole('heading', {level: 2, name: 'Canada'})).not.toBeInTheDocument();
   });
 

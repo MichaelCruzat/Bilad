@@ -100,14 +100,14 @@ function BriefBody({iso3}: {iso3: string}) {
         p: t.p,
         areaUp: a.areaUp,
         areaDown: a.areaDown,
-        integrity: step ? (step.stepDominated ? `Jump in ${step.breakAt}` : 'No step-dominated flag') : 'n/a',
+        integrity: step ? (step.stepDominated ? `Jump in ${step.breakAt}` : 'No sudden jump') : 'n/a',
         changePoint: cp && cp.p < 0.05 ? String(cp.breakAt) : 'none',
         shape: step?.stepDominated
           ? `Jump in ${step.breakAt}`
           : cp && cp.p < 0.05
             ? `No jump flag; possible shift ${cp.breakAt} (a clue, not a cause)`
             : step
-              ? 'No step-dominated flag'
+              ? 'No sudden jump'
               : 'n/a',
         witness:
           state.kind === 'available'

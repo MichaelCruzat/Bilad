@@ -46,11 +46,26 @@ import {AspectRatio} from '@astryxdesign/core/AspectRatio';
 import {HelpTip, type Help} from '../features/HelpTip';
 
 const LAYERS: {value: WorldLayer; label: string; description: string}[] = [
-  {value: 'verdict', label: 'Verdict against the witness', description: 'Does an independent record back the trend?'},
-  {value: 'trend', label: 'Trend per decade', description: 'Theil–Sen slope, dots where significant'},
-  {value: 'year', label: 'One year at a time', description: 'Each year against 1991–2020, playable'},
+  {value: 'verdict', label: 'Does a second record agree?', description: 'The verdict for each land cell'},
+  {value: 'trend', label: 'Trend per decade', description: 'How fast each cell changed; dots mark significant trends'},
+  {value: 'year', label: 'One year at a time', description: 'Each year compared with 1991–2020; press play'},
   {value: 'normal', label: '1991–2020 normal', description: 'The baseline climate, for context'},
 ];
+/** Names people search by that differ from the map's country names. */
+const COUNTRY_ALIASES: Record<string, string> = {
+  'United States of America': 'USA',
+  'United Kingdom': 'UK, Britain',
+  'United Arab Emirates': 'UAE',
+  'Dem. Rep. Congo': 'DRC',
+  Congo: 'Republic of the Congo',
+  "Côte d'Ivoire": 'Ivory Coast',
+  Czechia: 'Czech Republic',
+  'Bosnia and Herz.': 'Bosnia and Herzegovina',
+  Macedonia: 'North Macedonia',
+  Myanmar: 'Burma',
+  'South Korea': 'Republic of Korea',
+};
+
 const VARS = [
   {value: 'T2M', label: 'Temperature', description: 'Witness: GISTEMP weather stations'},
   {value: 'PRECTOTCORR', label: 'Rainfall', description: 'Witness: GPCP gauges and satellites'},
@@ -114,7 +129,7 @@ export function World({params}: {params: URLSearchParams}) {
     const has = new Set<number>();
     for (let c = 0; c < cells.n; c++) has.add(cells.country[c]);
     return countries.data
-      .flatMap((c, i) => (has.has(i) ? [{value: c.id, label: c.name}] : []))
+      .flatMap((c, i) => (has.has(i) ? [{value: c.id, label: COUNTRY_ALIASES[c.name] ? `${c.name} (${COUNTRY_ALIASES[c.name]})` : c.name}] : []))
       .sort((a, b) => a.label.localeCompare(b.label));
   }, [countries, cells]);
 
@@ -177,9 +192,9 @@ export function World({params}: {params: URLSearchParams}) {
       <WorldLegend layer={layer} variable={variable} unit={unit} range={layer === 'trend' ? (trendLimit ? [-trendLimit, trendLimit] : null) : layer === 'year' ? (yearLimit ? [-yearLimit, yearLimit] : null) : normalRange} />
       <Text type="supporting">
         {layer === 'verdict'
-          ? `Every land cell’s ${def.short.toLowerCase()} trend since ${first}, checked against ${PRODUCTS[variable].name} (${variable === 'PRECTOTCORR' ? 'rain gauges and satellites' : 'weather stations'}). Green: the witness agrees. Red: the witness shows a significant opposite trend. Orange: the witness leans the opposite way.`
+          ? `Every land cell’s ${def.short.toLowerCase()} trend since ${first}, checked against ${PRODUCTS[variable].name} (${variable === 'PRECTOTCORR' ? 'rain gauges and satellites' : 'weather stations'}). Green: the ${variable === 'PRECTOTCORR' ? 'gauge' : 'station'} record agrees. Red: it shows a significant opposite trend. Orange: it leans the opposite way.`
           : layer === 'trend'
-            ? `Trend in ${unit} per decade. Zoom in to see dots on cells selected at a 10% target false discovery rate worldwide.`
+            ? `Trend in ${unit} per decade. Zoom in to see dots on cells whose trend stays significant after allowing for testing every cell at once.`
             : layer === 'year'
               ? `Each cell’s departure from its 1991–2020 normal in ${playback.year}, on one colour scale for every year.`
               : `The 1991–2020 average, for context.`}
@@ -296,6 +311,7 @@ export function World({params}: {params: URLSearchParams}) {
         countryIndex={countryIndex}
         countryName={countryIndex !== null ? countries.data[countryIndex].name : null}
         countryId={countryIndex !== null ? countries.data[countryIndex].id : null}
+        cellCountry={cell !== null && bundle.data.cells.country[cell] !== 65535 ? countries.data[bundle.data.cells.country[cell]].name : null}
         cell={cell}
         variable={variable}
         first={first}
@@ -367,19 +383,19 @@ function Rankings({cells, stats, countries, variable, onPick}: {cells: GlobalCel
     <HStack gap={8} wrap="wrap">
       <VStack gap={1} width="min(100%, 24rem)">
         <Text type="label" color="secondary">
-          {relative ? 'Largest rainfall change the witness does not reject' : 'Fastest warming the witness does not reject'}
+          {relative ? 'Largest rainfall changes by country' : 'Fastest-warming countries'}
         </Text>
         {fastest.map(r => row(r, `${signed(r.slope, relative ? 1 : 2)} ${relative ? '% of normal' : '°C'} per decade`))}
         <Text type="supporting">
-          Average of the country’s cell trends. Countries with over a quarter of their land flagged as a likely artefact are left out. Opening a country tests its average series instead, so its figure differs slightly.
+          Each figure is the average of the country’s cell trends. Countries with more than a quarter of their land flagged as a likely artefact are left out. Opening a country tests its combined yearly series instead, so its figure differs slightly.
         </Text>
       </VStack>
       <VStack gap={1} width="min(100%, 24rem)">
         <Text type="label" color="secondary">
-          Least trustworthy record: share of land flagged as a likely artefact
+          Least trustworthy records: share of each country’s land flagged as a likely artefact
         </Text>
         {suspect.map(r => row(r, `${percent(r.flagged)} flagged`))}
-        <Text type="supporting">A cell is flagged when the witness contradicts its trend, or its record behaves like a single jump that the witness does not corroborate.</Text>
+        <Text type="supporting">A cell is flagged when the second record contradicts its trend, or when its record jumps in a single year and the second record does not.</Text>
       </VStack>
     </HStack>
   );
@@ -450,7 +466,7 @@ function GlobalPanel({summary, variable, first, last}: {summary: Awaited<ReturnT
       <MetadataList columns={2}>
         <MetadataListItem label={`Land with a significant trend towards ${def.up}`}>{percent(g.areaUp)}</MetadataListItem>
         <MetadataListItem label={`Land with a significant trend towards ${def.down}`}>{percent(g.areaDown)}</MetadataListItem>
-        <MetadataListItem label="Witness backs the trend">{percent(g.agreement.corroborated + g.agreement['same-direction'])}</MetadataListItem>
+        <MetadataListItem label="Both records agree on direction">{percent(g.agreement.corroborated + g.agreement['same-direction'])}</MetadataListItem>
         <MetadataListItem label="Flagged as a likely artefact">{percent(g.areaFlagged, 1)}</MetadataListItem>
       </MetadataList>
       <VStack gap={1}>
@@ -499,6 +515,7 @@ function Selection({
   countryIndex,
   countryName,
   countryId,
+  cellCountry,
   cell,
   variable,
   first,
@@ -509,6 +526,8 @@ function Selection({
   countryIndex: number | null;
   countryName: string | null;
   countryId: string | null;
+  /** The country a selected cell falls in, so a click reads as a place, not just coordinates. */
+  cellCountry: string | null;
   cell: number | null;
   variable: string;
   first: number;
@@ -551,7 +570,7 @@ function Selection({
         <Text type="label" color="accent">
           {def.label}
         </Text>
-        <Heading level={2}>{countryName ?? `Cell at ${fmtLat(cells.lat[cell!])}, ${fmtLon(cells.lon[cell!])}`}</Heading>
+        <Heading level={2}>{countryName ?? `${cellCountry ? `${cellCountry}: g` : 'G'}rid cell at ${fmtLat(cells.lat[cell!])}, ${fmtLon(cells.lon[cell!])}`}</Heading>
         <Text type="supporting">
           {ids.length} grid {ids.length === 1 ? 'cell' : 'cells'}, {thousands(area)} km² of land{countryName && cell !== null ? `; selected cell ${fmtLat(cells.lat[cell])}, ${fmtLon(cells.lon[cell])}` : ''}.
         </Text>
@@ -611,7 +630,7 @@ function Selection({
             <Text weight="semibold">{verdict.label}</Text>
           </HStack>
           <Text color="secondary">{verdict.plain}</Text>
-          {exam.artifactSuspected && <Text color="accent">The reanalysis record looks like a data artefact here: treat its trend with suspicion.</Text>}
+          {exam.artifactSuspected && <Text color="accent">The reanalysis looks unreliable here, most likely a data artefact, so treat its trend with caution.</Text>}
           <Text type="supporting">{INDEPENDENCE[variable]}</Text>
           <MetadataList columns={2}>
             <MetadataListItem label={`MERRA-2, ${unit}/decade`}>
@@ -700,7 +719,7 @@ function worldMapHelp(layer: WorldLayer, variable: string): Help {
   const quantity = rain ? 'rainfall' : 'temperature';
   const witness = rain ? 'GPCP v2.3, built from rain gauges and satellites' : 'GISTEMP v4, built from weather stations';
   const what: Record<WorldLayer, string> = {
-    verdict: `Every land cell is coloured by how its ${quantity} trend since 1981 fares against a second, independently built record (${witness}). Green: both records show the same significant change. Red: they point in opposite directions, so the first record is suspect. The legend on the left lists every outcome.`,
+    verdict: `Every land cell is coloured by how its ${quantity} trend since 1981 fares against a second, independently built record (${witness}). Green: both records show the same significant change. Red: they point in opposite directions, so the first record is suspect. The map legend lists every outcome. In practice: green means you can lean on the trend; yellow or olive means the direction holds but the size is uncertain; red or orange means do not rely on it until someone has looked into it.`,
     trend: `Every land cell’s ${quantity} trend per decade since 1981, from one end of the colour scale to the other as shown in the legend. Dots mark cells whose trend is statistically significant across the whole map.`,
     year: `Every land cell’s ${quantity} in the chosen year, compared with its own 1991–2020 normal${rain ? ' as a percentage of that normal' : ''}. Every year uses the same colour scale, so years can be compared directly; press play to step through them.`,
     normal: `The 1991–2020 average ${quantity} for every land cell: the baseline the other layers are measured against.`,
@@ -708,7 +727,7 @@ function worldMapHelp(layer: WorldLayer, variable: string): Help {
   return {
     title: 'Global map',
     what: what[layer],
-    how: 'Drag to pan; zoom with the buttons, the wheel or a pinch. Click or tap a land cell, or search for a country on the left, to cross-examine it in the evidence panel. Keyboard: focus the map, move with the arrow keys, and press Enter to open a cell.',
+    how: 'Drag to pan; zoom with the buttons, the wheel or a pinch. Click or tap a land cell, or search for a country, to cross-examine it in the evidence panel. Keyboard: focus the map, move with the arrow keys, and press Enter to open a cell.',
     detail: `54,425 MERRA-2 land cells from NASA POWER (0.5° × 0.625°), 60°S–84°N, 1981–2024. Trends: Theil–Sen slope; significance: Mann–Kendall with the Hamed–Rao correction; map-wide stippling: Benjamini–Hochberg at a 10% false discovery rate. Verdicts compare direction, significance and overlap of the two 95% ranges with ${rain ? 'GPCP v2.3 (2.5°; it shares some rain gauges with MERRA-2, so it is only partly independent)' : 'GISTEMP v4 (2°, 250 km smoothing, land stations)'}. A cell is flagged as a likely artefact when the witness contradicts it or its record jumps in a year the witness does not.`,
     method: layer === 'verdict' ? 'witnesses' : layer === 'trend' ? 'theil-sen' : 'anomalies',
   };

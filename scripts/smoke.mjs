@@ -80,7 +80,7 @@ try {
     const p = await context.newPage();
     await p.goto(BASE);
     await p.getByRole('application', {name: /Globe of land temperature/}).waitFor({timeout: 20000});
-    for (const [heading, value] of [['First, trace the change.', 'claim'], ['Then, ask a second record.', 'witness'], ['Follow the disagreement.', 'verdict']]) {
+    for (const [heading, value] of [['Start with what the reanalysis says.', 'claim'], ['Then ask a second witness.', 'witness'], ['Look where they disagree.', 'verdict']]) {
       await p.getByRole('heading', {name: heading, exact: true}).scrollIntoViewIfNeeded();
       await p.waitForFunction(v => document.querySelector(`[role="radio"][data-value="${v}"]`)?.getAttribute('aria-checked') === 'true', value);
       const rect = await p.getByRole('application', {name: /Globe of land temperature/}).boundingBox();
@@ -269,11 +269,11 @@ try {
     await p.emulateMedia({reducedMotion: 'reduce'});
     await p.goto(`${BASE}#/`);
     await p.getByRole('button', {name: 'Globe follows your scroll'}).click({timeout: 30000});
-    const show = p.getByRole('button', {name: 'Show the reanalysis on the globe'});
+    const show = p.getByRole('button', {name: 'Show the stations on the globe'});
     await show.scrollIntoViewIfNeeded();
     await show.click();
-    await p.getByRole('button', {name: 'Showing the reanalysis on the globe'}).waitFor({timeout: 5000});
-    if (!(await p.getByRole('radio', {name: 'Reanalysis says'}).isChecked().catch(() => true))) throw new Error('globe did not switch to the reanalysis');
+    await p.getByRole('button', {name: 'Showing the stations on the globe'}).waitFor({timeout: 5000});
+    if (!(await p.getByRole('radio', {name: 'Stations say'}).isChecked())) throw new Error('globe did not switch to the stations');
     await p.close();
   });
 
@@ -332,7 +332,7 @@ try {
   await check('a global cell deep link keeps a one-cell footprint', async () => {
     const p = await context.newPage();
     await p.goto(`${BASE}#/world?cell=1508`);
-    await p.getByRole('heading', {level: 2, name: /^Cell at/}).waitFor({timeout: 30000});
+    await p.getByRole('heading', {level: 2, name: /grid cell at/i}).waitFor({timeout: 30000});
     await p.getByText(/^1 grid cell,/).waitFor();
     const [download] = await Promise.all([
       p.waitForEvent('download'),

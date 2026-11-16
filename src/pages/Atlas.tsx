@@ -101,7 +101,7 @@ export function Atlas({iso3, params}: Props) {
         width="100%"
       />
       <Text type="supporting">
-        These seven nations have all seven variables. For any other country, <Link href="#/world">open the World map</Link> (temperature and rainfall).
+        These seven countries have the full set of seven climate variables: temperature, daily highs and lows, rainfall, soil moisture, humidity and wind. For any other country, <Link href="#/world">open the World map</Link> (temperature and rainfall).
       </Text>
       <Selector
         label="Variable"

@@ -96,7 +96,7 @@ export const VERDICT_TEXT: Record<Agreement, {label: string; tone: 'success' | '
   corroborated: {label: 'Corroborated', tone: 'success', plain: 'Both records show a significant change in the same direction, and their 95% ranges overlap.'},
   'same-direction': {label: 'Same direction, different size', tone: 'warning', plain: 'Both records agree on the direction, but not on how fast; their 95% ranges do not overlap.'},
   'weakly-supported': {label: 'Only one record significant', tone: 'warning', plain: 'One record shows a significant change; the other leans the same way without reaching significance.'},
-  contradicted: {label: 'Contradicted', tone: 'error', plain: 'The two records show significant changes in opposite directions. Their sources, spatial sampling, and uncertainties need investigation.'},
+  contradicted: {label: 'Contradicted', tone: 'error', plain: 'The two records show significant changes in opposite directions. Their sources, sampling or uncertainty need explaining before either is trusted here.'},
   unsupported: {label: 'Not supported', tone: 'error', plain: 'One record shows a significant change; the other leans the opposite way.'},
   'no-signal': {label: 'No detectable trend', tone: 'neutral', plain: 'Neither record shows a significant change over this window.'},
 };
@@ -257,15 +257,15 @@ export function overallVerdict(p: number, witness: WitnessState, stepDominated: 
         tone: 'error',
         sentence:
           exam.verdict === 'contradicted'
-            ? 'The witness shows a significant change in the opposite direction. This flags a possible data artefact; it does not establish which record is responsible.'
-            : 'The reanalysis behaves like a single jump that the witness does not share or corroborate. Check its provenance before interpreting this as a persistent trend.',
+            ? 'The independent record shows a significant change in the opposite direction. That points to a problem in the data, though it does not say which record is at fault.'
+            : 'The reanalysis changes in one sudden jump that the independent record does not share. Check where the data came from before reading this as a lasting trend.',
       };
     const claimSig = exam.claim.p < 0.05;
     switch (exam.verdict) {
       case 'corroborated':
         return {label: 'Corroborated', tone: 'success', sentence: 'An independent record shows a significant change in the same direction, and the two 95% ranges overlap.'};
       case 'same-direction':
-        return {label: 'Same direction, different size', tone: 'warning', sentence: 'Both records agree on the direction but not on how fast; read the size of the change with caution.'};
+        return {label: 'Same direction, different size', tone: 'warning', sentence: 'Both records agree on the direction but not on how fast, so treat the size of the change with caution.'};
       case 'weakly-supported':
         return claimSig
           ? {label: 'Only one record significant', tone: 'warning', sentence: 'MERRA-2 shows a significant change; the independent record leans the same way but is not significant.'}

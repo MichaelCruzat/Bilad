@@ -85,25 +85,25 @@ export function GlobalProof({params}: {params: URLSearchParams}) {
       : <VStack gap={8}>
         <Heading level={2}>{selection.name}</Heading>
         <GlobalStep n="01" title="Set the footprint">
-          <Text>{selection.ids.length.toLocaleString('en-US')} native cells, {thousands(selection.area)} km² of land. The grid spans 60°S–84°N; ocean and Antarctica are outside this land analysis. Country choices use the same worldwide grid.</Text>
+          <Text>{selection.ids.length.toLocaleString('en-US')} cells covering {thousands(selection.area)} km² of land. The grid runs from 60°S to 84°N; the ocean and Antarctica are outside this land analysis. Countries are cut from the same worldwide grid.</Text>
           <Text type="supporting">Source: {data.data.meta.provenance.api}; retrieved {data.data.meta.provenance.retrieved}. Resolution: 0.5° × 0.625°.</Text>
         </GlobalStep>
         <GlobalStep n="02" title="Compare years on a common baseline">
-          <Text>Monthly inputs were processed into annual departures from 1991–2020 before shipping. At least ten months are needed for a valid annual value. This page averages those annual cells by land area{relative ? ' and rainfall normal, yielding total rainfall anomaly divided by total normal' : ''}; it does not download or recompute the raw monthly global tiles.</Text>
+          <Text>Each cell’s monthly values were turned into yearly departures from its 1991–2020 normal before publishing; a year needs at least ten months of data to count. This page averages those annual cells by land area{relative ? ' and rainfall normal, yielding total rainfall anomaly divided by total normal' : ''}; it does not download or recompute the raw monthly global tiles.</Text>
           <SeriesChart years={selection.years} series={selection.series} analysis={selection.result} variable={variable} unit={relative ? '%' : unit} title={`${selection.name}, annual ${relative ? 'rainfall' : 'temperature'} anomaly`} />
         </GlobalStep>
         <GlobalStep n="03" title="Estimate the trend">
           <Text>Theil–Sen takes the median of {pairwiseSlopes(selection.years, selection.series).length.toLocaleString('en-US')} valid pairwise slopes. For this selection: {signed(selection.result.trend.slope * 10, relative ? 1 : 2)} {unit} per decade, with a 95% range from {signed(selection.result.trend.slopeLow * 10, relative ? 1 : 2)} to {signed(selection.result.trend.slopeHigh * 10, relative ? 1 : 2)}.</Text>
         </GlobalStep>
         <GlobalStep n="04" title="Test the trend, then check the map">
-          <Text>Mann–Kendall, corrected for runs of similar years: {pPhrase(selection.result.trend.p)}. Variance inflation: {selection.result.trend.inflation.toFixed(2)}. Separately, {percent(selection.significant)} of the selected land has cell trends selected by the worldwide Benjamini–Hochberg procedure at a 10% target false discovery rate.</Text>
-          <Text type="supporting">The worldwide map correction is not a new test of this area-average series. FDR describes an expected fraction under assumptions, not a guaranteed error cap in this map.</Text>
+          <Text>Mann–Kendall, corrected for runs of similar years: {pPhrase(selection.result.trend.p)}. {selection.result.trend.inflation > 1.005 ? `The runs correction widens the test by ×${selection.result.trend.inflation.toFixed(2)}.` : 'No correction for runs of similar years was needed.'} Separately, {percent(selection.significant)} of the selected land has cell trends selected by the worldwide Benjamini–Hochberg procedure at a 10% target false discovery rate.</Text>
+          <Text type="supporting">The worldwide map correction is a separate check on individual cells, not a second test of this averaged series. A 10% false discovery rate is the share of false alarms to expect under the method’s assumptions, not a guaranteed limit for this map.</Text>
         </GlobalStep>
         <GlobalStep n="05" title="Look for a jump">
-          <Text>{selection.exam.claimStep?.stepDominated ? `The integrity screen prefers a step near ${selection.exam.claimStep.breakAt}.` : 'The integrity screen does not flag this aggregate as step-dominated.'} This compares a step and a linear trend using BIC. A missing flag does not establish gradual change, and a detected step does not identify its cause.</Text>
+          <Text>{selection.exam.claimStep?.stepDominated ? `The integrity screen prefers a step near ${selection.exam.claimStep.breakAt}.` : 'The integrity screen does not flag this aggregate as step-dominated.'} The screen compares a straight line with a single step using the Bayesian Information Criterion. Finding no step does not prove the change was gradual, and finding one does not say what caused it.</Text>
         </GlobalStep>
         <GlobalStep n="06" title="Call the witness">
-          <Text>{relative ? 'GPCP v2.3 combines gauges and satellites. It is partly independent: some gauge inputs are shared with MERRA-2.' : 'GISTEMP v4 uses weather-station estimates on a coarser 2° grid.'} The witness is sampled over the selected footprint and weighted by the same land areas. A yearly aggregate requires coverage of at least half that area. This comparison cannot resolve detail finer than the witness grid.</Text>
+          <Text>{relative ? 'GPCP v2.3 combines rain gauges and satellites. It is only partly independent, because MERRA-2 uses some of the same gauges.' : 'GISTEMP v4 is built from weather-station records on a coarser 2° grid.'} The witness is sampled over the same cells and weighted by the same land areas, and a year counts only if it covers at least half that area. The comparison cannot see detail finer than the witness grid.</Text>
           <SeriesChart
             years={selection.years}
             series={selection.series}
@@ -117,10 +117,10 @@ export function GlobalProof({params}: {params: URLSearchParams}) {
           />
         </GlobalStep>
         <GlobalStep n="07" title="Read the result and its limits">
-          <VerdictStrip place={selection.name} variable={variable} window={{from: selection.years[0], to: selection.years.at(-1)!}} result={selection.result} unit={unit} witness={selection.exam.witness.n >= 10 ? {kind: 'available', exam: selection.exam} : {kind: 'no-coverage'}} step={selection.exam.claimStep} resolution={`${selection.ids.length.toLocaleString('en-US')} cells, land-area weighted`} limitation="The records are estimates. Agreement supports a trend; disagreement and jump flags require investigation. This is not causal attribution." next={{label: 'Explore this footprint', href: `#/world?${explorer}`}} />
+          <VerdictStrip place={selection.name} variable={variable} window={{from: selection.years[0], to: selection.years.at(-1)!}} result={selection.result} unit={unit} witness={selection.exam.witness.n >= 10 ? {kind: 'available', exam: selection.exam} : {kind: 'no-coverage'}} step={selection.exam.claimStep} resolution={`${selection.ids.length.toLocaleString('en-US')} cells, land-area weighted`} limitation="Both records are estimates. Agreement supports a trend; disagreement or a jump flag means it needs investigating. Neither says what caused the change." next={{label: 'Explore this footprint', href: `#/world?${explorer}`}} />
         </GlobalStep>
         <Divider />
-        <Text type="supporting">Software checks: a separate Python implementation validates all 49 supplemental nation-variable headlines. When the global monthly cache exists, it also checks a repeatable sample of up to 400 global cells per variable; a clean CI checkout skips that sample. These checks test implementation agreement, not observational truth. <Link href="https://github.com/MichaelCruzat/TRACE/blob/main/pipeline/validate.py">Read the validator</Link>.</Text>
+        <Text type="supporting">Software checks: a separate Python implementation validates all 49 supplemental nation-variable headlines. When the global monthly cache exists, it also checks a repeatable sample of up to 400 global cells per variable; a clean CI checkout skips that sample. These checks confirm that the code computes what it claims; they cannot show that the observations are correct. <Link href="https://github.com/MichaelCruzat/TRACE/blob/main/pipeline/validate.py">Read the validator</Link>.</Text>
       </VStack>}
   </VStack></LayoutContent>;
 }
