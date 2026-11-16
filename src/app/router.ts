@@ -1,7 +1,7 @@
 /**
  * Hash router. Routes:
  *   #/                         home comparison
- *   #/cases                    casebook
+ *   #/?section=cases           homepage case files (#/cases is a legacy alias)
  *   #/case/<id>                case file
  *   #/atlas/<ISO3>?v=&layer=&cell=&from=&to=&band=
  *   #/method?s=<section>
@@ -13,28 +13,29 @@
 import {useCallback, useEffect, useState} from 'react';
 
 export type Route =
-  | {page: 'home'}
-  | {page: 'cases'}
+  | {page: 'home'; section?: 'cases'}
   | {page: 'case'; id: string}
   | {page: 'atlas'; iso3: string; params: URLSearchParams}
   | {page: 'method'; params: URLSearchParams}
   | {page: 'world'; params: URLSearchParams}
   | {page: 'brief'; iso3: string}
   | {page: 'proof'; params: URLSearchParams}
+  | {page: 'impact'}
   | {page: 'missing'; path: string};
 
 export function parseHash(hash: string): Route {
   const raw = hash.replace(/^#/, '') || '/';
   const [path, query = ''] = raw.split('?');
   const parts = path.split('/').filter(Boolean);
+  if (parts[0] === 'cases' || (parts.length === 0 && new URLSearchParams(query).get('section') === 'cases')) return {page: 'home', section: 'cases'};
   if (parts.length === 0) return {page: 'home'};
-  if (parts[0] === 'cases') return {page: 'cases'};
   if (parts[0] === 'case' && parts[1]) return {page: 'case', id: parts[1]};
   if (parts[0] === 'atlas') return {page: 'atlas', iso3: (parts[1] ?? 'CHL').toUpperCase(), params: new URLSearchParams(query)};
   if (parts[0] === 'brief' && parts[1]) return {page: 'brief', iso3: parts[1].toUpperCase()};
   if (parts[0] === 'world') return {page: 'world', params: new URLSearchParams(query)};
   if (parts[0] === 'method') return {page: 'method', params: new URLSearchParams(query)};
   if (parts[0] === 'proof') return {page: 'proof', params: new URLSearchParams(query)};
+  if (parts[0] === 'impact') return {page: 'impact'};
   return {page: 'missing', path};
 }
 

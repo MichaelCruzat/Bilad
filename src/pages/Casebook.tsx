@@ -10,6 +10,7 @@ import {Spinner} from '@astryxdesign/core/Spinner';
 import {HStack, VStack} from '@astryxdesign/core/Stack';
 import {Heading, Text} from '@astryxdesign/core/Text';
 import {MotionStack} from '../features/MotionStack';
+import {CaseFiles} from '../features/CaseFiles';
 import {Figure} from '../features/VerdictStrip';
 import {useAsync, useMediaQuery} from '../lib/hooks';
 import {loadWorld} from '../lib/nationData';
@@ -28,7 +29,13 @@ const PHASES: {mode: Mode; title: string; text: string}[] = [
   {mode: 'verdict', title: 'Follow the disagreement.', text: 'Agreement adds support. Opposite trends and abrupt jumps mark places to investigate. A flag asks for scrutiny; it does not establish a cause.'},
 ];
 
-export function Casebook() {
+export function Casebook({section}: {section?: 'cases'}) {
+  const home = useRef<HTMLDivElement>(null);
+  const caseFiles = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => (section === 'cases' ? caseFiles.current : home.current)?.scrollIntoView?.({block: 'start'}));
+    return () => cancelAnimationFrame(frame);
+  }, [section]);
   const narrow = useMediaQuery('(max-width: 1000px)');
   const summary = useAsync(loadGlobalSummary, []);
   const countries = useAsync(loadCountries, []);
@@ -113,7 +120,7 @@ export function Casebook() {
       </MotionStack>}
     </VStack>
   );
-  return <LayoutContent padding={8} isScrollable={false}><VStack gap={10}>
+  return <LayoutContent ref={home} padding={8} isScrollable={false}><VStack gap={10}>
     <Grid columns={{minWidth: 440, max: 2}} gap={10}>
       <VStack gap={10}>
         <MotionStack gap={5} minHeight={narrow ? undefined : '72vh'}>
@@ -124,25 +131,16 @@ export function Casebook() {
           <Text type="large" color="secondary">Water, farming, and infrastructure plans depend on how temperature and rainfall are changing. A significant trend can still reflect a data discontinuity or conflict with another record. TRACE makes those warnings visible, worldwide.</Text>
           <HStack gap={4} wrap="wrap"><Text type="code">{ready ? bundle.data.cells.n.toLocaleString('en-US') : '54,425'} land cells</Text><Text type="code">1981–2024</Text><Text type="code">60°S–84°N</Text></HStack>
           <HStack gap={3} wrap="wrap"><Button variant="primary" label="Explore the world" href="#/world" /><Button variant="secondary" label="Follow the evidence ↓" onClick={() => story.current?.scrollIntoView({behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start'})} /></HStack>
+          <Link href="#/?section=cases">Read the case files</Link>
           <Text type="supporting">A region can be a country or a single grid cell. Coverage spans global land, including every country with cells in this latitude range.</Text>
         </MotionStack>
         {narrow && globeFigure}
-        <MotionStack reveal as="section" gap={5}>
+        <MotionStack reveal as="section" gap={4}>
           <Divider />
           <Text type="label" color="accent">Why this work matters</Text>
           <Heading level={2} type="display-3">Make climate claims easier to examine.</Heading>
-          <Text type="large">TRACE puts trend tests, jump warnings, and a second NASA record in one workflow. The result is a reviewable starting point: where the records agree, where they conflict, and what needs further investigation.</Text>
-          <VStack gap={3}>
-            <Heading level={3}>For people and researchers</Heading>
-            <Text color="secondary">Investigate a country or land cell without writing an analysis pipeline. Follow each result to its sources, uncertainty, and method; export the evidence for further work.</Text>
-            <Divider />
-            <Heading level={3}>For NASA data users</Heading>
-            <Text color="secondary">Compare differently constructed NASA products on one footprint. Disagreements and abrupt changes provide places to investigate product limitations, while the open code makes the checks reproducible.</Text>
-            <Divider />
-            <Heading level={3}>For governments and public agencies</Heading>
-            <Text color="secondary">Screen evidence of long-term warming or rainfall change before using it in an adaptation assessment. Analysts can share the record, assumptions, and uncertainty instead of passing on an unexplained map.</Text>
-          </VStack>
-          <Text type="supporting">This prototype supports evidence review. It does not forecast conditions, attribute causes, or replace a validated local risk assessment. Institutional use and policy outcomes have not been demonstrated.</Text>
+          <Text type="large">TRACE puts trend tests, jump warnings, and a second NASA record in one workflow, so people can examine the evidence behind a climate claim.</Text>
+          <HStack><Button variant="secondary" label="Why TRACE matters" href="#/impact" /></HStack>
         </MotionStack>
         <VStack gap={8} ref={story}>
           {PHASES.map((phase, i) => <VStack as="section" key={phase.mode} ref={node => { sections.current[i] = node; }} aria-labelledby={`phase-${phase.mode}`}>
@@ -167,6 +165,9 @@ export function Casebook() {
       <Text type="supporting">Witnesses are coarser estimates, not ground truth at each cell. GPCP rainfall shares some rain-gauge inputs with MERRA-2. Coverage ends at 60°S and 84°N.</Text>
       <HStack gap={3} wrap="wrap"><Button variant="primary" label="Open the global atlas" href="#/world" /><Button variant="secondary" label="How the global checks work" href="#/proof" /></HStack>
     </MotionStack>
+    <VStack as="section" ref={caseFiles} aria-labelledby="case-files-heading" style={{scrollMarginBlockStart: 'var(--spacing-6)'}}>
+      <MotionStack reveal><CaseFiles /></MotionStack>
+    </VStack>
     <Divider /><HStack gap={4} wrap="wrap"><Link href="https://github.com/MichaelCruzat/TRACE">Source</Link><Link href="#/method">Method</Link><Text type="supporting">NASA Space Apps · TRACE</Text></HStack>
   </VStack></LayoutContent>;
 }

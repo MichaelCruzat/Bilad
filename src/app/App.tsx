@@ -15,13 +15,13 @@ import {Spinner} from '@astryxdesign/core/Spinner';
 
 // Each page is its own chunk: the casebook does not download the atlas controls.
 const Casebook = lazy(() => import('../pages/Casebook').then(m => ({default: m.Casebook})));
-const Cases = lazy(() => import('../pages/Cases').then(m => ({default: m.Cases})));
 const CaseFile = lazy(() => import('../pages/CaseFile').then(m => ({default: m.CaseFile})));
 const Atlas = lazy(() => import('../pages/Atlas').then(m => ({default: m.Atlas})));
 const Method = lazy(() => import('../pages/Method').then(m => ({default: m.Method})));
 const Brief = lazy(() => import('../pages/Brief').then(m => ({default: m.Brief})));
 const World = lazy(() => import('../pages/World').then(m => ({default: m.World})));
 const Proof = lazy(() => import('../pages/Proof').then(m => ({default: m.Proof})));
+const Impact = lazy(() => import('../pages/Impact').then(m => ({default: m.Impact})));
 
 /**
  * One broken page must not take the site down: the boundary is keyed by the
@@ -74,8 +74,8 @@ function Navigation({route}: {route: Route}) {
       }
       startContent={
         <HStack gap={2}>
-          <Button label="Cases" size="lg" variant={current === 'cases' || current === 'case' ? 'secondary' : 'ghost'} href="#/cases" />
           <Button label="Explore" size="lg" variant={current === 'world' || current === 'atlas' ? 'secondary' : 'ghost'} href="#/world" />
+          <Button label="Impact" size="lg" variant={current === 'impact' ? 'secondary' : 'ghost'} href="#/impact" />
           <Button label="How we know" size="lg" variant={current === 'proof' ? 'secondary' : 'ghost'} href="#/proof" />
           <Button label="Method" size="lg" variant={current === 'method' ? 'secondary' : 'ghost'} href="#/method" />
         </HStack>
@@ -97,9 +97,7 @@ function withGlossary(content: ReactNode): ReactNode {
 function page(route: Route): ReactNode {
   switch (route.page) {
     case 'home':
-      return <Layout content={<Casebook />} />;
-    case 'cases':
-      return <Layout content={<Cases />} />;
+      return <Layout content={<Casebook section={route.section} />} />;
     case 'case':
       return <Layout contentWidth={1760} content={withGlossary(<CaseFile key={route.id} id={route.id} />)} />;
     case 'atlas':
@@ -112,6 +110,8 @@ function page(route: Route): ReactNode {
       return <Layout contentWidth={1400} content={withGlossary(<Proof params={route.params} />)} />;
     case 'method':
       return <Layout contentWidth={1200} content={withGlossary(<Method section={route.params.get('s')} />)} />;
+    case 'impact':
+      return <Layout contentWidth={1200} content={<Impact />} />;
     default:
       return (
         <Layout

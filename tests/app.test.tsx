@@ -33,7 +33,7 @@ function serveData(fail: RegExp | null = null) {
 function renderAt(hash: string) {
   window.location.hash = hash;
   return render(
-    <Theme theme={themes[defaultThemeSlug]} mode="light">
+    <Theme theme={themes[defaultThemeSlug]} mode="dark">
       <App />
     </Theme>,
   );
@@ -52,7 +52,9 @@ afterEach(() => {
 describe('router', () => {
   it('parses every route', () => {
     expect(parseHash('')).toEqual({page: 'home'});
-    expect(parseHash('#/cases')).toEqual({page: 'cases'});
+    expect(parseHash('#/cases')).toEqual({page: 'home', section: 'cases'});
+    expect(parseHash('#/?section=cases')).toEqual({page: 'home', section: 'cases'});
+    expect(parseHash('#/impact')).toEqual({page: 'impact'});
     expect(parseHash('#/case/chile-megadrought')).toEqual({page: 'case', id: 'chile-megadrought'});
     const atlas = parseHash('#/atlas/chl?v=PRECTOTCORR&region=central');
     expect(atlas.page).toBe('atlas');
@@ -74,8 +76,7 @@ describe('global home', () => {
     expect(await screen.findByRole('heading', {level: 1, name: 'TRACE'}, {timeout: 10000})).toBeInTheDocument();
     expect(screen.getByText('Tracking Regional Atmospheric Change on Earth')).toBeInTheDocument();
     expect(screen.getByRole('heading', {name: 'Check the evidence before it becomes a decision.'})).toBeInTheDocument();
-    expect(screen.getByRole('heading', {name: 'For NASA data users'})).toBeInTheDocument();
-    expect(screen.getByRole('heading', {name: 'For governments and public agencies'})).toBeInTheDocument();
+    expect(screen.getByRole('link', {name: 'Why TRACE matters'})).toHaveAttribute('href', '#/impact');
     expect(screen.getByText('54,425 land cells')).toBeInTheDocument();
     expect(screen.getByText('60°S–84°N')).toBeInTheDocument();
     expect(screen.getByRole('link', {name: 'Explore the world'})).toHaveAttribute('href', '#/world');
@@ -85,14 +86,15 @@ describe('global home', () => {
     expect(screen.queryByRole('link', {name: 'Nations'})).not.toBeInTheDocument();
   });
 
-  it('keeps technical ledgers and case lists on their own routes while retaining vital context', async () => {
+  it('includes the case files on home while keeping technical ledgers on their own routes', async () => {
     renderAt('#/');
     await screen.findByRole('application', {name: /^Globe of land temperature trends since 1981/}, {timeout: 10000});
     expect(screen.getByText('Tracking Regional Atmospheric Change on Earth')).toBeInTheDocument();
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
     expect(screen.queryByText('Terms and abbreviations')).not.toBeInTheDocument();
-    for (const c of CASES) expect(screen.queryByRole('link', {name: c.title})).not.toBeInTheDocument();
-    expect(screen.getByRole('link', {name: 'Cases'})).toHaveAttribute('href', '#/cases');
+    for (const c of CASES) expect(screen.getByRole('link', {name: c.title})).toHaveAttribute('href', `#/case/${c.id}`);
+    expect(screen.queryByRole('link', {name: 'Cases'})).not.toBeInTheDocument();
+    expect(screen.getByRole('link', {name: 'Read the case files'})).toHaveAttribute('href', '#/?section=cases');
     expect(screen.getByRole('link', {name: 'How we know'})).toHaveAttribute('href', '#/proof');
   });
 
@@ -109,18 +111,28 @@ describe('global home', () => {
 });
 
 describe('cases', () => {
-  it('lists all four case files in the app frame', async () => {
+  it('keeps the old cases URL working as the homepage case section', async () => {
     renderAt('#/cases');
-    expect(await screen.findByRole('heading', {level: 1, name: 'Four case files, four different outcomes'})).toBeInTheDocument();
+    expect(await screen.findByRole('heading', {level: 1, name: 'TRACE'})).toBeInTheDocument();
+    expect(screen.getByRole('heading', {level: 2, name: 'Four case files, four different outcomes'})).toBeInTheDocument();
     expect(CASES).toHaveLength(4);
     for (const c of CASES) expect(screen.getByRole('link', {name: c.title})).toHaveAttribute('href', `#/case/${c.id}`);
-    expect(screen.getByRole('link', {name: 'Cases'})).toHaveAttribute('href', '#/cases');
+    expect(screen.queryByRole('link', {name: 'Cases'})).not.toBeInTheDocument();
     expect(screen.getByRole('link', {name: 'TRACE home'})).toHaveAttribute('href', '#/');
     expect(screen.queryByText('Page not found')).not.toBeInTheDocument();
   });
 });
 
 describe('case file', () => {
+  it('provides a separate impact page explaining source comparison and its limits', async () => {
+    renderAt('#/impact');
+    expect(await screen.findByRole('heading', {level: 1, name: 'Why climate evidence needs a second look'})).toBeInTheDocument();
+    expect(screen.getByRole('heading', {name: 'Why cross-reference temperature records?'})).toBeInTheDocument();
+    expect(screen.getByRole('heading', {name: 'Governments and public agencies'})).toBeInTheDocument();
+    expect(screen.getByText('Institutional adoption and policy outcomes have not yet been demonstrated.')).toBeInTheDocument();
+    expect(screen.getByRole('link', {name: 'Explore the global evidence'})).toHaveAttribute('href', '#/world');
+  });
+
   it('walks the Bangladesh case to a data-artefact verdict', async () => {
     renderAt('#/case/bangladesh-phantom-cooling');
     expect(await screen.findByRole('heading', {name: /A likely data artefact that needs investigation/}, {timeout: 5000})).toBeInTheDocument();

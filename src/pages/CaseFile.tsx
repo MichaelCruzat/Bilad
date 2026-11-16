@@ -42,7 +42,7 @@ export function CaseFile({id}: {id: string}) {
   if (!def) {
     return (
       <LayoutContent padding={8}>
-        <Banner status="warning" title="No such case" description="Choose a case from the case files." endContent={<Button label="Cases" href="#/cases" />} />
+        <Banner status="warning" title="No such case" description="Choose a case from the homepage." endContent={<Button label="Case files" href="#/?section=cases" />} />
       </LayoutContent>
     );
   }
@@ -53,7 +53,7 @@ export function CaseFile({id}: {id: string}) {
       <VStack gap={8}>
         <VStack gap={3}>
           <HStack gap={2} vAlign="center" wrap="wrap">
-            <Button label="All cases" variant="ghost" size="sm" href="#/cases" />
+            <Button label="All cases" variant="ghost" size="sm" href="#/?section=cases" />
             <Text type="label" color="accent">
               Case {def.number} · {nation.status === 'ready' ? nation.data.meta.name : def.iso3} · {getVariable(def.variable).label}
             </Text>

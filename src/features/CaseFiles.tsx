@@ -1,5 +1,4 @@
 import {Divider} from '@astryxdesign/core/Divider';
-import {LayoutContent} from '@astryxdesign/core/Layout';
 import {Link} from '@astryxdesign/core/Link';
 import {HStack, StackItem, VStack} from '@astryxdesign/core/Stack';
 import {Heading, Text} from '@astryxdesign/core/Text';
@@ -7,12 +6,11 @@ import {CASES} from '../data/cases';
 import {getVariable} from '../data/variables';
 import {VERDICT_TEXT} from '../lib/evidence';
 
-export function Cases() {
+export function CaseFiles() {
   return (
-    <LayoutContent padding={8}>
       <VStack gap={4}>
         <Text type="label" color="accent">Case files</Text>
-        <Heading level={1} type="display-3">
+        <Heading id="case-files-heading" level={2} type="display-3">
           Four case files, four different outcomes
         </Heading>
         <VStack gap={0}>
@@ -45,6 +43,5 @@ export function Cases() {
           <Divider />
         </VStack>
       </VStack>
-    </LayoutContent>
   );
 }
