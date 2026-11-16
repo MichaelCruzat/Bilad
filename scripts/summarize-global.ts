@@ -103,14 +103,17 @@ function summarize(variable: string, lat: number[], area: number[]) {
 
   const witness = readWitness(variable, n);
   if (witness) {
-    const boxTests = witness.series.map(s => trendTest(YEARS, witnessReading(s, Boolean(def.relative))));
+    const boxReadings = witness.series.map(s => witnessReading(s, Boolean(def.relative)));
+    const boxTests = boxReadings.map(s => trendTest(YEARS, s));
+    const boxSteps = boxReadings.map(s => stepScreen(YEARS, s));
     for (let c = 0; c < n; c++) {
       if (!Number.isFinite(p[c])) continue;
       const wt = boxTests[witness.cellBox[c]];
       if (!wt || wt.n < 10) continue;
       const a = agreement(tests[c], wt);
       agree[c] = AGREEMENTS.indexOf(a);
-      if (a === 'contradicted' || ((flags[c] & 2) !== 0 && a !== 'corroborated')) flags[c] |= 4;
+      const witnessStep = boxSteps[witness.cellBox[c]];
+      if (a === 'contradicted' || ((flags[c] & 2) !== 0 && !witnessStep?.stepDominated && a !== 'corroborated')) flags[c] |= 4;
     }
   }
 

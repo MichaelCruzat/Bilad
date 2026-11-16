@@ -32,7 +32,7 @@ describe('trendTest', () => {
   });
 
   it('never lets the serial-correlation correction shrink the variance', () => {
-    // pymannkendall reports p = 0 here because n/n* < 1; Bilad clamps to 1.
+    // pymannkendall reports p = 0 here because n/n* < 1; TRACE clamps to 1.
     const r = trendTest(idx(SMALL.length), SMALL);
     expect(r.s).toBe(81);
     expect(r.slope).toBeCloseTo(0.10000000000000002, 10);
@@ -173,7 +173,7 @@ describe('yearsToSignificance', () => {
 describe('agreement', () => {
   const tt = (slope: number, low: number, high: number, p: number) =>
     ({n: 44, slope, slopeLow: low, slopeHigh: high, intercept: 0, s: 0, tau: 0, p, pRaw: p, inflation: 1});
-  it('classifies the cases Bilad reports', () => {
+  it('classifies the cases TRACE reports', () => {
     expect(agreement(tt(0.011, 0.004, 0.018, 0.01), tt(0.011, 0.004, 0.018, 0.01))).toBe('corroborated');
     expect(agreement(tt(0.018, 0.01, 0.025, 0.001), tt(0.034, 0.028, 0.04, 0.001))).toBe('same-direction');
     expect(agreement(tt(-0.019, -0.036, -0.001, 0.03), tt(0.035, 0.027, 0.042, 0.001))).toBe('contradicted');

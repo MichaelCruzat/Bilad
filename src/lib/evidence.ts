@@ -1,7 +1,7 @@
 /**
  * Independent witnesses and integrity screens.
  *
- * A reanalysis trend is a claim; Bilad cross-examines it against an
+ * A reanalysis trend is a claim; TRACE cross-examines it against an
  * observation-based NASA product on the same footprint (GISTEMP for
  * temperature, GPCP for precipitation) and screens it for step changes.
  */
@@ -45,7 +45,7 @@ export function hasWitness(variable: string): boolean {
 }
 
 /**
- * Witness annual series for a window, in the same reading units as Bilad's
+ * Witness annual series for a window, in the same reading units as TRACE's
  * own series: °C anomaly vs 1991–2020 for temperature, % of the 1991–2020
  * normal for precipitation. Returns null when there is no witness.
  */
@@ -96,7 +96,7 @@ export const VERDICT_TEXT: Record<Agreement, {label: string; tone: 'success' | '
   corroborated: {label: 'Corroborated', tone: 'success', plain: 'Both records show a significant change in the same direction, and their 95% ranges overlap.'},
   'same-direction': {label: 'Same direction, different size', tone: 'warning', plain: 'Both records agree on the direction, but not on how fast; their 95% ranges do not overlap.'},
   'weakly-supported': {label: 'Only one record significant', tone: 'warning', plain: 'One record shows a significant change; the other leans the same way without reaching significance.'},
-  contradicted: {label: 'Contradicted', tone: 'error', plain: 'The two records show significant changes in opposite directions. At least one of them is wrong here.'},
+  contradicted: {label: 'Contradicted', tone: 'error', plain: 'The two records show significant changes in opposite directions. Their sources, spatial sampling, and uncertainties need investigation.'},
   unsupported: {label: 'Not supported', tone: 'error', plain: 'One record shows a significant change; the other leans the opposite way.'},
   'no-signal': {label: 'No detectable trend', tone: 'neutral', plain: 'Neither record shows a significant change over this window.'},
 };
@@ -129,7 +129,7 @@ export function coBreaks(index: DataIndex, iso3: string, minVariables = 3): CoBr
   return groups.filter(g => g.variables.length >= minVariables);
 }
 
-/** Per-cell witness: one annual series per product grid box, and each Bilad cell's box. */
+/** Per-cell witness: one annual series per product grid box, and each TRACE cell's box. */
 export type WitnessGrid = {
   firstYear: number;
   lastYear: number;
@@ -161,8 +161,8 @@ export function witnessBoxes(w: WitnessGrid, variable: string, cells: number[]):
 }
 
 /**
- * Witness series for any set of cells, area-weighted with Bilad's own
- * weights and expressed like Bilad's series (anomaly vs 1991–2020; % of
+ * Witness series for any set of cells, area-weighted with TRACE's own
+ * weights and expressed like TRACE's series (anomaly vs 1991–2020; % of
  * normal for precipitation). Years with under half the area covered are NaN.
  */
 export function witnessForCells(w: WitnessGrid, variable: string, weights: ArrayLike<number>, cells: number[], window: Window): Float64Array | null {
@@ -198,7 +198,7 @@ export function witnessForCells(w: WitnessGrid, variable: string, weights: Array
 export const INDEPENDENCE: Record<string, string> = {
   T2M: 'Independent: built from weather-station thermometers, not from the reanalysis.',
   PRECTOTCORR:
-    'Partly independent: GPCP combines rain gauges and satellites, and MERRA-2’s corrected rainfall also leans on gauge analyses, so the two share some of the same gauges. Agreement rules out a reanalysis artefact, not a problem in the gauges themselves.',
+    'Partly independent: GPCP combines rain gauges and satellites, and MERRA-2’s corrected rainfall also leans on gauge analyses, so the two share some of the same gauges. Agreement adds support but cannot exclude a shared error.',
 };
 
 /** Name of the witness for a variable, or a generic phrase when it has none. */
@@ -217,7 +217,7 @@ export const PRODUCTS: Record<string, {name: string; long: string; agency: strin
 };
 
 /**
- * What Bilad knows about the independent witness for one selection. Each
+ * What TRACE knows about the independent witness for one selection. Each
  * state renders differently, so a failed download never reads as "no witness".
  */
 export type WitnessState =
@@ -251,7 +251,15 @@ export function overallVerdict(p: number, witness: WitnessState, stepDominated: 
   const significant = p < 0.05;
   if (witness.kind === 'available') {
     const {exam} = witness;
-    if (exam.artifactSuspected) return {label: 'Likely data artefact', tone: 'error', sentence: 'The independent record does not show this change, so it most likely comes from how the data were produced.'};
+    if (exam.artifactSuspected)
+      return {
+        label: 'Likely data artefact',
+        tone: 'error',
+        sentence:
+          exam.verdict === 'contradicted'
+            ? 'The witness shows a significant change in the opposite direction. This flags a possible data artefact; it does not establish which record is responsible.'
+            : 'The reanalysis behaves like a single jump that the witness does not share or corroborate. Check its provenance before interpreting this as a persistent trend.',
+      };
     const claimSig = exam.claim.p < 0.05;
     switch (exam.verdict) {
       case 'corroborated':

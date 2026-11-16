@@ -1,5 +1,5 @@
 /**
- * Bilad statistics engine.
+ * TRACE statistics engine.
  *
  * Pure, dependency-free functions shared by the offline data pipeline
  * (`pipeline/`) and the browser (`src/`). Nothing here knows about NASA,

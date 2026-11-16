@@ -1,6 +1,6 @@
 """Independent recomputation of every shipped headline.
 
-``scripts/summarize.ts`` writes ``index.json`` with Bilad's TypeScript
+``scripts/summarize.ts`` writes ``index.json`` with TRACE's TypeScript
 engine. This module rebuilds the same numbers from the raw packed binaries
 with different code (numpy, ``scipy.stats.theilslopes`` and
 ``pymannkendall``) and fails if any headline disagrees. Two implementations
@@ -9,7 +9,7 @@ in two languages that agree are much harder to get wrong than one.
 Checked per nation and variable:
   * national area-weighted annual anomaly series (1991–2020 normal)
   * Theil–Sen slope of that series
-  * Hamed–Rao corrected Mann–Kendall p-value (Bilad floors the variance
+  * Hamed–Rao corrected Mann–Kendall p-value (TRACE floors the variance
     inflation at 1; the reference value is adjusted the same way)
   * share of land with a significant rise / fall after Benjamini–Hochberg
 """
@@ -48,7 +48,7 @@ def tie_round(series: np.ndarray) -> np.ndarray:
 
 
 def corrected_p(series: np.ndarray) -> float:
-    """Hamed–Rao p with the variance inflation floored at 1, as Bilad does."""
+    """Hamed–Rao p with the variance inflation floored at 1, as TRACE does."""
     series = tie_round(series[np.isfinite(series)])
     original = mk.original_test(series)
     modified = mk.hamed_rao_modification_test(series)
@@ -94,7 +94,7 @@ def check_nation(data: Path, iso3: str, summary: dict) -> list[str]:
             "areaUp": (abs(up - shipped["areaUp"]), 0.02),
             "areaDown": (abs(down - shipped["areaDown"]), 0.02),
         }
-        failed = [f"{name} off by {err:.2g} (tolerance {tol:.2g})" for name, (err, tol) in checks.items() if err > tol]
+        failed = [f"{name} off by {err:.2g} (tolerance {tol:.2g})" for name, (err, tol) in checks.items() if not np.isfinite(err) or err > tol]
         status = "ok" if not failed else "MISMATCH: " + "; ".join(failed)
         print(f"  {variable.id:<12} slope {slope:+9.3f}/decade  p {p:.3g}  up {up:5.1%}  down {down:5.1%}  {status}")
         problems += [f"{iso3} {variable.id}: {f}" for f in failed]
@@ -135,7 +135,8 @@ def check_global(data: Path, cache: Path, sample: int = 400) -> list[str]:
             slope = stats_mod.theilslopes(tie_round(annual[ok]), YEARS[ok]).slope * 10
             p = corrected_p(annual)
             tol = 1e-3 + 1e-3 * abs(slope)
-            if abs(slope - shipped_slope[c]) > tol or abs(p - shipped_p[c]) > 2e-3:
+            errors = (abs(slope - shipped_slope[c]), abs(p - shipped_p[c]))
+            if not np.all(np.isfinite(errors)) or errors[0] > tol or errors[1] > 2e-3:
                 mismatches += 1
         status = "ok" if mismatches == 0 else f"MISMATCH in {mismatches}"
         print(f"  global {variable:<12} {checked} sampled cells: slope and corrected p recomputed independently, {status}")

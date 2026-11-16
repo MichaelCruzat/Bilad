@@ -11,8 +11,8 @@ is corroborated:
   * GPCP v2.3 monthly precipitation, gauge + satellite (NASA GSFC),
     distributed by NOAA PSL  https://psl.noaa.gov/data/gridded/data.gpcp.html
 
-Each product is sampled at the centre of every Bilad grid cell (the product
-cell that contains it) and averaged with Bilad's own area weights, so the
+Each product is sampled at the centre of every TRACE grid cell (the product
+cell that contains it) and averaged with TRACE's own area weights, so the
 footprint is identical to the reanalysis national series. Only series are
 written here; all statistics run in the shared TypeScript engine.
 
@@ -45,10 +45,10 @@ def nearest(axis: np.ndarray, value: float, periodic: bool = False) -> int:
 
 
 def sample_cells(field, ym, lats, lons, cells, lon360: bool, fill_check) -> tuple[np.ndarray, np.ndarray]:
-    """Annual means of every product grid box that contains a Bilad cell centre.
+    """Annual means of every product grid box that contains a TRACE cell centre.
 
     Returns (years x boxes array, NaN where fewer than MIN_MONTHS months) and,
-    for each Bilad cell, the index of the box that contains it.
+    for each TRACE cell, the index of the box that contains it.
     """
     li = [nearest(lats, c["lat"]) for c in cells]
     lo = [nearest(lons, (c["lon"] % 360) if lon360 else c["lon"], periodic=True) for c in cells]

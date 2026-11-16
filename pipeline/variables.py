@@ -1,4 +1,4 @@
-"""The NASA POWER variables Bilad ships, and the window and baseline.
+"""The NASA POWER variables TRACE ships, and the window and baseline.
 
 Mirrors ``src/data/variables.ts`` (the app's copy); ``tests/test_pipeline.py``
 fails if the two disagree.

@@ -2,9 +2,8 @@
 
 Covers every MERRA-2 cell (0.5° x 0.625°) that overlaps land between 60°S
 and 84°N. Antarctica is left out: reanalysis surface fields there are poorly
-constrained and the cells are tiny. Natural Earth polygons that wrap the
-antimeridian on a flat plane are dropped, which loses a few slivers of land
-at 180°.
+constrained and the cells are tiny. Natural Earth polygons crossing the
+antimeridian are split before planar land-overlap calculations.
 
 Outputs:
   pipeline/.cache/global/<VAR>.i16   monthly values, cell-major (not shipped)

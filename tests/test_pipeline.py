@@ -11,7 +11,7 @@ from shapely.geometry import MultiPolygon, Polygon, box
 from pipeline import geometry, power
 from pipeline.build import quantise
 from pipeline.nations import NATIONS
-from pipeline.validate import bh_threshold
+from pipeline.validate import bh_threshold, check_nation
 from pipeline.variables import MISSING, VARIABLES
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -79,6 +79,18 @@ class Packing(unittest.TestCase):
 
 
 class Validation(unittest.TestCase):
+    def test_a_nonfinite_shipped_statistic_fails_validation(self):
+        import contextlib
+        import io
+        import json
+
+        data = ROOT / 'public' / 'data'
+        summary = next(n for n in json.loads((data / 'index.json').read_text())['nations'] if n['iso3'] == 'BGD')
+        summary['stats']['T2M']['p'] = float('nan')
+        with contextlib.redirect_stdout(io.StringIO()):
+            problems = check_nation(data, 'BGD', summary)
+        self.assertTrue(any('BGD T2M: p' in problem for problem in problems), problems)
+
     def test_benjamini_hochberg_step_up(self):
         self.assertEqual(bh_threshold(np.array([0.01, 0.02, 0.03, 0.04, 0.2]), 0.05), 0.04)
         self.assertEqual(bh_threshold(np.array([0.5, 0.6]), 0.1), 0.0)

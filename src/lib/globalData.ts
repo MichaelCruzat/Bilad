@@ -4,7 +4,7 @@ import {fullName} from './names';
  * `make global`. Everything is column-major binary so ~70,000 cells load
  * as a handful of typed arrays.
  */
-import type {Agreement} from './stats';
+import {median, pairwiseSlopes, type Agreement} from './stats';
 
 const base = `${import.meta.env.BASE_URL ?? './'}data/global/`;
 const memo = new Map<string, Promise<unknown>>();
@@ -143,4 +143,28 @@ export function loadGlobalAnnual(variable: string): Promise<Float32Array> {
     const scale = variable === 'PRECTOTCORR' ? 0.1 : 0.01;
     return Float32Array.from(new Int16Array(await bytes(`${variable}.annual.i16`)), v => (v === -32768 ? NaN : v * scale));
   });
+}
+
+/**
+ * The witness's own trend at every cell, in units per decade: a Theil–Sen
+ * slope for each witness grid box (boxes with under ten years are left out,
+ * matching the shipped verdict classifier),
+ * copied to the cells that sample it. Used to draw what the stations say on
+ * the same scale as the reanalysis.
+ */
+export function witnessCellSlopes(w: GlobalWitness, cells: number, firstYear: number): Float32Array {
+  const perBox = w.boxes.map(series => {
+    const t: number[] = [];
+    const y: number[] = [];
+    series.forEach((v, i) => {
+      if (Number.isFinite(v)) {
+        t.push(firstYear + i);
+        y.push(v);
+      }
+    });
+    return y.length < 10 ? NaN : median(pairwiseSlopes(t, y)) * 10;
+  });
+  const out = new Float32Array(cells);
+  for (let c = 0; c < cells; c++) out[c] = perBox[w.cellBox[c]] ?? NaN;
+  return out;
 }
