@@ -28,11 +28,11 @@ export function MiniMap({meta, boundary, preview, title}: Props) {
           <path d={geo.boundaryPath} />
         </clipPath>
         <filter id={`mrelief-${id}`} colorInterpolationFilters="sRGB">
-          <feColorMatrix type="saturate" values="0.4" />
+          <feColorMatrix type="saturate" values="0.12" />
           <feComponentTransfer>
-            <feFuncR type="linear" slope="0.4" />
-            <feFuncG type="linear" slope="0.42" />
-            <feFuncB type="linear" slope="0.48" />
+            <feFuncR type="linear" slope="0.4" intercept="0.56" />
+            <feFuncG type="linear" slope="0.4" intercept="0.53" />
+            <feFuncB type="linear" slope="0.38" intercept="0.47" />
           </feComponentTransfer>
         </filter>
       </defs>

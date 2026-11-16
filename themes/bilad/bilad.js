@@ -93,7 +93,7 @@ export const biladTheme = {
     "--_astryx-pre-tempo-duration-slow-max": "935ms",
     "--_astryx-motion-tempo": "1",
     "--font-family-body": "\"IBM Plex Sans\", system-ui, sans-serif",
-    "--font-family-heading": "\"Space Grotesk\", system-ui, sans-serif",
+    "--font-family-heading": "\"Source Serif 4\", Georgia, serif",
     "--font-family-code": "\"IBM Plex Mono\", ui-monospace, monospace",
     "--color-syntax-keyword": "light-dark(#6b187c, #efa8ff)",
     "--color-syntax-string": "light-dark(#0b5615, #a4d6a3)",
@@ -114,24 +114,24 @@ export const biladTheme = {
     "--color-syntax-diff-header": "transparent",
     "--color-syntax-added-marker": "var(--color-syntax-punctuation)",
     "--color-syntax-removed-marker": "var(--color-syntax-punctuation)",
-    "--color-background-surface": "light-dark(#ffffff, #1f2226)",
-    "--color-background-body": "light-dark(#f1f1f1, #1b1b1b)",
-    "--color-background-card": "light-dark(#ffffff, #15181b)",
-    "--color-background-popover": "light-dark(#ffffff, #15181b)",
-    "--color-background-muted": "light-dark(#eff1f3, #15181b)",
-    "--color-accent": "light-dark(#4fcfae, #4fcfae)",
-    "--color-accent-muted": "light-dark(#94e6cd, #005443)",
+    "--color-background-surface": "#ebe3d3",
+    "--color-background-body": "#f3ede1",
+    "--color-background-card": "#f8f4ec",
+    "--color-background-popover": "light-dark(#ffffff, #ffffff)",
+    "--color-background-muted": "light-dark(#f9f3ea, #f8f3eb)",
+    "--color-accent": "light-dark(#b8322a, #b8322a)",
+    "--color-accent-muted": "light-dark(#ffc4bb, #ffc4bb)",
     "--color-neutral": "light-dark(#0000000F, #ffffff1A)",
     "--color-overlay": "light-dark(#00000080, #000000CC)",
-    "--color-overlay-hover": "light-dark(#0000000d, #ffffff0d)",
-    "--color-overlay-pressed": "light-dark(#0000001a, #ffffff1a)",
-    "--color-text-primary": "#efeadf",
-    "--color-text-secondary": "light-dark(#43474a, #9b9ea2)",
-    "--color-text-disabled": "#9fb1c8",
-    "--color-text-accent": "light-dark(#00614e, #72dbbd)",
+    "--color-overlay-hover": "light-dark(#0000000d, #0000000d)",
+    "--color-overlay-pressed": "light-dark(#0000001a, #0000001a)",
+    "--color-text-primary": "#1c1a17",
+    "--color-text-secondary": "light-dark(#4b463c, #4a463e)",
+    "--color-text-disabled": "light-dark(#969084, #959086)",
+    "--color-text-accent": "light-dark(#a8231e, #a7251e)",
     "--color-on-dark": "#ffffff",
     "--color-on-light": "#111111",
-    "--color-on-accent": "light-dark(#0e0f12, #0e0f11)",
+    "--color-on-accent": "light-dark(#ffffff, #ffffff)",
     "--color-on-success": "light-dark(#ffffff, #111111)",
     "--color-on-error": "light-dark(#ffffff, #111111)",
     "--color-on-warning": "#111111",
@@ -146,19 +146,19 @@ export const biladTheme = {
     "--color-on-success-muted": "light-dark(#00490b, #90ca90)",
     "--color-on-warning-muted": "light-dark(#4b3900, #eec448)",
     "--color-on-error-muted": "light-dark(#76000c, #ffaea7)",
-    "--color-icon-accent": "light-dark(#00614e, #72dbbd)",
-    "--color-icon-primary": "light-dark(#000000, #ffffff)",
-    "--color-icon-secondary": "light-dark(#676b6f, #9b9ea2)",
-    "--color-icon-disabled": "light-dark(#8d9195, #505356)",
+    "--color-icon-accent": "light-dark(#a8231e, #a7251e)",
+    "--color-icon-primary": "light-dark(#000000, #000000)",
+    "--color-icon-secondary": "light-dark(#706a5f, #6f6a60)",
+    "--color-icon-disabled": "light-dark(#969084, #959086)",
     "--color-success": "light-dark(#198100, #64af4c)",
     "--color-warning": "#ffce2f",
     "--color-error": "light-dark(#c9303a, #ff705d)",
     "--color-success-muted": "light-dark(#bce0bb, #90ca903D)",
     "--color-error-muted": "light-dark(#ffc4be, #ff98903D)",
     "--color-warning-muted": "light-dark(#fae19e, #e2b6233D)",
-    "--color-border": "light-dark(#00000014, #ffffff1a)",
-    "--color-border-emphasized": "light-dark(#d2d5d8, #505356)",
-    "--color-skeleton": "light-dark(#eff1f3, #505356)",
+    "--color-border": "light-dark(#00000014, #00000014)",
+    "--color-border-emphasized": "light-dark(#e1d9ca, #e0d9cb)",
+    "--color-skeleton": "light-dark(#f9f3ea, #f8f3eb)",
     "--color-shadow": "light-dark(#0000001A, #0000004D)",
     "--color-tint-hover": "light-dark(#000000, #ffffff)",
     "--color-background-red": "light-dark(#ffc4be, #5b2b28)",
@@ -215,7 +215,7 @@ export const biladTheme = {
     "--shadow-inset-success": "inset 0px 0px 0px 2px #2f7d334D",
     "--shadow-inset-warning": "inset 0px 0px 0px 2px #f8d36a4D",
     "--shadow-inset-error": "inset 0px 0px 0px 2px #de47454D",
-    "--focus-outline-color": "light-dark(#009a7d, #4fcfae)"
+    "--focus-outline-color": "light-dark(#b8322a, #b8322a)"
   },
   localTokens: {
     "--astryx-theme-neutral-color-status-fill-accent": "light-dark(#0074e2, #6d9cfe)"
@@ -325,22 +325,22 @@ export const biladTheme = {
     },
     "item": {
       "selected": {
-        "--color-text-secondary": "light-dark(#43474a, #c4c7ca)"
+        "--color-text-secondary": "light-dark(#4b463c, #565249)"
       }
     },
     "tree-list-item": {
       "selected": {
-        "--color-text-secondary": "light-dark(#43474a, #c4c7ca)"
+        "--color-text-secondary": "light-dark(#4b463c, #565249)"
       }
     },
     "file-input": {
       "mode:dropzone": {
-        "--color-text-secondary": "light-dark(#43474a, #c4c7ca)"
+        "--color-text-secondary": "light-dark(#4b463c, #565249)"
       }
     },
     "citation": {
       "variant:number": {
-        "--color-text-secondary": "light-dark(#43474a, #c4c7ca)"
+        "--color-text-secondary": "light-dark(#4b463c, #565249)"
       }
     },
     "button": {
@@ -402,7 +402,7 @@ export const biladTheme = {
     },
     "segmented-control-item": {
       "base": {
-        "--color-text-secondary": "light-dark(#43474a, #c4c7ca)"
+        "--color-text-secondary": "light-dark(#4b463c, #625e54)"
       },
       "size:sm": {
         "height": "calc(var(--size-element-sm) - 8px)"
@@ -513,8 +513,8 @@ export const biladTheme = {
         "fallbacks": "system-ui, sans-serif"
       },
       "heading": {
-        "family": "Space Grotesk",
-        "fallbacks": "system-ui, sans-serif",
+        "family": "Source Serif 4",
+        "fallbacks": "Georgia, serif",
         "weights": {
           "1": "700",
           "2": "700",

@@ -1,9 +1,9 @@
 /**
- * Colour scales for a dark map.
+ * Colour scales for maps printed on TRACE's paper.
  *
- * Diverging scales are dark in the middle so that small, insignificant
- * changes recede into the background and large changes glow, in the spirit
- * of Crameri's "berlin" scientific colour map. Hue conventions follow IPCC
+ * Diverging scales are pale in the middle, close to the paper, so small,
+ * insignificant changes recede and large changes carry ink, in the spirit of
+ * Crameri's "vik" and ColorBrewer's RdBu/BrBG. Hue conventions follow IPCC
  * AR6: blue–red for temperature, brown–teal for water. Interpolation is in
  * OKLab so lightness changes evenly along the ramp.
  */
@@ -70,9 +70,9 @@ export function ramp(stops: string[]): (t: number) => string {
 
 /** Low → high stops for each diverging palette. */
 const DIVERGING: Record<PaletteName, string[]> = {
-  temperature: ['#cfe3ff', '#6fa3e8', '#2f5f9e', '#1f2c3d', '#202329', '#4a2219', '#a8442c', '#e8744a', '#ffd1b3'],
-  moisture: ['#ffe2b0', '#e0a54e', '#94621f', '#3a2c1b', '#202329', '#15363a', '#1d7a70', '#4fc2ad', '#c4f5e8'],
-  wind: ['#ead9ff', '#a985e6', '#5b3d99', '#2c2340', '#202329', '#3d2f15', '#9c6b18', '#e0a93b', '#ffe6a8'],
+  temperature: ['#163a6b', '#2c66a8', '#6e9fd0', '#b9d1e6', '#e6dfd0', '#f0c3a2', '#df7a4c', '#b33a26', '#6b1a10'],
+  moisture: ['#5a3510', '#94621f', '#cf9f57', '#ead2a0', '#e6dfd0', '#a9d8cb', '#4ea492', '#1d6e62', '#0c3c35'],
+  wind: ['#2d1b5e', '#5b3d99', '#a387dc', '#d9cdf0', '#e6dfd0', '#f2d9a6', '#dca33a', '#9c6b18', '#5a3a08'],
 };
 
 const rampCache = new Map<PaletteName, (t: number) => string>();
@@ -83,9 +83,12 @@ export function divergingColor(palette: PaletteName, value: number, maxAbs: numb
     fn = ramp(DIVERGING[palette]);
     rampCache.set(palette, fn);
   }
-  if (!Number.isFinite(value) || maxAbs <= 0) return '#202329';
+  if (!Number.isFinite(value) || maxAbs <= 0) return NO_DATA;
   return fn(0.5 + value / (2 * maxAbs));
 }
+
+/** Cells with no value: a little darker than the paper. */
+export const NO_DATA = '#d8d0bf';
 
 export function paletteStops(palette: PaletteName, n = 32): string[] {
   return Array.from({length: n}, (_, i) => divergingColor(palette, -1 + (2 * i) / (n - 1), 1));
@@ -93,7 +96,7 @@ export function paletteStops(palette: PaletteName, n = 32): string[] {
 
 
 /** Sequential scale for |S/N|. */
-export const emergenceRamp = ramp(['#202329', '#2f3b4f', '#3d6080', '#4f93a8', '#86cbb8', '#e9f5c9']);
+export const emergenceRamp = ramp(['#ece5d6', '#cfdcc6', '#93c2ad', '#4f9496', '#2b6380', '#1b3654']);
 
 
 /** Round a max-abs value up to a "nice" legend limit. */
@@ -110,8 +113,29 @@ export function robustLimit(values: ArrayLike<number>): number {
   const abs: number[] = [];
   for (let i = 0; i < values.length; i++) if (Number.isFinite(values[i])) abs.push(Math.abs(values[i]));
   if (!abs.length) return 1;
-  abs.sort((a, b) => a - b);
-  return niceLimit(abs[Math.min(abs.length - 1, Math.floor(abs.length * 0.95))]);
+  // Select just the required order statistic instead of sorting millions of
+  // annual values. Only this private copy is partitioned; callers keep their data.
+  const target = Math.min(abs.length - 1, Math.floor(abs.length * 0.95));
+  let left = 0;
+  let right = abs.length - 1;
+  while (left < right) {
+    const pivot = abs[(left + right) >>> 1];
+    let i = left;
+    let j = right;
+    while (i <= j) {
+      while (abs[i] < pivot) i++;
+      while (abs[j] > pivot) j--;
+      if (i <= j) {
+        [abs[i], abs[j]] = [abs[j], abs[i]];
+        i++;
+        j--;
+      }
+    }
+    if (target <= j) right = j;
+    else if (target >= i) left = i;
+    else break;
+  }
+  return niceLimit(abs[target]);
 }
 
 /**
@@ -119,4 +143,4 @@ export function robustLimit(values: ArrayLike<number>): number {
  * products: corroborated, same direction, weakly supported, contradicted,
  * not supported, no detectable trend.
  */
-export const VERDICT_COLORS = ['#3fbf8f', '#d9b44a', '#8f8a5c', '#e5484d', '#e07b39', '#3a4048'];
+export const VERDICT_COLORS = ['#2f9467', '#d1a12f', '#a39a6a', '#c42a24', '#e0742f', '#d3cab8'];

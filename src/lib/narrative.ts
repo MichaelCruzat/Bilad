@@ -36,8 +36,8 @@ export function describe(variable: string, unit: string, a: SeriesAnalysis, year
   let significance: string;
   if (t.p < 0.05) {
     significance = context.doubted
-      ? `Taken alone, the ${dir} trend is statistically significant, even allowing for warm or dry years that cluster (${pPhrase(t.p)}).`
-      : `The ${dir} trend is statistically significant, even allowing for warm or dry years that cluster (${pPhrase(t.p)}).`;
+      ? `Taken alone, the trend towards ${dir} is statistically significant, even allowing for warm or dry years that cluster (${pPhrase(t.p)}).`
+      : `The trend towards ${dir} is statistically significant, even allowing for warm or dry years that cluster (${pPhrase(t.p)}).`;
   } else {
     const sd = residualSd(years, series, t.slope, t.intercept);
     const more = yearsToSignificance(t.slope, sd, t.n, t.inflation);
@@ -45,13 +45,14 @@ export function describe(variable: string, unit: string, a: SeriesAnalysis, year
       ? ' It sits close to the significance threshold; a few more years of records at this rate would likely settle it.'
       : !Number.isFinite(more) || more > 100
       ? ' Even if it continued at this rate, it would take more than a century of further records to tell apart from chance.'
-      : ` If it continued at this rate, with the same year-to-year noise, it would take ${more < 10 ? `about ${more}` : `roughly ${Math.round(more / 10) * 10}`} more years of records to tell apart from chance.`;
+      : ` If it continued at this rate, with the same year-to-year noise, it would take ${more < 10 ? `about ${more}` : `roughly ${Math.round(more / 10) * 10}`} more ${more === 1 ? 'year' : 'years'} of records to tell apart from chance.`;
     significance = context.witnessSignificant
       ? `In this dataset the trend cannot be told apart from natural year-to-year swings (corrected ${pPhrase(t.p)}), but ${context.witnessName ?? 'the independent record'} shows a significant change here, so the reanalysis likely misses part of it.`
       : `This is not yet distinguishable from natural year-to-year swings (corrected ${pPhrase(t.p)}).${wait}`;
   }
 
-  const s = Math.abs(a.snr);
+  // Compare the value as printed, so the words always match the number shown.
+  const s = Math.round(Math.abs(a.snr) * 10) / 10;
   const emergence = !Number.isFinite(s)
     ? ''
     : context.doubted && s >= 1

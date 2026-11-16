@@ -2,7 +2,9 @@ import {CHROME} from '../viz/chrome';
 import {divergingColor} from '../viz/color';
 
 /** The product name lives here so a rename is one line. */
-export const APP_NAME = 'Bilad';
+export const APP_NAME = 'TRACE';
+/** What the name stands for, shown where there is room to spell it out. */
+export const APP_FULL_NAME = 'Tracking Regional Atmospheric Change on Earth';
 
 // A 3 x 3 patch of trend cells: cool to warm, with two stippled (significant) cells.
 const MARK: number[] = [-0.8, -0.2, 0.5, -0.4, 0.3, 0.9, 0.1, 0.7, 1];

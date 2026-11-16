@@ -1,17 +1,12 @@
 {
   "name": "bilad",
   "like": "neutral",
-  "mode": "dark-only",
+  "mode": "light-only",
   "settings": [
     {
       "thing": "type",
       "value": "editorial",
       "source": "dial"
-    },
-    {
-      "thing": "--color-text-disabled",
-      "value": "#9fb1c8",
-      "source": "token"
     },
     {
       "thing": "font",
@@ -26,27 +21,6 @@
       "on": "code"
     },
     {
-      "thing": "neutral",
-      "value": "#15181b",
-      "source": "dial"
-    },
-    {
-      "thing": "accent",
-      "value": "#4fcfae",
-      "source": "dial"
-    },
-    {
-      "thing": "--color-text-primary",
-      "value": "#efeadf",
-      "source": "token"
-    },
-    {
-      "thing": "font",
-      "value": "space-grotesk",
-      "source": "dial",
-      "on": "heading"
-    },
-    {
       "thing": "headings",
       "value": "bold",
       "source": "dial",
@@ -57,8 +31,44 @@
       "value": "tight",
       "source": "dial",
       "axis": "tracking"
+    },
+    {
+      "thing": "neutral",
+      "value": "#efe8da",
+      "source": "dial"
+    },
+    {
+      "thing": "accent",
+      "value": "#b8322a",
+      "source": "dial"
+    },
+    {
+      "thing": "font",
+      "value": "source-serif",
+      "source": "dial",
+      "on": "heading"
+    },
+    {
+      "thing": "--color-background-body",
+      "value": "#f3ede1",
+      "source": "token"
+    },
+    {
+      "thing": "--color-background-surface",
+      "value": "#ebe3d3",
+      "source": "token"
+    },
+    {
+      "thing": "--color-background-card",
+      "value": "#f8f4ec",
+      "source": "token"
+    },
+    {
+      "thing": "--color-text-primary",
+      "value": "#1c1a17",
+      "source": "token"
     }
   ],
   "lifted": [],
-  "palette": "58cdfe5e3c2db671982d5c6f42f33cef585009a1d84dd2aa7c894b1ecd213e13"
+  "palette": "03a2f409d06c34eb6614ea23e1be3c9bbd4dc29c54bd4a5139b00368fa53ecf3"
 }

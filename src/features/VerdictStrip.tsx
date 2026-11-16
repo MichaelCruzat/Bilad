@@ -1,4 +1,3 @@
-import {Badge} from '@astryxdesign/core/Badge';
 import {Button} from '@astryxdesign/core/Button';
 import {Card} from '@astryxdesign/core/Card';
 import {MetadataList, MetadataListItem} from '@astryxdesign/core/MetadataList';
@@ -20,12 +19,12 @@ type Props = {
   step: StepScreen | null;
   /** Significance after false-discovery control, for single cells; omit for areas. */
   fieldSignificant?: boolean;
+  fieldScope?: 'national' | 'global';
   resolution: string;
   limitation: string;
   next?: {label: string; href?: string; onClick?: () => void};
 };
 
-const TONE = {success: 'success', warning: 'warning', error: 'error', neutral: 'neutral'} as const;
 
 /**
  * The answer first: what changed, where, by how much, whether it is
@@ -33,7 +32,7 @@ const TONE = {success: 'success', warning: 'warning', error: 'error', neutral: '
  * step, with a five-field receipt. Everything shown is computed elsewhere;
  * this component only arranges it.
  */
-export function VerdictStrip({place, variable, window, result, unit, witness, step, fieldSignificant, resolution, limitation, next}: Props) {
+export function VerdictStrip({place, variable, window, result, unit, witness, step, fieldSignificant, fieldScope = 'national', resolution, limitation, next}: Props) {
   const def = getVariable(variable);
   const t = result.trend;
   const digits = unit === '% of normal' ? 1 : def.digits;
@@ -46,10 +45,10 @@ export function VerdictStrip({place, variable, window, result, unit, witness, st
     <Card variant="muted" padding={6}>
       <VStack gap={5}>
         <HStack gap={3} vAlign="center" wrap="wrap">
-          <Text type="code" color="accent">
-            VERDICT
+          <Text type="label" color="accent">
+            Verdict
           </Text>
-          <Badge variant={TONE[verdict.tone]} label={verdict.label} />
+          <Text weight="semibold">{verdict.label}</Text>
           <Link href="#/method?s=verdicts">What the verdicts mean</Link>
         </HStack>
         <HStack gap={10} wrap="wrap" vAlign="end">
@@ -70,12 +69,12 @@ export function VerdictStrip({place, variable, window, result, unit, witness, st
             {verdict.sentence}
           </Text>
         </VStack>
-        <HStack gap={2} wrap="wrap">
-          <Badge variant={sig ? 'info' : 'neutral'} label={sig ? `Significant, ${pPhrase(t.p)}` : `Not significant, ${pPhrase(t.p)}`} />
-          {fieldSignificant !== undefined && <Badge variant={fieldSignificant ? 'info' : 'neutral'} label={fieldSignificant ? 'Still significant after the map-wide check' : 'Not significant after the map-wide check'} />}
-          <WitnessBadge witness={witness} variable={variable} />
-          {step && <Badge variant={step.stepDominated ? 'warning' : 'neutral'} label={step.stepDominated ? `Jump in ${step.breakAt}, not a ramp` : 'Gradual change, not a jump'} />}
-        </HStack>
+        <VStack gap={1}>
+          <Text weight="semibold">{sig ? `Significant, ${pPhrase(t.p)}` : `Not significant, ${pPhrase(t.p)}`}</Text>
+          {fieldSignificant !== undefined && <Text weight="semibold">{`${fieldSignificant ? 'Selected' : 'Not selected'} at a 10% target false discovery rate ${fieldScope === 'global' ? 'worldwide' : 'across the nation'}`}</Text>}
+          <WitnessLabel witness={witness} variable={variable} />
+          {step && <Text weight="semibold">{step.stepDominated ? `Jump in ${step.breakAt}, not a ramp` : 'No step-dominated flag'}</Text>}
+        </VStack>
         {witness.kind === 'failed' && (
           <HStack gap={2} vAlign="center" wrap="wrap">
             <Text type="supporting">Witness unavailable: {witness.message}</Text>
@@ -100,10 +99,10 @@ export function VerdictStrip({place, variable, window, result, unit, witness, st
 }
 
 /** One headline number, set large, with its unit and where it comes from. */
-function Figure({value, unit, caption}: {value: string; unit: string; caption: string}) {
+export function Figure({value, unit, caption}: {value: string; unit: string; caption: string}) {
   return (
     <VStack gap={1}>
-      <HStack gap={2} vAlign="end">
+      <HStack gap={2} vAlign="end" wrap="wrap">
         <Text type="display-1" weight="bold" hasTabularNumbers>
           {value}
         </Text>
@@ -116,19 +115,19 @@ function Figure({value, unit, caption}: {value: string; unit: string; caption: s
   );
 }
 
-function WitnessBadge({witness, variable}: {witness: WitnessState; variable: string}) {
+function WitnessLabel({witness, variable}: {witness: WitnessState; variable: string}) {
   switch (witness.kind) {
     case 'unsupported':
-      return <Badge variant="neutral" label="Single dataset: no witness in this release" />;
+      return <Text weight="semibold">Single dataset: no witness in this release</Text>;
     case 'loading':
-      return <Badge variant="neutral" label="Loading witness…" />;
+      return <Text weight="semibold">Loading witness…</Text>;
     case 'failed':
-      return <Badge variant="warning" label="Witness unavailable" />;
+      return <Text weight="semibold">Witness unavailable</Text>;
     case 'no-coverage':
-      return <Badge variant="neutral" label={`${productName(variable)} has no coverage here`} />;
+      return <Text weight="semibold">{`${productName(variable)} has no coverage here`}</Text>;
     case 'too-coarse':
-      return <Badge variant="neutral" label={`${witness.product} is too coarse to tell these places apart`} />;
+      return <Text weight="semibold">{`${witness.product} is too coarse to tell these places apart`}</Text>;
     default:
-      return <Badge variant={TONE[VERDICT_TEXT[witness.exam.verdict].tone]} label={`${productName(variable)}: ${VERDICT_TEXT[witness.exam.verdict].label.toLowerCase()}`} />;
+      return <Text weight="semibold">{`${productName(variable)}: ${VERDICT_TEXT[witness.exam.verdict].label.toLowerCase()}`}</Text>;
   }
 }

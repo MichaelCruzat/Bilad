@@ -1,7 +1,6 @@
 import {Glossary} from './Glossary';
 import {useMemo, useState} from 'react';
 import {Button} from '@astryxdesign/core/Button';
-import {Badge} from '@astryxdesign/core/Badge';
 import {Collapsible} from '@astryxdesign/core/Collapsible';
 import {Divider} from '@astryxdesign/core/Divider';
 import {Link} from '@astryxdesign/core/Link';
@@ -41,7 +40,6 @@ type Props = {
   selection: Selection;
 };
 
-const BADGE: Record<string, 'success' | 'warning' | 'error' | 'neutral'> = {success: 'success', warning: 'warning', error: 'error', neutral: 'neutral'};
 
 export function EvidencePanel({meta, grid, analysis, witnessStatus, selection}: Props) {
   const [copied, setCopied] = useState(false);
@@ -102,8 +100,8 @@ export function EvidencePanel({meta, grid, analysis, witnessStatus, selection}: 
   return (
     <VStack gap={5}>
       <VStack gap={2}>
-        <Text type="supporting" color="accent">
-          {def.sphere.toUpperCase()} · {def.label.toUpperCase()}
+        <Text type="label" color="accent">
+          {def.sphere} · {def.label}
         </Text>
         <Heading level={2}>{place}</Heading>
         {cellInfo && (
@@ -146,7 +144,7 @@ export function EvidencePanel({meta, grid, analysis, witnessStatus, selection}: 
           label="Download evidence (JSON)"
           onClick={() =>
             download(
-              `bilad-${meta.iso3}-${selection.kind === 'nation' ? 'nation' : place.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}-${analysis.variable}-${analysis.window.from}-${analysis.window.to}.json`,
+              `trace-${meta.iso3}-${selection.kind === 'nation' ? 'nation' : place.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}-${analysis.variable}-${analysis.window.from}-${analysis.window.to}.json`,
               JSON.stringify(
                 {
                   place,
@@ -190,7 +188,7 @@ export function EvidencePanel({meta, grid, analysis, witnessStatus, selection}: 
         witness={witness}
         witnessLabel={product ? `${product.name} (independent record)` : undefined}
         step={step}
-        title={`Annual ${def.short.toLowerCase()} anomaly versus 1991–2020, ${unit === '% of normal' ? 'percent of normal' : def.unit}, ${place}`}
+        title={`Annual ${def.short.toLowerCase()} anomaly versus 1991–2020, ${unit === '% of normal' ? 'per cent of normal' : def.unit}, ${place}`}
       />
       <Text type="supporting">
         Bars: each year’s departure from the 1991–2020 normal{unit === '% of normal' ? ', as a percentage of that normal' : ''}. Line: Theil–Sen trend, shaded by its 95% range; dashed when not significant.
@@ -201,7 +199,7 @@ export function EvidencePanel({meta, grid, analysis, witnessStatus, selection}: 
           <Divider />
           <HStack gap={2} vAlign="center" wrap="wrap">
             <Heading level={3}>Cross-examination</Heading>
-            <Badge variant={BADGE[VERDICT_TEXT[exam.verdict].tone]} label={VERDICT_TEXT[exam.verdict].label} />
+            <Text weight="semibold">{VERDICT_TEXT[exam.verdict].label}</Text>
           </HStack>
           <Text color="secondary">
             {VERDICT_TEXT[exam.verdict].plain} Witness: <Link href={product.url}>{product.long}</Link>, {product.agency}, sampled on the same grid cells ({boxes} witness grid {boxes === 1 ? 'box' : 'boxes'}).
@@ -222,7 +220,7 @@ export function EvidencePanel({meta, grid, analysis, witnessStatus, selection}: 
           </MetadataList>
           {exam.artifactSuspected && (
             <Text color="accent">
-              Data integrity flag: the reanalysis record {exam.claimStep?.stepDominated ? `behaves like a jump in ${exam.claimStep.breakAt} rather than a steady trend, ` : ''}and the independent record does not support it. Treat this trend as a likely artefact of how the data were produced.
+              Data integrity flag: the reanalysis record {exam.claimStep?.stepDominated ? `behaves like a jump in ${exam.claimStep.breakAt} rather than a steady trend, ` : ''}and the witness does not support it. Check provenance before using this trend as climate evidence.
             </Text>
           )}
         </VStack>
@@ -244,7 +242,7 @@ export function EvidencePanel({meta, grid, analysis, witnessStatus, selection}: 
                 }`
               : step.deltaBic > 2
                 ? `There is some evidence of a jump around ${step.breakAt} (ΔBIC ${num(step.deltaBic, 1)}), but a trend survives within the two periods, so the record is not explained by the jump alone.`
-                : `The record behaves like a gradual change rather than a single jump (ΔBIC ${num(step.deltaBic, 1)}; above 6 would favour a jump).`}
+                : `The record does not meet both jump-flag criteria (ΔBIC ${num(step.deltaBic, 1)}). This does not establish a steady ramp.`}
           </Text>
         ) : (
           <Text color="secondary">Window too short to screen for a step change.</Text>
@@ -257,7 +255,7 @@ export function EvidencePanel({meta, grid, analysis, witnessStatus, selection}: 
         <Heading level={3}>Which months are changing?</Heading>
         <MonthStrip trends={view.seasons} variable={analysis.variable} unit={unit} digits={digits} title={`Trend by calendar month, ${place}`} />
         <Text type="supporting">
-          Each bar is the trend for one calendar month, in {unit} per decade{def.relative ? ' of that month’s own normal' : ''}. Outlined bars stay significant after a false-discovery check across all twelve months; the others are exploratory.
+          Each bar is the trend for one calendar month, in {unit} per decade{def.relative ? ' of that month’s own normal' : ''}. Outlined bars are significant at a 10% false discovery rate across all twelve months; the others are exploratory.
         </Text>
       </VStack>
       <VStack gap={2}>
@@ -299,7 +297,7 @@ export function EvidencePanel({meta, grid, analysis, witnessStatus, selection}: 
         </MetadataList>
         {selection.kind === 'nation' && (
           <Text type="supporting">
-            Field significance: {analysis.counts.tested} cells tested; {analysis.counts.naive} pass p &lt; 0.05 one by one, {analysis.counts.fdr} stay significant after the map-wide false-discovery check (Benjamini–Hochberg, α = 0.10, p* = {pValue(analysis.pStar)}). Neighbouring reanalysis cells are not independent, so treat area shares as descriptive. Land with a significant trend toward {def.up}: {percent(analysis.areaUp)}; toward {def.down}: {percent(analysis.areaDown)}.
+            Field significance: {analysis.counts.tested} cells tested; {analysis.counts.naive} pass p &lt; 0.05 one by one, {analysis.counts.fdr} are significant at a 10% false discovery rate across the map (Benjamini–Hochberg, α = 0.10, p* = {pValue(analysis.pStar)}). Neighbouring reanalysis cells are not independent, so treat area shares as descriptive. Land with a significant trend towards {def.up}: {percent(analysis.areaUp)}; towards {def.down}: {percent(analysis.areaDown)}.
           </Text>
         )}
       </VStack>

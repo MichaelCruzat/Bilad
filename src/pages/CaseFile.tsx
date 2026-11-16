@@ -1,5 +1,4 @@
 import {useMemo} from 'react';
-import {Badge} from '@astryxdesign/core/Badge';
 import {Banner} from '@astryxdesign/core/Banner';
 import {Button} from '@astryxdesign/core/Button';
 import {Divider} from '@astryxdesign/core/Divider';
@@ -29,7 +28,7 @@ import {VerdictStrip} from '../features/VerdictStrip';
 import {LIMITATION, type WitnessState} from '../lib/evidence';
 
 const FULL = {from: 1981, to: 2024};
-const TONE: Record<string, 'success' | 'warning' | 'error' | 'neutral'> = {success: 'success', warning: 'warning', error: 'error', neutral: 'neutral'};
+const WORDS: Record<number, string> = {2: 'two', 3: 'three', 4: 'four', 5: 'five', 6: 'six', 7: 'seven'};
 
 export function CaseFile({id}: {id: string}) {
   const def = getCase(id);
@@ -43,7 +42,7 @@ export function CaseFile({id}: {id: string}) {
   if (!def) {
     return (
       <LayoutContent padding={8}>
-        <Banner status="warning" title="No such case" description="Return to the casebook to pick a case." endContent={<Button label="Casebook" href="#/" />} />
+        <Banner status="warning" title="No such case" description="Choose a case from the case files." endContent={<Button label="Cases" href="#/cases" />} />
       </LayoutContent>
     );
   }
@@ -54,9 +53,9 @@ export function CaseFile({id}: {id: string}) {
       <VStack gap={8}>
         <VStack gap={3}>
           <HStack gap={2} vAlign="center" wrap="wrap">
-            <Button label="Casebook" variant="ghost" size="sm" href="#/" />
-            <Text type="supporting" color="accent">
-              CASE {def.number} · {(nation.status === 'ready' ? nation.data.meta.name : def.iso3).toUpperCase()} · {getVariable(def.variable).label.toUpperCase()}
+            <Button label="All cases" variant="ghost" size="sm" href="#/cases" />
+            <Text type="label" color="accent">
+              Case {def.number} · {nation.status === 'ready' ? nation.data.meta.name : def.iso3} · {getVariable(def.variable).label}
             </Text>
           </HStack>
           <Heading level={1} type="display-2">
@@ -170,8 +169,8 @@ function CaseBody({def, bundle, analysis, crosscheck, index, witnessGrid}: {def:
       />
       <Grid columns={{minWidth: 320, max: 2}} gap={8}>
         <VStack gap={3}>
-          <Text type="supporting" color="accent">
-            THE CLAIM
+          <Text type="label" color="accent">
+            The claim
           </Text>
           {def.context.map(p => (
             <Text key={p.slice(0, 24)} type="large">
@@ -186,7 +185,7 @@ function CaseBody({def, bundle, analysis, crosscheck, index, witnessGrid}: {def:
           )}
           {compareTest && (
             <Text type="large">
-              Daytime highs in the {def.focus.kind === 'contrast' ? def.focus.labels[1].split(' (')[0].toLowerCase() : ''} changed by <Text weight="bold">{signed(result.trend.slope * 10, digits)} °C per decade</Text> ({pPhrase(result.trend.p)}); at the coast, on the same rows, by{' '}
+              Daytime highs in the {def.focus.kind === 'contrast' ? def.focus.labels[1].split(' (')[0] : ''} changed by <Text weight="bold">{signed(result.trend.slope * 10, digits)} °C per decade</Text> ({pPhrase(result.trend.p)}); at the coast, on the same rows, by{' '}
               <Text weight="bold">{signed(compareTest.slope * 10, digits)} °C</Text> ({pPhrase(compareTest.p)}).
             </Text>
           )}
@@ -212,8 +211,8 @@ function CaseBody({def, bundle, analysis, crosscheck, index, witnessGrid}: {def:
 
       <VStack gap={3}>
         <Divider />
-        <Text type="supporting" color="accent">
-          THE EVIDENCE
+        <Text type="label" color="accent">
+          The evidence
         </Text>
         <Heading level={3}>{finding.headline.replace(`${v.short}:`, `${focus.name}:`)}</Heading>
         <Text type="large" color="secondary">
@@ -235,7 +234,7 @@ function CaseBody({def, bundle, analysis, crosscheck, index, witnessGrid}: {def:
           <VStack gap={1}>
             <Text weight="semibold">How to read these numbers</Text>
             <Text color="secondary">
-              The trend is the typical change per decade, estimated so that one extreme year cannot drag it. The 95% range is where the true trend probably lies; if it does not include zero, the direction is clear. The p-value is how often a trend this strong would appear by chance in a record with no real trend; below 0.05 is the usual bar, and Bilad uses a version that allows for dry or warm years clustering together.
+              The trend is the typical change per decade, estimated so that one extreme year cannot drag it. The 95% range is where the true trend probably lies; if it does not include zero, the direction is clear. The p-value is how often a trend this strong would appear by chance in a record with no real trend; below 0.05 is the usual bar, and TRACE uses a version that allows for dry or warm years clustering together.
             </Text>
           </VStack>
         </Card>
@@ -244,14 +243,14 @@ function CaseBody({def, bundle, analysis, crosscheck, index, witnessGrid}: {def:
       <Grid columns={{minWidth: 320, max: 2}} gap={8}>
         <VStack gap={3}>
           <Divider />
-          <Text type="supporting" color="accent">
-            CROSS-EXAMINATION
+          <Text type="label" color="accent">
+            Cross-examination
           </Text>
           {exam && verdict ? (
             <>
               <HStack gap={2} vAlign="center" wrap="wrap">
                 <Heading level={3}>Witness: {product.name}</Heading>
-                <Badge variant={TONE[verdict.tone]} label={verdict.label} />
+                <Text weight="semibold">{verdict.label}</Text>
               </HStack>
               <Text color="secondary">{verdict.plain}</Text>
               <Text type="supporting">{INDEPENDENCE[def.variable]}</Text>
@@ -274,19 +273,19 @@ function CaseBody({def, bundle, analysis, crosscheck, index, witnessGrid}: {def:
             <>
               <HStack gap={2} vAlign="center">
                 <Heading level={3}>No witness at this scale</Heading>
-                <Badge variant="neutral" label="Unwitnessed" />
+                <Text weight="semibold">Unwitnessed</Text>
               </HStack>
               <Text color="secondary">
-                The coast and mountain cells compared here sit about 1.5–2.5° of longitude apart, while GISTEMP’s grid boxes are 2° wide.
-                {sharedBoxes ? ` In ${sharedBoxes.same} of ${sharedBoxes.total} rows the coast cell and the Andes cell fall in the same GISTEMP box, so the witness gives both the same value.` : ''} Bilad therefore gives no verdict here; published station studies are the context.
+                The coast and mountain cells compared here sit about 1.25–3.75° of longitude apart (1.9° typically), while GISTEMP’s grid boxes are 2° wide.
+                {sharedBoxes ? ` In ${sharedBoxes.same} of ${sharedBoxes.total} rows the coast cell and the Andes cell fall in the same GISTEMP box, so the witness gives both the same value.` : ''} TRACE therefore gives no verdict here; published station studies are the context.
               </Text>
             </>
           )}
         </VStack>
         <VStack gap={3}>
           <Divider />
-          <Text type="supporting" color="accent">
-            INTEGRITY SCREEN
+          <Text type="label" color="accent">
+            Integrity screen
           </Text>
           <Heading level={3}>{step?.stepDominated ? `A jump in ${step.breakAt}, not a ramp` : 'Behaves like a gradual change'}</Heading>
           {step && (
@@ -298,7 +297,7 @@ function CaseBody({def, bundle, analysis, crosscheck, index, witnessGrid}: {def:
           )}
           {breaks.length > 0 && (
             <Text color="secondary">
-              Across {meta.name}’s seven national series, {breaks.map(b => `${b.variables.length} variables jump within a year of ${b.year} (${b.variables.map(x => getVariable(x).short.toLowerCase()).join(', ')})`).join('; ')}. These variables are coupled inside one model, so a shared jump suggests something changed in the data fed to it, though it does not prove it.{exam?.artifactSuspected ? ' The independent record shows no such jump.' : exam && (exam.verdict === 'corroborated' || exam.verdict === 'same-direction') ? ` ${product.name} shows the same change without that jump, so the verdict does not depend on it.` : ''}
+              Across {meta.name}’s seven national series, {breaks.map(b => `${WORDS[b.variables.length] ?? b.variables.length} variables jump within a year of ${b.year} (${b.variables.map(x => getVariable(x).short.toLowerCase()).join(', ')})`).join('; ')}. These variables are coupled inside one model, so a shared jump suggests something changed in the data fed to it, though it does not prove it.{exam?.artifactSuspected ? ' The independent record shows no such jump.' : exam && (exam.verdict === 'corroborated' || exam.verdict === 'same-direction') ? ` ${product.name} shows the same change without that jump, so the verdict does not depend on it.` : ''}
             </Text>
           )}
         </VStack>
@@ -306,8 +305,8 @@ function CaseBody({def, bundle, analysis, crosscheck, index, witnessGrid}: {def:
 
       <VStack gap={3}>
         <Divider />
-        <Text type="supporting" color="accent">
-          VERDICT
+        <Text type="label" color="accent">
+          Verdict
         </Text>
         <Heading level={2}>{verdictHeadline(def, exam?.verdict, exam?.artifactSuspected)}</Heading>
         <Text type="large">{def.lesson}</Text>
@@ -323,8 +322,8 @@ function CaseBody({def, bundle, analysis, crosscheck, index, witnessGrid}: {def:
 
       <VStack gap={2}>
         <Divider />
-        <Text type="supporting" color="accent">
-          SOURCES
+        <Text type="label" color="accent">
+          Sources
         </Text>
         {def.references.map(r => (
           <Link key={r.url} href={r.url}>
@@ -338,11 +337,11 @@ function CaseBody({def, bundle, analysis, crosscheck, index, witnessGrid}: {def:
 
 function verdictHeadline(def: CaseDef, verdict?: string, artifact?: boolean): string {
   if (!verdict) return 'A contrast in one dataset, with no witness at this scale.';
-  if (artifact) return 'Not climate: a likely artefact of the dataset.';
+  if (artifact) return 'A likely data artefact that needs investigation.';
   if (verdict === 'corroborated')
     return def.variable === 'PRECTOTCORR' ? 'Corroborated by a partly independent gauge-and-satellite record.' : 'An independent station record agrees.';
   if (verdict === 'same-direction') return 'Both records show the change; they disagree on how fast.';
-  return VERDICT_TEXT[verdict as keyof typeof VERDICT_TEXT].label;
+  return `${VERDICT_TEXT[verdict as keyof typeof VERDICT_TEXT].label}.`;
 }
 
 function nextCase(def: CaseDef): CaseDef | undefined {

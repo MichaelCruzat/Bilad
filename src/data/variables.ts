@@ -1,5 +1,5 @@
 /**
- * NASA POWER variables Bilad tracks. Shared by the pipeline and the app,
+ * NASA POWER variables TRACE tracks. Shared by the pipeline and the app,
  * so this file must not import anything.
  *
  * `scale` is the quantisation step used in the packed Int16 binaries.
@@ -90,7 +90,7 @@ export const VARIABLES = [
     scale: 0.01,
     palette: 'moisture',
     digits: 0,
-    description: 'Rain and snow reaching the surface. MERRA-2 nudges its model precipitation toward gauge analyses (satellite–gauge over Africa), and the correction fades out poleward of about 42°, so trends there rest more on the model.',
+    description: 'Rain and snow reaching the surface. MERRA-2 nudges its model precipitation towards gauge analyses (satellite–gauge over Africa), and the correction fades out poleward of about 42°, so trends there rest more on the model.',
     relative: true,
     up: 'wetter',
     down: 'drier',

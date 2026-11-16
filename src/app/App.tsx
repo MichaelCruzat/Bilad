@@ -6,6 +6,7 @@ import {Layout, LayoutContent} from '@astryxdesign/core/Layout';
 import {Link} from '@astryxdesign/core/Link';
 import {HStack, VStack} from '@astryxdesign/core/Stack';
 import {Text} from '@astryxdesign/core/Text';
+import {MotionStack} from '../features/MotionStack';
 import {TopNav} from '@astryxdesign/core/TopNav';
 import {useRoute, type Route} from './router';
 import {APP_NAME, LogoMark} from '../brand/Logo';
@@ -14,11 +15,13 @@ import {Spinner} from '@astryxdesign/core/Spinner';
 
 // Each page is its own chunk: the casebook does not download the atlas controls.
 const Casebook = lazy(() => import('../pages/Casebook').then(m => ({default: m.Casebook})));
+const Cases = lazy(() => import('../pages/Cases').then(m => ({default: m.Cases})));
 const CaseFile = lazy(() => import('../pages/CaseFile').then(m => ({default: m.CaseFile})));
 const Atlas = lazy(() => import('../pages/Atlas').then(m => ({default: m.Atlas})));
 const Method = lazy(() => import('../pages/Method').then(m => ({default: m.Method})));
 const Brief = lazy(() => import('../pages/Brief').then(m => ({default: m.Brief})));
 const World = lazy(() => import('../pages/World').then(m => ({default: m.World})));
+const Proof = lazy(() => import('../pages/Proof').then(m => ({default: m.Proof})));
 
 /**
  * One broken page must not take the site down: the boundary is keyed by the
@@ -58,7 +61,7 @@ function Navigation({route}: {route: Route}) {
   const current = route.page;
   return (
     <TopNav
-      label="Bilad"
+      label="TRACE"
       heading={
         <Link href="#/" label={`${APP_NAME} home`}>
           <HStack gap={3} vAlign="center">
@@ -71,9 +74,9 @@ function Navigation({route}: {route: Route}) {
       }
       startContent={
         <HStack gap={2}>
-          <Button label="Casebook" size="lg" variant={current === 'home' || current === 'case' ? 'secondary' : 'ghost'} href="#/" />
-          <Button label="World" size="lg" variant={current === 'world' ? 'secondary' : 'ghost'} href="#/world" />
-          <Button label="Nations" size="lg" variant={current === 'atlas' ? 'secondary' : 'ghost'} href="#/atlas/CHL" />
+          <Button label="Cases" size="lg" variant={current === 'cases' || current === 'case' ? 'secondary' : 'ghost'} href="#/cases" />
+          <Button label="Explore" size="lg" variant={current === 'world' || current === 'atlas' ? 'secondary' : 'ghost'} href="#/world" />
+          <Button label="How we know" size="lg" variant={current === 'proof' ? 'secondary' : 'ghost'} href="#/proof" />
           <Button label="Method" size="lg" variant={current === 'method' ? 'secondary' : 'ghost'} href="#/method" />
         </HStack>
       }
@@ -94,7 +97,9 @@ function withGlossary(content: ReactNode): ReactNode {
 function page(route: Route): ReactNode {
   switch (route.page) {
     case 'home':
-      return <Layout content={withGlossary(<Casebook />)} />;
+      return <Layout content={<Casebook />} />;
+    case 'cases':
+      return <Layout content={<Cases />} />;
     case 'case':
       return <Layout contentWidth={1760} content={withGlossary(<CaseFile key={route.id} id={route.id} />)} />;
     case 'atlas':
@@ -103,6 +108,8 @@ function page(route: Route): ReactNode {
       return <Layout contentWidth={1760} content={withGlossary(<Brief key={route.iso3} iso3={route.iso3} />)} />;
     case 'world':
       return <World params={route.params} />;
+    case 'proof':
+      return <Layout contentWidth={1400} content={withGlossary(<Proof params={route.params} />)} />;
     case 'method':
       return <Layout contentWidth={1200} content={withGlossary(<Method section={route.params.get('s')} />)} />;
     default:
@@ -132,7 +139,7 @@ export default function App() {
           </LayoutContent>
         }
       >
-        <PageBoundary key={window.location.hash.split('?')[0]}>{page(route)}</PageBoundary>
+        <PageBoundary key={window.location.hash.split('?')[0]}><MotionStack key={window.location.hash.split('?')[0]}>{page(route)}</MotionStack></PageBoundary>
       </Suspense>
     </AppShell>
   );

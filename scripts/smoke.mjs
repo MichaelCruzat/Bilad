@@ -6,11 +6,17 @@
  * the browser location.
  */
 import {spawn} from 'node:child_process';
-import {existsSync} from 'node:fs';
+import {existsSync, mkdirSync, readFileSync} from 'node:fs';
+import {join} from 'node:path';
 import {chromium} from 'playwright-core';
 
 const PORT = 4399;
 const BASE = `http://localhost:${PORT}/`;
+const artifacts = process.env.SMOKE_ARTIFACT_DIR;
+if (artifacts) mkdirSync(artifacts, {recursive: true});
+const capture = async (page, name) => {
+  if (artifacts) await page.screenshot({path: join(artifacts, name)});
+};
 const chrome =
   process.env.CHROME_PATH ||
   ['/usr/bin/google-chrome', '/usr/bin/chromium-browser', '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'].find(p => existsSync(p));
@@ -22,6 +28,7 @@ if (!chrome) {
 const server = spawn('pnpm', ['exec', 'vite', 'preview', '--port', String(PORT), '--strictPort'], {stdio: 'ignore'});
 const results = [];
 const check = async (name, fn) => {
+  if (process.env.SMOKE_FILTER && !name.includes(process.env.SMOKE_FILTER)) return;
   try {
     await fn();
     results.push([name, 'ok']);
@@ -39,21 +46,64 @@ try {
     }
     await new Promise(r => setTimeout(r, 250));
   }
-  const browser = await chromium.launch({executablePath: chrome, headless: true});
-  const context = await browser.newContext({viewport: {width: 1440, height: 900}, permissions: ['clipboard-read', 'clipboard-write']});
-  const page = await context.newPage();
+  const browser = await chromium.launch({executablePath: chrome, headless: true, args: process.env.SMOKE_WEBGL ? ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] : []});
   const errors = [];
-  page.on('pageerror', e => errors.push(e.message));
+  const context = await browser.newContext({viewport: {width: 1440, height: 900}, permissions: ['clipboard-read', 'clipboard-write']});
+  context.on('page', p => p.on('pageerror', e => errors.push(e.message)));
+  if (process.env.SMOKE_WEBGL) await context.addInitScript(() => {
+    window.__globeDraws = 0;
+    const getContext = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = function (type, ...args) {
+      const value = getContext.call(this, type, ...args);
+      if (type === 'webgl' && value) {
+        const draw = value.drawArrays.bind(value);
+        value.drawArrays = (...values) => { window.__globeDraws++; return draw(...values); };
+      }
+      return value;
+    };
+  });
+  const page = await context.newPage();
 
-  await check('home renders the logo, the world map and the case files', async () => {
+  await check('home explains TRACE and worldwide coverage without a seeded country', async () => {
     await page.goto(BASE);
-    await page.getByRole('heading', {level: 1, name: 'Bilad'}).waitFor();
-    await page.getByRole('application', {name: /World map/}).waitFor({timeout: 20000});
-    await page.getByRole('link', {name: 'Bangladesh’s phantom cooling'}).waitFor();
+    await page.getByRole('heading', {level: 1, name: 'TRACE', exact: true}).waitFor();
+    await page.getByText('Tracking Regional Atmospheric Change on Earth', {exact: true}).waitFor();
+    await page.getByRole('application', {name: /Globe of land temperature/}).waitFor({timeout: 20000});
+    await page.getByRole('link', {name: 'Explore the world', exact: true}).waitFor();
+    if (await page.getByRole('button', {name: 'Bangladesh', exact: true}).count()) throw new Error('national default on global home');
+    if (await page.getByRole('table').count()) throw new Error('duplicate home ledger');
+    if (process.env.SMOKE_WEBGL) await page.waitForFunction(() => window.__globeDraws > 0);
+    await capture(page, 'home-desktop.png');
   });
 
-  await check('judge path: home → case 03 → verdict', async () => {
-    await page.getByRole('link', {name: 'Bangladesh’s phantom cooling'}).click();
+  await check('scroll advances the evidence while the globe stays in view', async () => {
+    const p = await context.newPage();
+    await p.goto(BASE);
+    await p.getByRole('application', {name: /Globe of land temperature/}).waitFor({timeout: 20000});
+    for (const [heading, value] of [['First, trace the change.', 'claim'], ['Then, ask a second record.', 'witness'], ['Follow the disagreement.', 'verdict']]) {
+      await p.getByRole('heading', {name: heading, exact: true}).scrollIntoViewIfNeeded();
+      await p.waitForFunction(v => document.querySelector(`[role="radio"][data-value="${v}"]`)?.getAttribute('aria-checked') === 'true', value);
+      const rect = await p.getByRole('application', {name: /Globe of land temperature/}).boundingBox();
+      if (!rect || rect.y < -10 || rect.y + rect.height > 910) {
+        await capture(p, 'scroll-pin-failure.png');
+        const ancestors = await p.getByRole('application', {name: /Globe of land temperature/}).evaluate(el => {
+          const info = [];
+          for (let node = el; node; node = node.parentElement) {
+            const css = getComputedStyle(node);
+            info.push({tag: node.tagName, position: css.position, top: css.top, overflow: css.overflow, h: node.clientHeight, scroll: node.scrollTop, rect: node.getBoundingClientRect().y});
+          }
+          return info;
+        });
+        throw new Error(`globe did not stay visible: ${JSON.stringify({rect, ancestors})}`);
+      }
+    }
+    await capture(p, 'home-evidence-trail.png');
+    await p.close();
+  });
+
+  await check('guided example: home → Cases → case 03 → verdict', async () => {
+    await page.getByRole('link', {name: 'Cases', exact: true}).click();
+    await page.getByRole('link', {name: 'Bangladesh’s phantom cooling', exact: true}).click();
     await page.getByText('Likely data artefact').first().waitFor({timeout: 20000});
     await page.getByText(/Jump in 199\d, not a ramp/).first().waitFor();
   });
@@ -90,10 +140,41 @@ try {
     p.on('pageerror', e => caseErrors.push(e.message));
     for (const id of ['chile-megadrought', 'chile-coast-andes', 'bangladesh-phantom-cooling', 'kenya-half-the-warming']) {
       await p.goto(`${BASE}#/case/${id}`);
-      await p.getByText('VERDICT', {exact: true}).first().waitFor({timeout: 20000});
+      await p.getByText('Verdict', {exact: true}).first().waitFor({timeout: 20000});
       await p.getByRole('heading', {level: 2}).first().waitFor({timeout: 20000});
       if (caseErrors.length) throw new Error(`${id}: ${caseErrors.join(' | ')}`);
     }
+    await p.close();
+  });
+
+  await check('Cases tab lists all four investigations', async () => {
+    const p = await context.newPage();
+    await p.goto(`${BASE}#/cases`);
+    await p.getByRole('heading', {level: 1, name: 'Four case files, four different outcomes'}).waitFor();
+    for (const title of ['Central Chile’s missing rain', 'Two Chiles: a flat coast and warming Andes', 'Bangladesh’s phantom cooling', 'Kenya: right direction, half the speed']) {
+      await p.getByRole('link', {name: title, exact: true}).waitFor();
+    }
+    await capture(p, 'cases-desktop.png');
+    await p.close();
+  });
+
+  await check('globe retains its 2D fallback when WebGL is unavailable', async () => {
+    const p = await context.newPage();
+    await p.emulateMedia({reducedMotion: 'reduce'});
+    await p.addInitScript(() => {
+      const getContext = HTMLCanvasElement.prototype.getContext;
+      HTMLCanvasElement.prototype.getContext = function (type, ...args) {
+        return type === 'webgl' || type === 'webgl2' ? null : getContext.call(this, type, ...args);
+      };
+    });
+    await p.goto(BASE);
+    const map = p.getByRole('application', {name: /Globe of land temperature/});
+    await map.waitFor({timeout: 20000});
+    await map.focus();
+    await p.keyboard.press('ArrowUp');
+    await p.keyboard.press('ArrowUp');
+    await p.keyboard.press('Enter');
+    await p.getByRole('status').filter({hasText: /Selected:/}).waitFor({timeout: 5000});
     await p.close();
   });
 
@@ -112,6 +193,92 @@ try {
     await p.goto(`${BASE}#/world?country=050`);
     await p.getByRole('heading', {level: 2, name: 'Bangladesh'}).waitFor({timeout: 30000});
     await p.getByText('Likely data artefact').first().waitFor({timeout: 30000});
+    await p.close();
+  });
+
+  await check('a global cell deep link keeps a one-cell footprint', async () => {
+    const p = await context.newPage();
+    await p.goto(`${BASE}#/world?cell=1508`);
+    await p.getByRole('heading', {level: 2, name: /^Cell at/}).waitFor({timeout: 30000});
+    await p.getByText(/^1 grid cell,/).waitFor();
+    const [download] = await Promise.all([
+      p.waitForEvent('download'),
+      p.getByRole('button', {name: 'Download evidence (JSON)', exact: true}).click(),
+    ]);
+    const path = await download.path();
+    if (!path) throw new Error('missing global evidence download');
+    const receipt = JSON.parse(readFileSync(path, 'utf8'));
+    if (!receipt.grid.startsWith('1 MERRA-2 cells') || receipt.series.length !== 44 || !receipt.view.includes('cell=1508') || !Number.isFinite(receipt.trend)) throw new Error('export did not preserve the one-cell evidence footprint');
+    if (!download.suggestedFilename().startsWith('trace-')) throw new Error('stale export brand');
+    await p.close();
+  });
+
+  await check('global walkthrough covers the planet and a country without a national pack', async () => {
+    const p = await context.newPage();
+    for (const [query, name] of [['', 'All covered land'], ['?country=356', 'India'], ['?country=124&v=PRECTOTCORR', 'Canada']]) {
+      await p.goto(`${BASE}#/proof${query}`);
+      await p.getByRole('heading', {level: 2, name, exact: true}).waitFor({timeout: 30000});
+      await p.getByRole('link', {name: 'Explore this footprint', exact: true}).waitFor();
+    }
+    await capture(p, 'global-proof.png');
+    await p.close();
+  });
+
+  await check('proof page computes a verdict and recovers from failed record downloads', async () => {
+    for (const resource of ['index.json', 'crosscheck.json', 'nations/BGD/T2M.i16']) {
+      const p = await context.newPage();
+      const pattern = `**/data/${resource}`;
+      await p.route(pattern, r => r.fulfill({status: 503, body: 'down'}));
+      await p.goto(`${BASE}#/proof?n=BGD&v=T2M`);
+      await p.getByText(resource === 'index.json' ? 'Could not load the nation list' : 'Could not load the walkthrough', {exact: true}).waitFor({timeout: 20000});
+      await p.unroute(pattern);
+      await p.getByRole('button', {name: 'Retry', exact: true}).click();
+      await p.getByRole('heading', {name: 'Likely data artefact', exact: true}).waitFor({timeout: 20000});
+      if (resource === 'index.json') await capture(p, 'proof-desktop.png');
+      await p.close();
+    }
+  });
+
+  await check('home exposes a failed globe download and retries it', async () => {
+    const p = await context.newPage();
+    await p.route('**/global/witness-T2M.bin', r => r.fulfill({status: 503, body: 'down'}));
+    await p.goto(BASE);
+    await p.getByText('Could not load the globe', {exact: true}).waitFor({timeout: 20000});
+    await p.unroute('**/global/witness-T2M.bin');
+    await p.getByRole('button', {name: 'Retry', exact: true}).click();
+    await p.getByRole('application', {name: /Globe of land temperature/}).waitFor({timeout: 20000});
+    await p.close();
+  });
+
+  await check('globe rotation can be paused and keyboard picks are announced', async () => {
+    const p = await context.newPage();
+    await p.goto(BASE);
+    const globe = p.getByRole('application', {name: /Globe of land temperature/});
+    await globe.waitFor({timeout: 20000});
+    // Let the entrance animation settle before testing interaction.
+    await p.waitForTimeout(1100);
+    const rotate = p.getByRole('button', {name: 'Rotate globe', exact: true});
+    if (await rotate.count()) await rotate.click();
+    await p.getByRole('button', {name: 'Pause globe rotation'}).click();
+    // Let any in-flight camera transition finish before testing the pause.
+    await p.waitForTimeout(1000);
+    const before = await globe.screenshot();
+    await p.waitForTimeout(250);
+    if (!(await globe.screenshot()).equals(before)) throw new Error('globe continues moving after pause');
+    await globe.focus();
+    await p.keyboard.press('ArrowUp');
+    await p.keyboard.press('ArrowUp');
+    for (let i = 0; i < 36; i++) {
+      if (await p.getByRole('status').filter({hasText: 'Under the crosshair:'}).count()) break;
+      await p.keyboard.press('ArrowRight');
+    }
+    await p.keyboard.press('Enter');
+    await p.waitForTimeout(250);
+    const announcements = await p.getByRole('status').allTextContents();
+    if (!announcements.some(t => t.includes('Selected:'))) {
+      await capture(p, 'globe-keyboard-failure.png');
+      throw new Error(`keyboard selection was not announced: ${JSON.stringify(announcements)}; place=${JSON.stringify((await p.getByRole('heading', {level: 2}).allTextContents()).slice(0, 2))}`);
+    }
     await p.close();
   });
 
@@ -162,19 +329,39 @@ try {
     await p.close();
   });
 
-  await check('phone width: no sideways scrolling on home, case and atlas', async () => {
+  await check('phone width: results stay readable on home, case, atlas and proof', async () => {
     const p = await browser.newPage({viewport: {width: 390, height: 844}});
-    for (const route of ['#/', '#/case/chile-megadrought', '#/atlas/CHL']) {
+    p.on('pageerror', e => errors.push(e.message));
+    for (const route of ['#/', '#/case/chile-megadrought', '#/atlas/CHL', '#/proof']) {
       await p.goto(BASE + route);
       await p.waitForTimeout(2500);
       const over = await p.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
       if (over > 2) throw new Error(`${route} overflows by ${over}px`);
+      if (route === '#/') {
+        const name = p.getByText('Tracking Regional Atmospheric Change on Earth', {exact: true});
+        await name.waitFor({timeout: 20000});
+        const rect = await name.boundingBox();
+        if (!rect || rect.x < 0 || rect.x + rect.width > 390) throw new Error('TRACE definition clipped on phone');
+      }
+      if (route === '#/') await capture(p, 'home-phone.png');
     }
+    await p.close();
+  });
+
+  await check('reduced motion: globe rotation and entrance movement stay off', async () => {
+    const p = await context.newPage();
+    await p.emulateMedia({reducedMotion: 'reduce'});
+    await p.goto(BASE);
+    await p.getByRole('application', {name: /Globe of land temperature/}).waitFor({timeout: 20000});
+    await p.getByRole('button', {name: 'Rotate globe', exact: true}).waitFor();
+    const transitions = await p.evaluate(() => document.getAnimations().filter(a => a.playState === 'running' && a.effect?.getKeyframes().some(k => String(k.transform).includes('translateY'))).length);
+    if (transitions) throw new Error('entrance motion ignored reduced-motion preference');
     await p.close();
   });
 
   await check('reduced motion: map colours do not animate', async () => {
     const p = await browser.newPage();
+    p.on('pageerror', e => errors.push(e.message));
     await p.emulateMedia({reducedMotion: 'reduce'});
     await p.goto(`${BASE}#/atlas/CHL`);
     await p.locator('path[data-i]').first().waitFor({timeout: 20000});

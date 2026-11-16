@@ -16,7 +16,8 @@ export function num(value: number, digits = 2): string {
 export function pValue(p: number): string {
   if (!Number.isFinite(p)) return '—';
   if (p < 0.001) return '< 0.001';
-  return p < 0.01 ? p.toFixed(3) : p.toFixed(2);
+  // Three decimals below 0.1, so a p-value never rounds onto the 0.05 line.
+  return p < 0.1 ? p.toFixed(3) : p.toFixed(2);
 }
 
 /** "p < 0.001" or "p = 0.03", for running text. */

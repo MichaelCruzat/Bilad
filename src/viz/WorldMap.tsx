@@ -45,7 +45,7 @@ function cssVar(name: string, fallback: string): string {
 }
 
 /** Colour index (0..BINS-1, or 255 for no data / transparent) for every cell. */
-function binCells(stats: GlobalStats, annual: Float32Array | null, layer: WorldLayer, year: number, firstYear: number): {bins: Uint8Array; palette: string[]; limit: number} {
+function binCells(stats: GlobalStats, annual: Float32Array | null, layer: WorldLayer, year: number, firstYear: number, annualLimit: number): {bins: Uint8Array; palette: string[]; limit: number} {
   const n = stats.slope.length;
   const bins = new Uint8Array(n).fill(255);
   const def = getVariable(stats.variable);
@@ -74,7 +74,7 @@ function binCells(stats: GlobalStats, annual: Float32Array | null, layer: WorldL
     for (let c = 0; c < n; c++) if (Number.isFinite(values[c])) bins[c] = Math.round(((values[c] - lo) / (hi - lo || 1)) * (BINS - 1));
     return {bins, palette, limit: hi};
   }
-  const limit = layer === 'year' && annual ? robustLimit(annual) : robustLimit(values);
+  const limit = layer === 'year' ? annualLimit : robustLimit(values);
   const palette = Array.from({length: BINS}, (_, i) => divergingColor(def.palette, -limit + (2 * limit * i) / (BINS - 1), limit));
   for (let c = 0; c < n; c++) {
     const v = values[c];
@@ -108,7 +108,9 @@ export function WorldMap({cells, stats, annual, layer, year, firstYear, extent, 
     return m;
   }, [cells]);
 
-  const coloured = useMemo(() => binCells(stats, annual, layer, year, firstYear), [stats, annual, layer, year, firstYear]);
+  // The playback colour scale spans all years and does not change with the frame.
+  const annualLimit = useMemo(() => annual ? robustLimit(annual) : 1, [annual]);
+  const coloured = useMemo(() => binCells(stats, annual, layer, year, firstYear, annualLimit), [stats, annual, layer, year, firstYear, annualLimit]);
   const byBin = useMemo(() => {
     const groups: number[][] = Array.from({length: Math.max(coloured.palette.length, 1)}, () => []);
     coloured.bins.forEach((b, c) => b !== 255 && groups[b]?.push(c));
@@ -131,6 +133,10 @@ export function WorldMap({cells, stats, annual, layer, year, firstYear, extent, 
     const all = feature(topo, topo.objects.countries) as unknown as {features: Feature<Polygon | MultiPolygon>[]};
     return all.features.find(f => String(f.id) === countryIds[selectedCountry]) ?? null;
   }, [world, selectedCountry, countryIds]);
+  // Hover and keyboard feedback reuse the rendered map. Only data, camera or
+  // country-outline changes invalidate the geographic layer.
+  const sceneKey = useMemo(() => ({}), [size, zt, relief, byBin, coloured, borders, coast, countryShape, layer, stats, cells, extent]);
+  const scene = useRef<{key: object; image: HTMLCanvasElement} | null>(null);
 
   useEffect(() => {
     const img = new Image();
@@ -174,77 +180,89 @@ export function WorldMap({cells, stats, annual, layer, year, firstYear, extent, 
     const ctx = el.getContext('2d');
     if (!ctx) return;
     const frame = requestAnimationFrame(() => {
-      ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.clearRect(0, 0, el.width, el.height);
-      ctx.setTransform(dpr * zt.k, 0, 0, dpr * zt.k, dpr * zt.x, dpr * zt.y);
-      ctx.save();
-      ctx.beginPath();
-      ctx.rect(X(west), Y(north), (east - west) * s, (north - south) * s);
-      ctx.clip();
-      if (relief) {
-        ctx.save();
-        ctx.filter = 'saturate(0.45) brightness(0.45)';
-        ctx.drawImage(relief, X(west), Y(north), (east - west) * s, (north - south) * s);
-        ctx.restore();
-      }
       const cw = D_LON * s;
       const ch = D_LAT * s;
-      ctx.globalAlpha = layer === 'verdict' ? 0.88 : 0.93;
-      byBin.forEach((list, b) => {
-        if (!list.length) return;
-        ctx.fillStyle = coloured.palette[b];
-        ctx.beginPath();
-        for (const c of list) ctx.rect(X(cells.lon[c]) - cw / 2, Y(cells.lat[c]) - ch / 2, cw + 0.15 / zt.k, ch + 0.15 / zt.k);
-        ctx.fill();
-      });
-      ctx.globalAlpha = 1;
-      const line = (geom: {coordinates: number[][][]} | null, width: number, color: string) => {
-        if (!geom) return;
-        ctx.strokeStyle = color;
-        ctx.lineWidth = width / zt.k;
-        ctx.beginPath();
-        for (const part of geom.coordinates) {
-          // Lift the pen where a line jumps across the antimeridian.
-          part.forEach(([lo, la], i) => {
-            if (i && Math.abs(lo - part[i - 1][0]) < 180) ctx.lineTo(X(lo), Y(la));
-            else ctx.moveTo(X(lo), Y(la));
-          });
-        }
-        ctx.stroke();
-      };
-      const faint = cssVar('--color-text-disabled', '#9aa');
       const ink = cssVar('--color-text-primary', '#eee');
-      line(coast as unknown as {coordinates: number[][][]}, 0.7, faint);
-      line(borders as unknown as {coordinates: number[][][]}, 0.5, faint);
-      // Stipple significant cells once cells are large enough to read.
-      if (layer === 'trend' && ch * zt.k > 7) {
-        ctx.fillStyle = ink;
-        ctx.globalAlpha = 0.8;
+      if (scene.current?.key === sceneKey) {
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.clearRect(0, 0, el.width, el.height);
+        ctx.drawImage(scene.current.image, 0, 0);
+      } else {
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.clearRect(0, 0, el.width, el.height);
+        ctx.setTransform(dpr * zt.k, 0, 0, dpr * zt.k, dpr * zt.x, dpr * zt.y);
+        ctx.save();
         ctx.beginPath();
-        for (let c = 0; c < cells.n; c++) {
-          if (!(stats.flags[c] & 1)) continue;
-          const x = X(cells.lon[c]);
-          const y = Y(cells.lat[c]);
-          ctx.moveTo(x + 1.4 / zt.k, y);
-          ctx.arc(x, y, 1.4 / zt.k, 0, Math.PI * 2);
+        ctx.rect(X(west), Y(north), (east - west) * s, (north - south) * s);
+        ctx.clip();
+        if (relief) {
+          ctx.save();
+          ctx.filter = 'grayscale(0.88) sepia(0.35) contrast(0.42) brightness(1.55)';
+          ctx.drawImage(relief, X(west), Y(north), (east - west) * s, (north - south) * s);
+          ctx.restore();
         }
-        ctx.fill();
+        ctx.globalAlpha = layer === 'verdict' ? 0.88 : 0.93;
+        byBin.forEach((list, b) => {
+          if (!list.length) return;
+          ctx.fillStyle = coloured.palette[b];
+          ctx.beginPath();
+          for (const c of list) ctx.rect(X(cells.lon[c]) - cw / 2, Y(cells.lat[c]) - ch / 2, cw + 0.15 / zt.k, ch + 0.15 / zt.k);
+          ctx.fill();
+        });
         ctx.globalAlpha = 1;
-      }
-      if (countryShape) {
-        ctx.strokeStyle = ink;
-        ctx.lineWidth = 1.6 / zt.k;
-        ctx.beginPath();
-        const polys = countryShape.geometry.type === 'Polygon' ? [countryShape.geometry.coordinates] : countryShape.geometry.coordinates;
-        for (const poly of polys)
-          for (const ring of poly)
-            ring.forEach(([lo, la], i) => {
-              if (i && Math.abs(lo - ring[i - 1][0]) < 180) ctx.lineTo(X(lo), Y(la));
+        const line = (geom: {coordinates: number[][][]} | null, width: number, color: string) => {
+          if (!geom) return;
+          ctx.strokeStyle = color;
+          ctx.lineWidth = width / zt.k;
+          ctx.beginPath();
+          for (const part of geom.coordinates) {
+            // Lift the pen where a line jumps across the antimeridian.
+            part.forEach(([lo, la], i) => {
+              if (i && Math.abs(lo - part[i - 1][0]) < 180) ctx.lineTo(X(lo), Y(la));
               else ctx.moveTo(X(lo), Y(la));
             });
-        ctx.stroke();
+          }
+          ctx.stroke();
+        };
+        const faint = cssVar('--color-text-disabled', '#9aa');
+        line(coast as unknown as {coordinates: number[][][]}, 0.7, faint);
+        line(borders as unknown as {coordinates: number[][][]}, 0.5, faint);
+        // Stipple significant cells once cells are large enough to read.
+        if (layer === 'trend' && ch * zt.k > 7) {
+          ctx.fillStyle = ink;
+          ctx.globalAlpha = 0.8;
+          ctx.beginPath();
+          for (let c = 0; c < cells.n; c++) {
+            if (!(stats.flags[c] & 1)) continue;
+            const x = X(cells.lon[c]);
+            const y = Y(cells.lat[c]);
+            ctx.moveTo(x + 1.4 / zt.k, y);
+            ctx.arc(x, y, 1.4 / zt.k, 0, Math.PI * 2);
+          }
+          ctx.fill();
+          ctx.globalAlpha = 1;
+        }
+        if (countryShape) {
+          ctx.strokeStyle = ink;
+          ctx.lineWidth = 1.6 / zt.k;
+          ctx.beginPath();
+          const polys = countryShape.geometry.type === 'Polygon' ? [countryShape.geometry.coordinates] : countryShape.geometry.coordinates;
+          for (const poly of polys)
+            for (const ring of poly)
+              ring.forEach(([lo, la], i) => {
+                if (i && Math.abs(lo - ring[i - 1][0]) < 180) ctx.lineTo(X(lo), Y(la));
+                else ctx.moveTo(X(lo), Y(la));
+              });
+          ctx.stroke();
+        }
+        ctx.restore();
+        const image = document.createElement('canvas');
+        image.width = el.width;
+        image.height = el.height;
+        image.getContext('2d')?.drawImage(el, 0, 0);
+        scene.current = {key: sceneKey, image};
       }
-      ctx.restore();
+      ctx.setTransform(dpr * zt.k, 0, 0, dpr * zt.k, dpr * zt.x, dpr * zt.y);
       for (const c of [selectedCell, hover]) {
         if (c === null) continue;
         ctx.strokeStyle = ink;
@@ -288,7 +306,7 @@ export function WorldMap({cells, stats, annual, layer, year, firstYear, extent, 
     });
     return () => cancelAnimationFrame(frame);
     // X, Y and s are derived from size and extent.
-  }, [size, zt, relief, byBin, coloured, borders, coast, countryShape, hover, selectedCell, layer, stats, cells, describeCell, extent, keyboard]);
+  }, [sceneKey, hover, selectedCell, describeCell, keyboard]);
 
   const cellAt = (mx: number, my: number): number | null => {
     const [bx, by] = zt.invert([mx, my]);

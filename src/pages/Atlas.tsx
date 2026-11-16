@@ -33,7 +33,7 @@ const LAYERS: {value: MapLayer; label: string; description: string}[] = [
 
 function intParam(params: URLSearchParams, key: string, fallback: number): number {
   const v = Number(params.get(key));
-  return Number.isFinite(v) && params.has(key) ? v : fallback;
+  return Number.isInteger(v) && params.has(key) ? v : fallback;
 }
 
 export function Atlas({iso3, params}: Props) {
@@ -68,7 +68,7 @@ export function Atlas({iso3, params}: Props) {
     : bandParam && bandParam.length === 2 && bandParam.every(Number.isFinite)
       ? [bandParam[0], bandParam[1]]
       : null;
-  const cell = meta && cellParam !== null && cellParam >= 0 && cellParam < meta.cells.length ? cellParam : null;
+  const cell = meta && cellParam !== null && Number.isInteger(cellParam) && cellParam >= 0 && cellParam < meta.cells.length ? cellParam : null;
   const selection: Selection =
     cell !== null ? {kind: 'cell', cell} : band ? {kind: 'band', band, regionId: region?.id, name: region?.name} : {kind: 'nation'};
 
@@ -97,7 +97,7 @@ export function Atlas({iso3, params}: Props) {
         width="100%"
       />
       <Text type="supporting">
-        These {nations.length} nations have all seven variables. For any other country, <Link href="#/world">open the World map</Link> (temperature and rainfall).
+        These seven nations have all seven variables. For any other country, <Link href="#/world">open the World map</Link> (temperature and rainfall).
       </Text>
       <Selector
         label="Variable"
@@ -126,7 +126,7 @@ export function Atlas({iso3, params}: Props) {
               ? 'Signal-to-noise: change across the window divided by the typical year-to-year swing. Beyond ±1 the signal has emerged; beyond ±2 it is clear.'
               : layer === 'year'
                 ? `Each cell’s departure from its 1991–2020 normal in a single year, on one colour scale for every year. Press play to watch ${from}–${to} unfold.`
-                : `The 1991–2020 average, for context: where the ${def.short.toLowerCase()} is high or low to begin with.`}
+                : `The 1991–2020 average, for context: where values are high or low to begin with.`}
         </Text>
         {layer === 'year' && (
           <HStack gap={2} vAlign="center">
@@ -158,7 +158,7 @@ export function Atlas({iso3, params}: Props) {
       )}
       <Switch
         label="Stipple significant cells"
-        description="Dots mark cells that stay significant after the map-wide false-discovery check."
+        description="Dots mark cells significant at a 10% false discovery rate across the nation."
         value={stipple}
         onChange={(v: boolean) => set({sig: v ? null : 0})}
       />
@@ -222,7 +222,7 @@ export function Atlas({iso3, params}: Props) {
                     : layer === 'year'
                       ? `${shownYear}: ${signed(a.annual[c * a.years.length + shownYear - a.window.from], def.relative ? 0 : def.digits)} ${def.relative ? '% vs normal' : def.unit}`
                       : `signal/noise ${num(a.snr[c], 2)}`;
-              return [`${lat(cell.lat)}  ${lon(cell.lon)}`, value, a.significant[c] ? 'significant after the map-wide check' : 'not significant'];
+              return [`${lat(cell.lat)}  ${lon(cell.lon)}`, value, a.significant[c] ? 'significant at a 10% false discovery rate' : 'not significant'];
             }}
             analysis={data.data.analysis}
             layer={layer}

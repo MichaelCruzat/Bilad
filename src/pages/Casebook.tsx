@@ -1,417 +1,207 @@
-import {useMemo} from 'react';
-import {Badge} from '@astryxdesign/core/Badge';
+import {useEffect, useMemo, useRef, useState} from 'react';
+import {Banner} from '@astryxdesign/core/Banner';
 import {Button} from '@astryxdesign/core/Button';
 import {Divider} from '@astryxdesign/core/Divider';
 import {Grid} from '@astryxdesign/core/Grid';
 import {LayoutContent} from '@astryxdesign/core/Layout';
 import {Link} from '@astryxdesign/core/Link';
+import {SegmentedControl, SegmentedControlItem} from '@astryxdesign/core/SegmentedControl';
 import {Spinner} from '@astryxdesign/core/Spinner';
-import {HStack, StackItem, VStack} from '@astryxdesign/core/Stack';
-import {Table, pixel, proportional, type TableColumn} from '@astryxdesign/core/Table';
+import {HStack, VStack} from '@astryxdesign/core/Stack';
 import {Heading, Text} from '@astryxdesign/core/Text';
-import {CASES} from '../data/cases';
-import {VARIABLES, getVariable} from '../data/variables';
-import {cellsInBand, subsetAbsolute} from '../lib/analysis';
-import {agreement, trendTest, type Agreement} from '../lib/stats';
-import {VERDICT_ORDER, VERDICT_TEXT, witnessSeries, type Crosscheck} from '../lib/evidence';
-import {useAsync, useCrosscheck, useIndex, useNation, useVariable} from '../lib/hooks';
-import {loadBoundary, loadMeta, loadPreview, loadWorld, type DataIndex} from '../lib/nationData';
-import {percent, signed, thousands} from '../lib/format';
-import {atlasHref} from '../app/router';
-import {MiniMap, STRIP_LIMIT} from '../viz/MiniMap';
-import {divergingColor, VERDICT_COLORS} from '../viz/color';
-import {APP_NAME, Wordmark} from '../brand/Logo';
-import {WorldMap} from '../viz/WorldMap';
-import {AspectRatio} from '@astryxdesign/core/AspectRatio';
-import {globalReliefUrl, loadCountries, loadGlobalCells, loadGlobalMeta, loadGlobalStats, loadGlobalSummary} from '../lib/globalData';
+import {MotionStack} from '../features/MotionStack';
+import {Figure} from '../features/VerdictStrip';
+import {useAsync, useMediaQuery} from '../lib/hooks';
+import {loadWorld} from '../lib/nationData';
+import {loadCountries, loadGlobalCells, loadGlobalMeta, loadGlobalStats, loadGlobalSummary, loadGlobalWitness, witnessCellSlopes} from '../lib/globalData';
+import {VERDICT_ORDER, VERDICT_TEXT} from '../lib/evidence';
+import {lat, lon, percent, signed} from '../lib/format';
+import {divergingColor, NO_DATA, VERDICT_COLORS} from '../viz/color';
+import {GlobeMap, type GlobeControls} from '../viz/GlobeMap';
+import {prefersReducedMotion} from '../viz/usePlayback';
 
-const FULL = {from: 1981, to: 2024};
-const YEARS = Array.from({length: 44}, (_, i) => 1981 + i);
-const TONE: Record<string, 'success' | 'warning' | 'error' | 'neutral'> = {success: 'success', warning: 'warning', error: 'error', neutral: 'neutral'};
-const REPO = 'https://github.com/MichaelCruzat/Bilad';
-const WORDS: Record<number, string> = {5: 'Five', 6: 'Six', 7: 'Seven', 8: 'Eight', 9: 'Nine', 10: 'Ten'};
-
-function Eyebrow({children}: {children: string}) {
-  return (
-    <Text type="code" color="accent" size="xsm">
-      {children.toUpperCase()}
-    </Text>
-  );
-}
+type Mode = 'claim' | 'witness' | 'verdict';
+const GLOBE_LIMIT = 0.6;
+const PHASES: {mode: Mode; title: string; text: string}[] = [
+  {mode: 'claim', title: 'First, trace the change.', text: 'Start with 44 years of NASA’s reanalysis. Each land cell carries a temperature trend, from cooling blue to warming red.'},
+  {mode: 'witness', title: 'Then, ask a second record.', text: 'Weather-station estimates cover the same ground at a coarser scale. The globe keeps the same colour scale so you can compare the two records.'},
+  {mode: 'verdict', title: 'Follow the disagreement.', text: 'Agreement adds support. Opposite trends and abrupt jumps mark places to investigate. A flag asks for scrutiny; it does not establish a cause.'},
+];
 
 export function Casebook() {
-  const index = useIndex();
-  const crosscheck = useCrosscheck();
-  const ready = index.status === 'ready' && crosscheck.status === 'ready';
-  return (
-    <LayoutContent padding={8}>
-      <VStack gap={10}>
-        <Hero crosscheck={crosscheck.status === 'ready' ? crosscheck.data : null} />
-        {ready ? (
-          <>
-            <ScaleFacts index={index.data} />
-            <HowItWorks />
-            <Validation index={index.data} crosscheck={crosscheck.data} />
-            <CaseList />
-            <Coverage index={index.data} crosscheck={crosscheck.data} />
-          </>
-        ) : (
-          <HStack gap={2} vAlign="center">
-            <Spinner size="sm" />
-            <Text color="secondary">Loading the shipped NASA data…</Text>
-          </HStack>
-        )}
-        <Footer />
-      </VStack>
-    </LayoutContent>
-  );
-}
-
-function Hero({crosscheck}: {crosscheck: Crosscheck | null}) {
-  const meta = useAsync(loadGlobalMeta, []);
+  const narrow = useMediaQuery('(max-width: 1000px)');
   const summary = useAsync(loadGlobalSummary, []);
   const countries = useAsync(loadCountries, []);
   const world = useAsync(loadWorld, []);
-  const bundle = useAsync(async () => ({cells: await loadGlobalCells(), stats: await loadGlobalStats('T2M')}), []);
-  const ready = meta.status === 'ready' && summary.status === 'ready' && countries.status === 'ready' && bundle.status === 'ready';
-  const g = summary.status === 'ready' ? summary.data.variables.T2M : null;
-  const chile = useChileShare(crosscheck);
-  return (
-    <VStack gap={5}>
-      <Eyebrow>{`${APP_NAME} · NASA POWER 1981–2024 · NASA Space Apps 2026`}</Eyebrow>
-      <HStack gap={10} wrap="wrap" vAlign="end">
-        <VStack maxWidth="40rem" width="min(100%, 40rem)">
-          <Heading level={1}>
-            <Wordmark />
-          </Heading>
-        </VStack>
-        <VStack gap={3} maxWidth="38rem">
-          <Text type="large">
-            {APP_NAME} maps how every patch of land on Earth has changed since 1981, then checks each trend against a second, independent NASA record before it calls the trend real.
-          </Text>
-          <Text color="secondary">
-            Its starting data, NASA’s MERRA-2 reanalysis (a weather model that blends decades of satellite and station data into one gap-free record), says Bangladesh has cooled since 1981. Weather stations say it warmed by +0.35 °C per decade. {APP_NAME} catches disagreements like that on every land cell.
-          </Text>
-          <Text color="secondary">
-            {g
-              ? `Since 1981, ${percent(g.areaUp)} of the world’s land has warmed beyond chance. On ${percent(g.areaFlagged, 0)} of it, ${APP_NAME} flags the trend as a likely data artefact: stations show the opposite, or the record jumps in a single year and the stations do not.`
-              : 'Loading every land cell on Earth…'}
-            {chile ? ` Where both records agree, the findings are sharp: central Chile has had ${chile} less rain since 2010.` : ''}
-          </Text>
-          <HStack gap={2} wrap="wrap">
-            <Button label="Explore the world" variant="primary" href="#/world" />
-            <Button label="Case 03: the phantom cooling" variant="secondary" href="#/case/bangladesh-phantom-cooling" />
-          </HStack>
-        </VStack>
+  const bundle = useAsync(async () => {
+    const meta = await loadGlobalMeta();
+    const [cells, stats, witness] = await Promise.all([loadGlobalCells(), loadGlobalStats('T2M'), loadGlobalWitness('T2M')]);
+    return {cells, stats, witnessSlope: witnessCellSlopes(witness, cells.n, meta.grid.firstYear)};
+  }, []);
+  const ready = bundle.status === 'ready' && summary.status === 'ready' && countries.status === 'ready';
+  const failed = [bundle, summary, countries].find(s => s.status === 'error');
+  const [mode, setMode] = useState<Mode>('verdict');
+  const [follow, setFollow] = useState(true);
+  const [cell, setCell] = useState<number | null>(null);
+  const [spinning, setSpinning] = useState(() => !prefersReducedMotion());
+  const globe = useRef<GlobeControls | null>(null);
+  const sections = useRef<(HTMLElement | null)[]>([]);
+  const story = useRef<HTMLElement>(null);
+  const focus = useMemo(() => mode === 'claim' ? {lon: -25, lat: 20} : mode === 'witness' ? {lon: 60, lat: 18} : null, [mode]);
+  useEffect(() => {
+    if (!follow || narrow || typeof IntersectionObserver === 'undefined') return;
+    const observer = new IntersectionObserver(entries => {
+      for (const entry of entries) if (entry.isIntersecting) {
+        const i = sections.current.indexOf(entry.target as HTMLElement);
+        if (i >= 0) setMode(PHASES[i].mode);
+      }
+    }, {rootMargin: '-25% 0px -45% 0px', threshold: 0});
+    sections.current.forEach(node => node && observer.observe(node));
+    return () => observer.disconnect();
+  }, [follow, narrow]);
+  const colorOf = (c: number) => {
+    if (!ready) return null;
+    const {stats, witnessSlope} = bundle.data;
+    if (mode === 'verdict') return stats.agreement[c] === 255 ? NO_DATA : VERDICT_COLORS[stats.agreement[c]];
+    const v = mode === 'claim' ? stats.slope[c] : witnessSlope[c];
+    return Number.isFinite(v) ? divergingColor('temperature', v, GLOBE_LIMIT) : NO_DATA;
+  };
+  const describeCell = (c: number): string[] => {
+    if (!ready) return [];
+    const {cells, stats, witnessSlope} = bundle.data;
+    const country = countries.data[cells.country[c]];
+    const a = stats.agreement[c];
+    return [
+      `${country?.name ?? 'Land cell'} · ${lat(cells.lat[c])} ${lon(cells.lon[c])}`,
+      `Reanalysis ${signed(stats.slope[c], 2)} · stations ${signed(witnessSlope[c], 2)} °C per decade`,
+      stats.flags[c] & 4 ? 'Likely data artefact' : a === 255 ? 'No witness here' : VERDICT_TEXT[summary.data.agreements[a]].label,
+    ];
+  };
+  const globeFigure = (
+    <VStack as="figure" gap={4} style={{position: narrow ? 'relative' : 'sticky', top: 'var(--spacing-6)', alignSelf: 'start', margin: 0}}>
+      <HStack gap={3} vAlign="center" hAlign="between" wrap="wrap">
+        <Text type="label" color="accent">Temperature · 1981–2024</Text>
+        <Text type="supporting">Rainfall is also available in Explore.</Text>
       </HStack>
-      <AspectRatio ratio={2.5}>
-        <VStack height="100%">
-          {ready ? (
-            <WorldMap
-              cells={bundle.data.cells}
-              stats={bundle.data.stats}
-              annual={null}
-              layer="verdict"
-              year={2024}
-              firstYear={1981}
-              extent={meta.data.extent ?? [-180, -60, 180, 84]}
-              reliefUrl={globalReliefUrl}
-              world={world.status === 'ready' ? world.data : null}
-              selectedCell={null}
-              selectedCountry={null}
-              countryIds={countries.data.map(c => c.id)}
-              onSelectCell={c => {
-                if (c !== null) window.location.hash = `#/world?cell=${c}`;
-              }}
-              describeCell={c => {
-                const country = bundle.data.cells.country[c];
-                const a = bundle.data.stats.agreement[c];
-                return [
-                  country !== 65535 ? countries.data[country].name : 'Open water',
-                  `${signed(bundle.data.stats.slope[c], 2)} °C per decade`,
-                  a === 255 ? 'no station record here' : `stations: ${VERDICT_TEXT[summary.data.agreements[a]].label.toLowerCase()}`,
-                  'click to cross-examine',
-                ];
-              }}
-              title="World map: is each land cell’s warming trend backed by weather stations?"
-            />
-          ) : (
-            <HStack gap={2} vAlign="center">
-              <Spinner size="sm" />
-              <Text color="secondary">Loading every land cell on Earth…</Text>
-            </HStack>
-          )}
+      <SegmentedControl label="What the globe shows" value={mode} onChange={v => { setFollow(false); setMode(v as Mode); }} layout="fill">
+        <SegmentedControlItem value="claim" label="Reanalysis says" />
+        <SegmentedControlItem value="witness" label="Stations say" />
+        <SegmentedControlItem value="verdict" label="Do they agree?" />
+      </SegmentedControl>
+      <MotionStack motionKey={mode} height={narrow ? '58vh' : 'min(56vh, 44rem)'}>
+        {ready ? <GlobeMap cells={bundle.data.cells} colorOf={colorOf} colorKey={mode}
+          world={world.status === 'ready' ? world.data : null}
+          selectedCell={cell} selectedCountryId={null} onSelectCell={c => { setFollow(false); setCell(c); }}
+          describeCell={describeCell} controls={globe} focus={focus}
+          spinning={spinning} onSpinningChange={setSpinning} onInteract={() => setFollow(false)}
+          title="Globe of land temperature trends since 1981" />
+        : failed?.status === 'error' ? <Banner status="error" title="Could not load the globe" description={failed.error.message} endContent={<Button label="Retry" onClick={failed.retry} />} />
+        : <HStack gap={2} vAlign="center"><Spinner size="sm" /><Text>Loading the global record…</Text></HStack>}
+      </MotionStack>
+      <GlobeLegend mode={mode} />
+      <HStack gap={2} wrap="wrap">
+        <Button size="sm" variant="secondary" label="Zoom in" onClick={() => { setFollow(false); globe.current?.zoomBy(1.5); }} />
+        <Button size="sm" variant="secondary" label="Zoom out" onClick={() => { setFollow(false); globe.current?.zoomBy(1 / 1.5); }} />
+        <Button size="sm" variant="secondary" label={spinning ? 'Pause globe rotation' : 'Rotate globe'} onClick={() => { setFollow(false); setSpinning(v => !v); }} />
+        {!narrow && <Button size="sm" variant="ghost" label={follow ? 'Scroll follows the evidence' : 'Follow the scroll'} onClick={() => setFollow(v => !v)} />}
+      </HStack>
+      {ready && cell !== null && <MotionStack key={cell} gap={3}>
+        <Divider /><Heading level={2}>{describeCell(cell)[0]}</Heading>
+        <HStack gap={6} wrap="wrap"><Text>Reanalysis {signed(bundle.data.stats.slope[cell], 2)} °C per decade</Text><Text>Stations {signed(bundle.data.witnessSlope[cell], 2)} °C per decade</Text></HStack>
+        <Text weight="semibold">{describeCell(cell)[2]}</Text>
+        <Button variant="primary" label="Investigate this cell" href={`#/world?cell=${cell}`} />
+      </MotionStack>}
+    </VStack>
+  );
+  return <LayoutContent padding={8} isScrollable={false}><VStack gap={10}>
+    <Grid columns={{minWidth: 440, max: 2}} gap={10}>
+      <VStack gap={10}>
+        <MotionStack gap={5} minHeight={narrow ? undefined : '72vh'}>
+          <Text type="label" color="accent">An atlas of a changing Earth</Text>
+          <Heading level={1} type="display-1">TRACE</Heading>
+          <Text type="large" weight="semibold">Tracking Regional Atmospheric Change on Earth</Text>
+          <Heading level={2} type={narrow ? 'display-3' : 'display-2'}>Check the evidence before it becomes a decision.</Heading>
+          <Text type="large" color="secondary">Water, farming, and infrastructure plans depend on how temperature and rainfall are changing. A significant trend can still reflect a data discontinuity or conflict with another record. TRACE makes those warnings visible, worldwide.</Text>
+          <HStack gap={4} wrap="wrap"><Text type="code">{ready ? bundle.data.cells.n.toLocaleString('en-US') : '54,425'} land cells</Text><Text type="code">1981–2024</Text><Text type="code">60°S–84°N</Text></HStack>
+          <HStack gap={3} wrap="wrap"><Button variant="primary" label="Explore the world" href="#/world" /><Button variant="secondary" label="Follow the evidence ↓" onClick={() => story.current?.scrollIntoView({behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start'})} /></HStack>
+          <Text type="supporting">A region can be a country or a single grid cell. Coverage spans global land, including every country with cells in this latitude range.</Text>
+        </MotionStack>
+        {narrow && globeFigure}
+        <MotionStack reveal as="section" gap={5}>
+          <Divider />
+          <Text type="label" color="accent">Why this work matters</Text>
+          <Heading level={2} type="display-3">Make climate claims easier to examine.</Heading>
+          <Text type="large">TRACE puts trend tests, jump warnings, and a second NASA record in one workflow. The result is a reviewable starting point: where the records agree, where they conflict, and what needs further investigation.</Text>
+          <VStack gap={3}>
+            <Heading level={3}>For people and researchers</Heading>
+            <Text color="secondary">Investigate a country or land cell without writing an analysis pipeline. Follow each result to its sources, uncertainty, and method; export the evidence for further work.</Text>
+            <Divider />
+            <Heading level={3}>For NASA data users</Heading>
+            <Text color="secondary">Compare differently constructed NASA products on one footprint. Disagreements and abrupt changes provide places to investigate product limitations, while the open code makes the checks reproducible.</Text>
+            <Divider />
+            <Heading level={3}>For governments and public agencies</Heading>
+            <Text color="secondary">Screen evidence of long-term warming or rainfall change before using it in an adaptation assessment. Analysts can share the record, assumptions, and uncertainty instead of passing on an unexplained map.</Text>
+          </VStack>
+          <Text type="supporting">This prototype supports evidence review. It does not forecast conditions, attribute causes, or replace a validated local risk assessment. Institutional use and policy outcomes have not been demonstrated.</Text>
+        </MotionStack>
+        <VStack gap={8} ref={story}>
+          {PHASES.map((phase, i) => <VStack as="section" key={phase.mode} ref={node => { sections.current[i] = node; }} aria-labelledby={`phase-${phase.mode}`}>
+            <MotionStack reveal gap={4} minHeight={narrow ? undefined : '52vh'} vAlign="center">
+              <Divider /><Text type="code" color="accent">0{i + 1} / The evidence trail</Text>
+              <Heading id={`phase-${phase.mode}`} level={2} type="display-3">{phase.title}</Heading>
+              <Text type="large" color="secondary">{phase.text}</Text>
+              <HStack><Button variant="ghost" label={`Show ${phase.mode === 'claim' ? 'the reanalysis' : phase.mode === 'witness' ? 'the stations' : 'the agreement map'}`} onClick={() => { setFollow(false); setMode(phase.mode); }} /></HStack>
+            </MotionStack>
+          </VStack>)}
         </VStack>
-      </AspectRatio>
-      <HStack gap={5} wrap="wrap" vAlign="center">
-        {VERDICT_ORDER.map(v => VERDICT_TEXT[v].label).map((label, i) => (
-          <HStack key={label} gap={2} vAlign="center">
+      </VStack>
+      {!narrow && globeFigure}
+    </Grid>
+    <MotionStack reveal gap={6}>
+      <Divider /><Text type="label" color="accent">The global temperature record</Text>
+      <Grid columns={{minWidth: 240, max: 3}} gap={6}>
+        <Figure value={summary.status === 'ready' ? signed(summary.data.variables.T2M.slopePerDecade, 2) : '…'} unit="°C per decade" caption="Area-weighted land temperature trend, 1981–2024." />
+        <Figure value={summary.status === 'ready' ? percent(summary.data.variables.T2M.areaUp) : '…'} unit="of land selected as warming" caption="At a 10% target false discovery rate across the global map." />
+        <Figure value={summary.status === 'ready' ? percent(summary.data.variables.T2M.agreement.corroborated + summary.data.variables.T2M.agreement['same-direction']) : '…'} unit="of land backed by stations" caption="Same-direction, significant trends in both records." />
+      </Grid>
+      <Text type="supporting">Witnesses are coarser estimates, not ground truth at each cell. GPCP rainfall shares some rain-gauge inputs with MERRA-2. Coverage ends at 60°S and 84°N.</Text>
+      <HStack gap={3} wrap="wrap"><Button variant="primary" label="Open the global atlas" href="#/world" /><Button variant="secondary" label="How the global checks work" href="#/proof" /></HStack>
+    </MotionStack>
+    <Divider /><HStack gap={4} wrap="wrap"><Link href="https://github.com/MichaelCruzat/TRACE">Source</Link><Link href="#/method">Method</Link><Text type="supporting">NASA Space Apps · TRACE</Text></HStack>
+  </VStack></LayoutContent>;
+}
+
+function GlobeLegend({mode}: {mode: Mode}) {
+  if (mode === 'verdict') {
+    return (
+      <HStack gap={4} wrap="wrap">
+        {VERDICT_ORDER.map((v, i) => (
+          <HStack key={v} gap={2} vAlign="center">
             <svg width="12" height="12" aria-hidden="true">
               <rect width="12" height="12" rx="2" fill={VERDICT_COLORS[i]} />
             </svg>
-            <Text type="supporting">{label}</Text>
+            <Text type="supporting">{VERDICT_TEXT[v].label}</Text>
           </HStack>
         ))}
       </HStack>
-      <Text type="supporting">
-        Temperature trend 1981–2024 for every land cell from 60°S to 84°N (NASA POWER, MERRA-2), checked cell by cell against GISTEMP weather stations, on NASA GIBS Blue Marble relief. Click a cell to open it in the World explorer.
+    );
+  }
+  return (
+    <HStack gap={3} vAlign="center" wrap="wrap">
+      <Text type="supporting" hasTabularNumbers>
+        {signed(-GLOBE_LIMIT, 1)} or cooler
       </Text>
-    </VStack>
-  );
-}
-
-/** "23–34%": central Chile's post-2010 rainfall deficit in MERRA-2 and GPCP. */
-function useChileShare(crosscheck: Crosscheck | null): string | null {
-  const nation = useNation('CHL');
-  const meta = nation.status === 'ready' ? nation.data.meta : null;
-  const rain = useVariable(meta, 'PRECTOTCORR', FULL);
-  return useMemo(() => {
-    const central = meta?.regions.find(r => r.id === 'central');
-    if (!meta || !central || rain.status !== 'ready' || !crosscheck) return null;
-    const cells = cellsInBand(meta, central.latMin, central.latMax);
-    const abs = subsetAbsolute(meta, rain.data.analysis, cells);
-    const avg = (series: ArrayLike<number>, a: number, b: number) => {
-      const v = YEARS.flatMap((y, i) => (y >= a && y <= b ? [series[i]] : []));
-      return v.reduce((s, x) => s + x, 0) / v.length;
-    };
-    const w = witnessSeries(crosscheck, 'CHL', 'PRECTOTCORR', FULL, 'central');
-    if (!w) return null;
-    const m2 = 1 - avg(abs, 2010, 2019) / avg(abs, 1981, 2009);
-    const gp = 1 - (100 + avg(w, 2010, 2019)) / (100 + avg(w, 1981, 2009));
-    return `${percent(Math.min(m2, gp)).replace('%', '')}–${percent(Math.max(m2, gp))}`;
-  }, [meta, rain, crosscheck]);
-}
-
-function Fact({value, label}: {value: string; label: string}) {
-  return (
-    <VStack gap={1}>
-      <Text type="display-2" hasTabularNumbers>
-        {value}
-      </Text>
-      <Text type="supporting">{label}</Text>
-    </VStack>
-  );
-}
-
-function ScaleFacts({index}: {index: DataIndex}) {
-  const cells = index.nations.reduce((s, n) => s + n.cells, 0);
-  return (
-    <VStack gap={4}>
-      <Divider />
-      <Grid columns={{minWidth: 150, max: 6}} gap={6}>
-        <Fact value="54,425" label="land cells worldwide, each weighted by its land area" />
-        <Fact value={String(index.nations.length)} label={`nations with all seven variables (${thousands(cells)} cells)`} />
-        <Fact value={String(index.lastYear - index.firstYear + 1)} label={`years of monthly data, ${index.firstYear}–${index.lastYear}`} />
-        <Fact value={String(VARIABLES.length)} label="Earth-system variables" />
-        <Fact value="2" label="witnesses: GISTEMP stations (independent), GPCP gauges and satellites (partly independent)" />
-        <Fact value={String(CASES.length)} label="case files" />
-      </Grid>
-      <Text type="supporting">Every count is taken from the data this site loads, not typed in by hand.</Text>
-    </VStack>
-  );
-}
-
-const STAGES = [
-  ['01', 'Acquire', 'Monthly NASA POWER (MERRA-2) values for every 0.5° × 0.625° land cell on Earth, each weighted by its true land area.'],
-  ['02', 'Remove the seasons', 'Compare each month with its own 1991–2020 normal, so a dry summer is not mistaken for a trend; rainfall is read as a share of normal.'],
-  ['03', 'Test', 'Measure the trend so one extreme year cannot drag it, test whether it beats chance, and make sure testing thousands of cells does not raise false alarms.'],
-  ['04', 'Cross-check', 'Screen each record for jumps, then compare it with weather stations (GISTEMP) or gauges and satellites (GPCP) on the same cells.'],
-  ['05', 'Explain', 'State what changed, where, how much, how sure, and whether a second record agrees, in plain words next to the numbers.'],
-] as const;
-
-function HowItWorks() {
-  return (
-    <VStack gap={5}>
-      <Eyebrow>How Bilad works</Eyebrow>
-      <Heading level={2} type="display-3">
-        How a NASA record becomes a verdict
-      </Heading>
-      <Grid columns={{minWidth: 190, max: 5}} gap={6}>
-        {STAGES.map(([n, title, body]) => (
-          <VStack key={n} gap={2}>
-            <Divider />
-            <Text type="code" color="accent">
-              {n}
-            </Text>
-            <Heading level={3}>{title}</Heading>
-            <Text type="supporting">{body}</Text>
-          </VStack>
+      <svg width="200" height="12" aria-hidden="true">
+        {Array.from({length: 40}, (_, i) => (
+          <rect key={i} x={i * 5} y={0} width={5} height={12} fill={divergingColor('temperature', -GLOBE_LIMIT + (2 * GLOBE_LIMIT * i) / 39, GLOBE_LIMIT)} />
         ))}
-      </Grid>
-      <Link href="#/method">Read the method, with formulas</Link>
-    </VStack>
-  );
-}
-
-function Validation({index, crosscheck}: {index: DataIndex; crosscheck: Crosscheck}) {
-  const pair = (iso3: string) => {
-    const n = index.nations.find(x => x.iso3 === iso3)!;
-    return {claim: trendTest(YEARS, n.stats.T2M.series), witness: trendTest(YEARS, witnessSeries(crosscheck, iso3, 'T2M', FULL)!)};
-  };
-  const chl = pair('CHL');
-  const bgd = pair('BGD');
-  const headlines = index.nations.length * VARIABLES.length;
-  return (
-    <VStack gap={5}>
-      <Eyebrow>Validation</Eyebrow>
-      <Grid columns={{minWidth: 240, max: 3}} gap={8}>
-        <VStack gap={2}>
-          <Text type="display-2" hasTabularNumbers color="accent">
-            {signed(chl.claim.slope * 10, 2)} = {signed(chl.witness.slope * 10, 2)}
-          </Text>
-          <Text type="supporting">°C per decade in Chile: the reanalysis and weather stations (GISTEMP) agree to two decimals.</Text>
-          <Link href="#/atlas/CHL">See the atlas</Link>
-        </VStack>
-        <VStack gap={2}>
-          <Text type="display-2" hasTabularNumbers>
-            {signed(bgd.claim.slope * 10, 2)} / {signed(bgd.witness.slope * 10, 2)}
-          </Text>
-          <Text type="supporting">°C per decade in Bangladesh: a significant reanalysis cooling, caught twice. Stations disagree, and the record jumps in 1997.</Text>
-          <Link href="#/case/bangladesh-phantom-cooling">Read case 03</Link>
-        </VStack>
-        <VStack gap={2}>
-          <Text type="display-2" hasTabularNumbers color="accent">
-            {headlines} / {headlines}
-          </Text>
-          <Text type="supporting">shipped headlines recomputed in Python (scipy, pymannkendall) with separate code; the build fails if any disagree.</Text>
-          <Link href={`${REPO}/blob/main/pipeline/validate.py`}>The validator</Link>
-        </VStack>
-      </Grid>
-    </VStack>
-  );
-}
-
-function CaseList() {
-  return (
-    <VStack gap={4}>
-      <Eyebrow>Case files</Eyebrow>
-      <Heading level={2} type="display-3">
-        Four case files, four different outcomes
-      </Heading>
-      <VStack gap={0}>
-        {CASES.map(c => {
-          const tone = c.expected === 'unwitnessed' ? 'neutral' : VERDICT_TEXT[c.expected].tone;
-          const label = c.expected === 'unwitnessed' ? 'No witness at this scale' : VERDICT_TEXT[c.expected].label;
-          return (
-            <VStack key={c.id} gap={0}>
-              <Divider />
-              <HStack gap={5} paddingBlock={4} vAlign="center" wrap="wrap">
-                <Text type="display-3" color="accent" hasTabularNumbers>
-                  {c.number}
-                </Text>
-                <StackItem size="fill">
-                  <VStack gap={1}>
-                    <Link href={`#/case/${c.id}`}>
-                      <Text type="large" weight="semibold">
-                        {c.title}
-                      </Text>
-                    </Link>
-                    <Text color="secondary">
-                      {c.dek} · {getVariable(c.variable).short}
-                    </Text>
-                  </VStack>
-                </StackItem>
-                <Badge variant={TONE[tone]} label={label} />
-              </HStack>
-            </VStack>
-          );
-        })}
-        <Divider />
-      </VStack>
-    </VStack>
-  );
-}
-
-function NationTile({iso3, name, verdict}: {iso3: string; name: string; verdict: Agreement}) {
-  const data = useAsync(() => Promise.all([loadMeta(iso3), loadBoundary(iso3), loadPreview(iso3)]), [iso3]);
-  return (
-    <VStack gap={2}>
-      <VStack height="13rem">
-        {data.status === 'ready' ? (
-          <MiniMap meta={data.data[0]} boundary={data.data[1]} preview={data.data[2]} title={`${name}: warming trend per grid cell, 1981–2024`} />
-        ) : (
-          <Spinner size="sm" />
-        )}
-      </VStack>
-      <HStack gap={2} vAlign="center" hAlign="between" wrap="wrap">
-        <Link href={atlasHref(iso3)}>
-          <Text weight="semibold">{name}</Text>
-        </Link>
-        <Badge variant={TONE[VERDICT_TEXT[verdict].tone]} label={VERDICT_TEXT[verdict].label} />
-      </HStack>
-    </VStack>
-  );
-}
-
-type LedgerRow = {iso3: string; name: string; cells: number; merra: number; gistemp: number; verdict: Agreement; rainVerdict: Agreement} & Record<string, unknown>;
-
-function Coverage({index, crosscheck}: {index: DataIndex; crosscheck: Crosscheck}) {
-  const rows: LedgerRow[] = index.nations.map(n => {
-    const t = trendTest(YEARS, n.stats.T2M.series);
-    const w = trendTest(YEARS, witnessSeries(crosscheck, n.iso3, 'T2M', FULL)!);
-    const rainPct = n.stats.PRECTOTCORR.series.map(v => (v / n.stats.PRECTOTCORR.normal) * 100);
-    const rt = trendTest(YEARS, rainPct);
-    const rw = trendTest(YEARS, witnessSeries(crosscheck, n.iso3, 'PRECTOTCORR', FULL)!);
-    return {iso3: n.iso3, name: n.name, cells: n.cells, merra: t.slope * 10, gistemp: w.slope * 10, verdict: agreement(t, w), rainVerdict: agreement(rt, rw)};
-  });
-  const verdictCell = (v: Agreement) => <Badge variant={TONE[VERDICT_TEXT[v].tone]} label={VERDICT_TEXT[v].label} />;
-  const columns: TableColumn<LedgerRow>[] = [
-    {key: 'name', header: 'Nation', width: proportional(1.2), renderCell: r => <Link href={atlasHref(r.iso3)}>{r.name}</Link>},
-    {key: 'cells', header: 'Grid cells', align: 'end', width: pixel(96), renderCell: r => <Text hasTabularNumbers>{thousands(r.cells)}</Text>},
-    {key: 'merra', header: 'Warming, MERRA-2', align: 'end', width: proportional(1), renderCell: r => <Text hasTabularNumbers>{signed(r.merra, 2)} °C/dec</Text>},
-    {key: 'gistemp', header: 'Warming, GISTEMP', align: 'end', width: proportional(1), renderCell: r => <Text hasTabularNumbers>{signed(r.gistemp, 2)} °C/dec</Text>},
-    {key: 'verdict', header: 'Temperature verdict', width: proportional(1.4), renderCell: r => verdictCell(r.verdict)},
-    {key: 'rainVerdict', header: 'Rainfall verdict (vs GPCP)', width: proportional(1.5), renderCell: r => verdictCell(r.rainVerdict)},
-  ];
-  return (
-    <VStack gap={5}>
-      <Eyebrow>Coverage</Eyebrow>
-      <Heading level={2} type="display-3">
-        {WORDS[rows.length] ?? rows.length} nations in full detail
-      </Heading>
-      <Text color="secondary">
-        Warming per grid cell since 1981, every nation on the same scale here ({signed(-STRIP_LIMIT, 1)} to {signed(STRIP_LIMIT, 1)} °C per decade; each nation’s atlas fits its own scale), dots where the trend stays significant after the map-wide check. The badge is the national verdict against weather stations.
+      </svg>
+      <Text type="supporting" hasTabularNumbers>
+        {signed(GLOBE_LIMIT, 1)} °C per decade or warmer
       </Text>
-      <Grid columns={{minWidth: 160, max: 7}} gap={5}>
-        {rows.map(r => (
-          <NationTile key={r.iso3} iso3={r.iso3} name={r.name} verdict={r.verdict} />
-        ))}
-      </Grid>
-      <HStack gap={2} vAlign="center">
-        <svg width="160" height="10" aria-hidden="true">
-          {Array.from({length: 32}, (_, i) => (
-            <rect key={i} x={i * 5} y={0} width={5} height={10} fill={divergingColor('temperature', -STRIP_LIMIT + (2 * STRIP_LIMIT * i) / 31, STRIP_LIMIT)} />
-          ))}
-        </svg>
-        <Text type="supporting">°C per decade</Text>
-      </HStack>
-      <Table data={rows} columns={columns} idKey="iso3" density="balanced" hasHover />
       <Text type="supporting">
-        MERRA-2 matches stations closely in Chile and Mexico. It warms more slowly than stations in Morocco and Spain (ranges still overlap) and in Kenya (they do not), and it reverses sign in Bangladesh, where its record jumps in 1997–98. Rainfall is compared with a record that shares some rain gauges with MERRA-2.
+        {mode === 'claim' ? 'Trend in the MERRA-2 reanalysis.' : 'Trend in GISTEMP v4 weather-station temperatures.'}
       </Text>
-      <HStack gap={2}>
-        <Button label="Open the atlas" variant="primary" href={atlasHref('CHL')} />
-      </HStack>
-    </VStack>
-  );
-}
-
-function Footer() {
-  return (
-    <VStack gap={2}>
-      <Divider />
-      <HStack gap={4} hAlign="between" wrap="wrap">
-        <Text type="code" size="xsm">
-          BILAD · BUILT FOR NASA SPACE APPS 2026
-        </Text>
-        <Link href={REPO}>Source on GitHub</Link>
-      </HStack>
-      <Text type="supporting">
-        Data: <Link href="https://power.larc.nasa.gov/">NASA POWER</Link> (MERRA-2, NASA GMAO) · <Link href="https://data.giss.nasa.gov/gistemp/">GISTEMP v4</Link> (NASA GISS) ·{' '}
-        <Link href="https://psl.noaa.gov/data/gridded/data.gpcp.html">GPCP v2.3</Link> (via the NOAA Physical Sciences Laboratory) · <Link href="https://earthdata.nasa.gov/gibs">NASA GIBS</Link> Blue Marble relief · boundaries from{' '}
-        <Link href="https://www.naturalearthdata.com/">Natural Earth</Link>. Built for the{' '}
-        <Link href="https://www.spaceappschallenge.org/2026/challenges/earth-system-trend-detective/">Earth System Trend Detective</Link> challenge. Apache 2.0; AI assistance is disclosed in the README.
-      </Text>
-    </VStack>
+    </HStack>
   );
 }

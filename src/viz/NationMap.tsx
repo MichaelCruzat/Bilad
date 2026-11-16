@@ -7,7 +7,7 @@ import {geoBounds, geoPath, geoProjection, type GeoProjection} from 'd3-geo';
 import {reliefUrl, type Boundary, type Context, type NationMeta} from '../lib/nationData';
 import type {VariableAnalysis} from '../lib/analysis';
 import {getVariable} from '../data/variables';
-import {divergingColor, emergenceRamp, robustLimit} from './color';
+import {divergingColor, emergenceRamp, NO_DATA, robustLimit} from './color';
 import {lat as fmtLat, signed} from '../lib/format';
 import {CHROME, rootPx} from './chrome';
 import {fullName} from '../lib/names';
@@ -121,7 +121,7 @@ export function colorCells(analysis: VariableAnalysis, layer: MapLayer, year?: n
         max = Math.max(max, v);
       }
     });
-    const colors = Array.from(analysis.normal, v => (Number.isFinite(v) ? emergenceRamp(0.08 + (0.92 * (v - min)) / (max - min || 1)) : '#202329'));
+    const colors = Array.from(analysis.normal, v => (Number.isFinite(v) ? emergenceRamp(0.08 + (0.92 * (v - min)) / (max - min || 1)) : NO_DATA));
     return {colors, limit: 0, kind: 'sequential', min, max};
   }
   const values = layer === 'change' ? analysis.slope : analysis.snr;
@@ -363,12 +363,12 @@ export function NationMap({
         </clipPath>
       </defs>
       <filter id={`relief-${clipId}`} colorInterpolationFilters="sRGB">
-        <feColorMatrix type="saturate" values="0.45" />
-        <feComponentTransfer>
-          <feFuncR type="linear" slope="0.42" />
-          <feFuncG type="linear" slope="0.44" />
-          <feFuncB type="linear" slope="0.5" />
-        </feComponentTransfer>
+        <feColorMatrix type="saturate" values="0.12" />
+          <feComponentTransfer>
+            <feFuncR type="linear" slope="0.4" intercept="0.56" />
+            <feFuncG type="linear" slope="0.4" intercept="0.53" />
+            <feFuncB type="linear" slope="0.38" intercept="0.47" />
+          </feComponentTransfer>
       </filter>
       <filter id={`glow-${clipId}`} x="-10%" y="-10%" width="120%" height="120%">
         <feGaussianBlur stdDeviation="3" result="blur" />
@@ -414,8 +414,8 @@ export function NationMap({
         <g key={i} pointerEvents="none">
           <path d={n.path} fill="none" stroke={CHROME.faint} strokeOpacity={0.45} strokeWidth={0.7} vectorEffect="non-scaling-stroke" />
           {n.label && (
-            <text x={n.label[0]} y={n.label[1]} fontSize={Math.min(u(11), 16) / zt.k} fill={CHROME.faint} fillOpacity={0.8} textAnchor="middle" fontFamily={CHROME.mono} letterSpacing="0.14em">
-              {fullName(n.name).toUpperCase()}
+            <text x={n.label[0]} y={n.label[1]} fontSize={Math.min(u(11), 16) / zt.k} fill={CHROME.muted} fillOpacity={0.9} textAnchor="middle" fontFamily="var(--font-family-heading)" fontStyle="italic">
+              {fullName(n.name)}
             </text>
           )}
         </g>
