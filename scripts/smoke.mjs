@@ -15,7 +15,7 @@ const BASE = `http://localhost:${PORT}/`;
 const artifacts = process.env.SMOKE_ARTIFACT_DIR;
 if (artifacts) mkdirSync(artifacts, {recursive: true});
 const capture = async (page, name) => {
-  if (artifacts) await page.screenshot({path: join(artifacts, name)});
+  if (artifacts) await page.screenshot({path: join(artifacts, name), animations: 'disabled'});
 };
 const chrome =
   process.env.CHROME_PATH ||
@@ -101,8 +101,8 @@ try {
     await p.close();
   });
 
-  await check('guided example: home → Cases → case 03 → verdict', async () => {
-    await page.getByRole('link', {name: 'Cases', exact: true}).click();
+  await check('guided example: homepage case files → case 03 → verdict', async () => {
+    await page.getByRole('link', {name: 'Read the case files', exact: true}).click();
     await page.getByRole('link', {name: 'Bangladesh’s phantom cooling', exact: true}).click();
     await page.getByText('Likely data artefact').first().waitFor({timeout: 20000});
     await page.getByText(/Jump in 199\d, not a ramp/).first().waitFor();
@@ -147,14 +147,133 @@ try {
     await p.close();
   });
 
-  await check('Cases tab lists all four investigations', async () => {
+  await check('legacy cases link opens the homepage case section', async () => {
     const p = await context.newPage();
     await p.goto(`${BASE}#/cases`);
-    await p.getByRole('heading', {level: 1, name: 'Four case files, four different outcomes'}).waitFor();
+    await p.getByRole('heading', {level: 1, name: 'TRACE', exact: true}).waitFor();
+    await p.getByRole('heading', {level: 2, name: 'Four case files, four different outcomes'}).waitFor();
+    if (await p.getByRole('link', {name: 'Cases', exact: true}).count()) throw new Error('Cases still has a standalone navigation tab');
     for (const title of ['Central Chile’s missing rain', 'Two Chiles: a flat coast and warming Andes', 'Bangladesh’s phantom cooling', 'Kenya: right direction, half the speed']) {
       await p.getByRole('link', {name: title, exact: true}).waitFor();
     }
     await capture(p, 'cases-desktop.png');
+    await p.close();
+  });
+
+  await check('Impact explains the need for temperature cross-checks', async () => {
+    const p = await context.newPage();
+    await p.goto(`${BASE}#/impact`);
+    await p.getByRole('heading', {level: 1, name: 'Why climate evidence needs a second look'}).waitFor();
+    await p.getByRole('heading', {name: 'Why cross-reference temperature records?', exact: true}).waitFor();
+    await p.getByRole('heading', {name: 'Governments and public agencies', exact: true}).waitFor();
+    await capture(p, 'impact-desktop.png');
+    await p.close();
+  });
+
+  await check('regional lines load only after zoom, without labels', async () => {
+    const p = await context.newPage();
+    let requests = 0;
+    p.on('request', request => { if (request.url().endsWith('/data/admin1.json')) requests++; });
+    await p.goto(`${BASE}#/world`);
+    const map = p.getByRole('application', {name: /World map/});
+    await map.waitFor({timeout: 30000});
+    if (requests) throw new Error('regional geometry loaded before zoom');
+    const rect = await map.boundingBox();
+    if (!rect) throw new Error('missing map');
+    await p.mouse.move(rect.x + rect.width * 0.23, rect.y + rect.height * 0.32);
+    const response = p.waitForResponse(r => r.url().endsWith('/data/admin1.json'));
+    await p.mouse.wheel(0, -1100);
+    const geometry = await (await response).json();
+    if (geometry.type !== 'MultiLineString' || geometry.properties || geometry.features) throw new Error('boundary payload contains extra feature metadata');
+    await p.waitForTimeout(1000);
+    if (requests !== 1) throw new Error(`regional geometry fetched ${requests} times`);
+    await p.mouse.move(0, 0);
+    await capture(p, 'us-regional-outlines.png');
+    await p.getByRole('link', {name: 'TRACE home', exact: true}).click();
+    const globe = p.getByRole('application', {name: /Globe of land temperature/});
+    await globe.waitFor({timeout: 30000});
+    await globe.focus();
+    for (let i = 0; i < 17; i++) await p.keyboard.press('ArrowLeft');
+    await p.keyboard.press('ArrowUp');
+    await p.keyboard.press('ArrowUp');
+    for (let i = 0; i < 3; i++) await p.getByRole('button', {name: 'Zoom in', exact: true}).click();
+    await p.waitForTimeout(600);
+    await p.getByRole('button', {name: 'Zoom in', exact: true}).focus();
+    if (requests !== 1) throw new Error('globe did not reuse the regional geometry');
+    await capture(p, 'us-globe-regional-outlines.png');
+    await p.close();
+  });
+
+  await check('supplemental atlas adds an unlabelled regional outline on zoom', async () => {
+    const p = await context.newPage();
+    await p.emulateMedia({reducedMotion: 'reduce'});
+    await p.goto(`${BASE}#/atlas/KEN`);
+    const map = p.getByRole('application').first();
+    await map.waitFor({timeout: 30000});
+    const before = await map.locator('path').count();
+    await map.focus();
+    for (let i = 0; i < 3; i++) await p.keyboard.press('+');
+    await p.waitForFunction(count => document.querySelector('svg[role="application"]')?.querySelectorAll('path').length === count + 1, before);
+    await capture(p, 'atlas-regional-outlines.png');
+    await p.close();
+  });
+
+  await check('atlas maps start under the heading and tall nations grow to the column width', async () => {
+    const p = await context.newPage();
+    await p.goto(`${BASE}#/atlas/KEN`);
+    const map = p.locator('svg[role="application"]');
+    await map.waitFor({timeout: 30000});
+    const kenya = await map.boundingBox();
+    if (!kenya || kenya.y > 220) throw new Error(`Kenya map starts at ${kenya ? Math.round(kenya.y) : '?'}px, below its heading`);
+    await p.goto(`${BASE}#/atlas/CHL`);
+    await map.waitFor({timeout: 30000});
+    await p.waitForTimeout(500);
+    const chile = await map.boundingBox();
+    if (!chile || chile.height < 1000) throw new Error(`Chile map is only ${chile ? Math.round(chile.height) : '?'}px tall`);
+    await p.close();
+  });
+
+  await check('charts show the exact value under the pointer', async () => {
+    const p = await context.newPage();
+    await p.goto(`${BASE}#/world`);
+    const chart = p.getByRole('group', {name: /read each year/}).first();
+    await chart.waitFor({timeout: 30000});
+    await chart.scrollIntoViewIfNeeded();
+    const box = await chart.boundingBox();
+    await p.mouse.move(box.x + box.width * 0.6, box.y + box.height * 0.5);
+    const readout = p.locator('[aria-live="polite"]', {hasText: /yearly value\s+[−+-]?\d/});
+    await readout.first().waitFor({timeout: 5000});
+    await p.mouse.move(0, 0);
+    await chart.focus();
+    await p.keyboard.press('ArrowLeft');
+    await p.locator('[aria-live="polite"]', {hasText: /^2024 · yearly value/}).first().waitFor({timeout: 5000});
+    await p.close();
+  });
+
+  await check('evidence trail buttons switch the globe and show which stage is on', async () => {
+    const p = await context.newPage();
+    await p.emulateMedia({reducedMotion: 'reduce'});
+    await p.goto(`${BASE}#/`);
+    await p.getByRole('button', {name: 'Globe follows your scroll'}).click({timeout: 30000});
+    const show = p.getByRole('button', {name: 'Show the reanalysis on the globe'});
+    await show.scrollIntoViewIfNeeded();
+    await show.click();
+    await p.getByRole('button', {name: 'Showing the reanalysis on the globe'}).waitFor({timeout: 5000});
+    if (!(await p.getByRole('radio', {name: 'Reanalysis says'}).isChecked().catch(() => true))) throw new Error('globe did not switch to the reanalysis');
+    await p.close();
+  });
+
+  await check('Method outline tracks sections and its links survive a reload', async () => {
+    const p = await context.newPage();
+    await p.emulateMedia({reducedMotion: 'reduce'});
+    await p.goto(`${BASE}#/method`);
+    await p.getByRole('navigation', {name: 'Method sections'}).waitFor({timeout: 20000});
+    await p.getByRole('link', {name: /07\s+Integrity screen/}).click();
+    await p.waitForFunction(() => location.hash === '#method-integrity');
+    await p.reload();
+    await p.getByRole('heading', {level: 1, name: 'How TRACE decides whether a trend is real'}).waitFor();
+    await p.getByRole('heading', {name: 'Integrity screen: ramp or jump?'}).waitFor();
+    await capture(p, 'method-desktop.png');
     await p.close();
   });
 
@@ -329,10 +448,10 @@ try {
     await p.close();
   });
 
-  await check('phone width: results stay readable on home, case, atlas and proof', async () => {
+  await check('phone width: results stay readable on home, impact, method, case, atlas and proof', async () => {
     const p = await browser.newPage({viewport: {width: 390, height: 844}});
     p.on('pageerror', e => errors.push(e.message));
-    for (const route of ['#/', '#/case/chile-megadrought', '#/atlas/CHL', '#/proof']) {
+    for (const route of ['#/', '#/impact', '#/method', '#/case/chile-megadrought', '#/atlas/CHL', '#/proof']) {
       await p.goto(BASE + route);
       await p.waitForTimeout(2500);
       const over = await p.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
@@ -344,6 +463,7 @@ try {
         if (!rect || rect.x < 0 || rect.x + rect.width > 390) throw new Error('TRACE definition clipped on phone');
       }
       if (route === '#/') await capture(p, 'home-phone.png');
+      if (route === '#/impact') await capture(p, 'impact-phone.png');
     }
     await p.close();
   });

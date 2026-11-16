@@ -1,7 +1,7 @@
 {
   "name": "bilad",
   "like": "neutral",
-  "mode": "light-only",
+  "mode": "dark-only",
   "settings": [
     {
       "thing": "type",
@@ -33,42 +33,64 @@
       "axis": "tracking"
     },
     {
-      "thing": "neutral",
-      "value": "#efe8da",
-      "source": "dial"
-    },
-    {
-      "thing": "accent",
-      "value": "#b8322a",
-      "source": "dial"
-    },
-    {
       "thing": "font",
       "value": "source-serif",
       "source": "dial",
       "on": "heading"
     },
     {
+      "thing": "neutral",
+      "value": "#536986",
+      "source": "dial"
+    },
+    {
+      "thing": "accent",
+      "value": "#62AFFF",
+      "source": "dial"
+    },
+    {
       "thing": "--color-background-body",
-      "value": "#f3ede1",
+      "value": "#0A1220",
       "source": "token"
     },
     {
       "thing": "--color-background-surface",
-      "value": "#ebe3d3",
+      "value": "#0F1B2D",
       "source": "token"
     },
     {
       "thing": "--color-background-card",
-      "value": "#f8f4ec",
+      "value": "#142238",
       "source": "token"
     },
     {
       "thing": "--color-text-primary",
-      "value": "#1c1a17",
+      "value": "#EEF3FA",
       "source": "token"
+    },
+    {
+      "thing": "background",
+      "value": "#22344f",
+      "source": "property",
+      "on": "button",
+      "when": "variant:secondary"
+    },
+    {
+      "thing": "border",
+      "value": "1px solid var(--color-border-emphasized)",
+      "source": "property",
+      "on": "button",
+      "when": "variant:secondary"
+    },
+    {
+      "thing": "filter",
+      "value": "brightness(1.18)",
+      "source": "property",
+      "on": "button",
+      "when": "variant:secondary",
+      "state": "hover"
     }
   ],
   "lifted": [],
-  "palette": "03a2f409d06c34eb6614ea23e1be3c9bbd4dc29c54bd4a5139b00368fa53ecf3"
+  "palette": "aea9309e367a6080da644170975c9731ef21eb4e33013e96d65af0e3b4ac0d7c"
 }

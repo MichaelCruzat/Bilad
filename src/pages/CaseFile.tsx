@@ -190,8 +190,9 @@ function CaseBody({def, bundle, analysis, crosscheck, index, witnessGrid}: {def:
             </Text>
           )}
         </VStack>
-        <VStack gap={2} height="min(78vh, 46rem)">
+        <VStack gap={2}>
           <NationMap
+            heightCap="110vh"
             meta={meta}
             boundary={boundary}
             context={bundle.context}

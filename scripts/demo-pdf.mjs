@@ -21,7 +21,7 @@ if (!chrome) {
 
 const PAGES = [
   ['#/', 'TRACE: a worldwide atlas, with no default country'],
-  ['#/world', 'Global temperature evidence: any covered country or cell'],
+  ['#/impact', 'Why cross-check climate evidence, and who can use it'],
   ['#/world?country=356', 'Any country: India, where the reanalysis misses the warming'],
   ['#/proof?country=124&v=PRECTOTCORR', 'Canada: a rainfall walkthrough on the global grid'],
   ['#/world?cell=1508', 'One cell: a reproducible footprint with evidence exports'],
@@ -49,7 +49,7 @@ try {
   }
   const html = `<!doctype html><meta charset="utf-8"><style>
     @page { size: 1600px 1080px; margin: 0; }
-    body { margin: 0; font: 22px "IBM Plex Sans", system-ui, sans-serif; background: #efe8da; color: #1c1a17; }
+    body { margin: 0; font: 22px "IBM Plex Sans", system-ui, sans-serif; background: #0a1220; color: #eef3fa; }
     section { height: 1080px; page-break-after: always; display: flex; flex-direction: column; }
     p { margin: 0; padding: 22px 32px 18px; }
     img { width: 1600px; height: auto; }

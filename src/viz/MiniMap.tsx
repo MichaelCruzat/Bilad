@@ -30,9 +30,9 @@ export function MiniMap({meta, boundary, preview, title}: Props) {
         <filter id={`mrelief-${id}`} colorInterpolationFilters="sRGB">
           <feColorMatrix type="saturate" values="0.12" />
           <feComponentTransfer>
-            <feFuncR type="linear" slope="0.4" intercept="0.56" />
-            <feFuncG type="linear" slope="0.4" intercept="0.53" />
-            <feFuncB type="linear" slope="0.38" intercept="0.47" />
+            <feFuncR type="linear" slope="0.36" intercept="0.03" />
+            <feFuncG type="linear" slope="0.4" intercept="0.05" />
+            <feFuncB type="linear" slope="0.45" intercept="0.08" />
           </feComponentTransfer>
         </filter>
       </defs>

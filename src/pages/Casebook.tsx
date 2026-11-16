@@ -9,6 +9,7 @@ import {SegmentedControl, SegmentedControlItem} from '@astryxdesign/core/Segment
 import {Spinner} from '@astryxdesign/core/Spinner';
 import {HStack, VStack} from '@astryxdesign/core/Stack';
 import {Heading, Text} from '@astryxdesign/core/Text';
+import {Icon} from '@astryxdesign/core/Icon';
 import {MotionStack} from '../features/MotionStack';
 import {CaseFiles} from '../features/CaseFiles';
 import {Figure} from '../features/VerdictStrip';
@@ -22,6 +23,9 @@ import {GlobeMap, type GlobeControls} from '../viz/GlobeMap';
 import {prefersReducedMotion} from '../viz/usePlayback';
 
 type Mode = 'claim' | 'witness' | 'verdict';
+
+/** What each evidence-trail button puts on the globe. */
+const PHASE_SUBJECT: Record<Mode, string> = {claim: 'the reanalysis', witness: 'the stations', verdict: 'the agreement map'};
 const GLOBE_LIMIT = 0.6;
 const PHASES: {mode: Mode; title: string; text: string}[] = [
   {mode: 'claim', title: 'First, trace the change.', text: 'Start with 44 years of NASA’s reanalysis. Each land cell carries a temperature trend, from cooling blue to warming red.'},
@@ -110,7 +114,7 @@ export function Casebook({section}: {section?: 'cases'}) {
         <Button size="sm" variant="secondary" label="Zoom in" onClick={() => { setFollow(false); globe.current?.zoomBy(1.5); }} />
         <Button size="sm" variant="secondary" label="Zoom out" onClick={() => { setFollow(false); globe.current?.zoomBy(1 / 1.5); }} />
         <Button size="sm" variant="secondary" label={spinning ? 'Pause globe rotation' : 'Rotate globe'} onClick={() => { setFollow(false); setSpinning(v => !v); }} />
-        {!narrow && <Button size="sm" variant="ghost" label={follow ? 'Scroll follows the evidence' : 'Follow the scroll'} onClick={() => setFollow(v => !v)} />}
+        {!narrow && <Button size="sm" variant="secondary" icon={follow ? <Icon icon="check" /> : undefined} label={follow ? 'Globe follows your scroll' : 'Let the globe follow your scroll'} onClick={() => setFollow(v => !v)} />}
       </HStack>
       {ready && cell !== null && <MotionStack key={cell} gap={3}>
         <Divider /><Heading level={2}>{describeCell(cell)[0]}</Heading>
@@ -148,7 +152,14 @@ export function Casebook({section}: {section?: 'cases'}) {
               <Divider /><Text type="code" color="accent">0{i + 1} / The evidence trail</Text>
               <Heading id={`phase-${phase.mode}`} level={2} type="display-3">{phase.title}</Heading>
               <Text type="large" color="secondary">{phase.text}</Text>
-              <HStack><Button variant="ghost" label={`Show ${phase.mode === 'claim' ? 'the reanalysis' : phase.mode === 'witness' ? 'the stations' : 'the agreement map'}`} onClick={() => { setFollow(false); setMode(phase.mode); }} /></HStack>
+              <HStack>
+                <Button
+                  variant={mode === phase.mode ? 'primary' : 'secondary'}
+                  icon={mode === phase.mode ? <Icon icon="check" /> : undefined}
+                  label={`${mode === phase.mode ? 'Showing' : 'Show'} ${PHASE_SUBJECT[phase.mode]} on the globe`}
+                  onClick={() => { setFollow(false); setMode(phase.mode); }}
+                />
+              </HStack>
             </MotionStack>
           </VStack>)}
         </VStack>

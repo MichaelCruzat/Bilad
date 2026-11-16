@@ -1,0 +1,15 @@
+{
+  "source": "Natural Earth 1:10m Admin-1 boundary lines",
+  "sourceUrl": "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/117488dc884bad03366ff727eca013e434615127/geojson/ne_10m_admin_1_states_provinces_lines.geojson",
+  "sourceSha256": "1a1f30ccaaf4cc9c4bde34266f0b8cbb955d3a4cf254b756912255f2ec7c75b6",
+  "revision": "117488dc884bad03366ff727eca013e434615127",
+  "license": "Public domain",
+  "licenseUrl": "https://www.naturalearthdata.com/about/terms-of-use/",
+  "simplificationDegrees": 0.025,
+  "coordinateDecimals": 3,
+  "lines": 9091,
+  "sourceVertices": 415835,
+  "vertices": 61012,
+  "bytes": 995291,
+  "note": "Display context only; no labels or properties. Coverage and administrative definitions follow the source and may omit small or disputed areas. Climate statistics are unchanged."
+}

@@ -45,8 +45,8 @@ In MERRA-2, Bangladesh's temperature, humidity and soil moisture all jump around
   - A strip of yearly global values sits under the map; pointing at a year shows it on the map.
   - Search any of 223 countries, or click a cell. TRACE builds that country's series from its cells and cross-examines it against the witness on the spot.
   - Rankings list the fastest-changing countries and the ones whose reanalysis record is least trustworthy.
-- **Home** (`#/`): TRACE's full name, worldwide purpose, coverage, and observation window. A pinned globe follows the evidence as you scroll from reanalysis to stations to agreement. Any picked cell opens its global evidence; the page has no default country or shortlist of nations.
-- **Cases** (`#/cases`): four guided investigations, each linking to its full evidence and verdict.
+- **Home** (`#/`): TRACE's full name, worldwide purpose, coverage, observation window, and four case files. A pinned globe follows the evidence as you scroll from reanalysis to stations to agreement. Any picked cell opens its global evidence; the page has no default country. `#/?section=cases` jumps to the case files; older `#/cases` links open that same section.
+- **Impact** (`#/impact`): why climate evidence needs scrutiny, why temperature records are cross-referenced, intended uses for people, NASA data teams and governments, and the distinction between demonstrated capability and unproven institutional impact.
 - **How we know** (`#/proof?country=&cell=&v=`): a calculation walkthrough for all covered land, any covered country, or one linked cell. It uses the same global annual arrays and footprint aggregation as Explore. Older `?n=<ISO3>` links retain the supplemental monthly walkthrough.
 - **Case files** (`#/case/<id>`): claim → evidence → cross-examination → integrity screen → verdict, with sources. Every number is computed in the browser from the shipped data.
 - **Atlas** (`#/atlas/<ISO3>`): any shipped nation and any of seven variables.
@@ -56,11 +56,13 @@ In MERRA-2, Bangladesh's temperature, humidity and soil moisture all jump around
   - A latitude profile beside the map shares its vertical axis; drag on it to define a band.
   - The evidence panel shows the whole nation, a band, or a single cell. It includes the annual series with its Theil–Sen trend, the independent witness for that exact selection (temperature and rainfall), the ramp-or-jump screen, a month-by-month "season clock", start-year sensitivity, the full test record and every NASA POWER request URL.
   - All atlas state lives in the URL, so any view can be shared.
-- **Method** (`#/method`): formulas, assumptions, limitations and references.
+- **Method** (`#/method`): the four checks behind a verdict, then each calculation with a plain summary, formula and sources, followed by variables, limits and references. A sidebar outline tracks your place.
 
 Seven nations also ship supplemental seven-variable packs: Bangladesh, Chile, Kenya, Mexico, Morocco, the Philippines and Spain. They add detail to a global product; they do not limit which countries can be explored. The primary navigation leads to the worldwide atlas and worldwide walkthrough.
 
 The product and motion contract is [GLOBAL-DIRECTION.md](docs/GLOBAL-DIRECTION.md). Transitions use transform and opacity, preserve native scrolling, stop rotation off-screen, and respect reduced motion. Country/continent outlines and cell colours share the same geographic transform, including the globe texture's nonstandard aspect ratio.
+
+The selected Midnight blue theme uses navy surfaces, cool-white text and blue controls. Data palettes retain their scientific meaning. At 3× zoom, global maps and the supplemental atlas add label-free state/province outlines using their existing geographic projection. The generalized Natural Earth geometry is fetched once on demand, with no extra region tooltips or statistics. Its [source receipt](public/data/admin1.meta.json) records the pinned revision, simplification and coverage limitations; rebuild it with `scripts/build-regional-boundaries.py` from that exact source.
 
 ## How a trend earns a verdict
 

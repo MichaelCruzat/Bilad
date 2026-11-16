@@ -187,7 +187,7 @@ export function World({params}: {params: URLSearchParams}) {
   );
 
   const map = (
-    <VStack gap={2} height="100%">
+    <VStack gap={2}>
       <HStack gap={3} vAlign="center" hAlign="between" wrap="wrap">
         <Heading level={1}>
           The world <Text color="secondary" type="large">· {def.short.toLowerCase()}, {first}–{last}</Text>
@@ -314,9 +314,9 @@ export function World({params}: {params: URLSearchParams}) {
   }
   return (
     <Layout
-      start={<LayoutPanel width={wide ? 360 : 300} padding={5} hasDivider label="World atlas controls" role="region">{controls}</LayoutPanel>}
-      content={<LayoutContent padding={5} isScrollable={false} label="World map">{map}</LayoutContent>}
-      end={<LayoutPanel width={wide ? 600 : 460} padding={5} hasDivider label="Evidence" role="region">{evidencePanel}</LayoutPanel>}
+      start={<LayoutPanel width={wide ? 340 : 280} padding={5} hasDivider label="World atlas controls" role="region">{controls}</LayoutPanel>}
+      content={<LayoutContent padding={5} label="World map">{map}</LayoutContent>}
+      end={<LayoutPanel width={wide ? 520 : 400} padding={5} hasDivider label="Evidence" role="region">{evidencePanel}</LayoutPanel>}
     />
   );
 }
@@ -464,6 +464,18 @@ function GlobalPanel({summary, variable, first, last}: {summary: Awaited<ReturnT
             });
           })()}
         </svg>
+        <HStack gap={3} wrap="wrap">
+          {order.map((k, i) => (
+            <HStack key={k} gap={1} vAlign="center">
+              <svg width="10" height="10" aria-hidden="true">
+                <rect width="10" height="10" rx="2" fill={VERDICT_COLORS[i]} />
+              </svg>
+              <Text type="supporting" hasTabularNumbers>
+                {VERDICT_TEXT[k].label} {percent(g.agreement[k])}
+              </Text>
+            </HStack>
+          ))}
+        </HStack>
         <Text type="supporting">Land with no witness coverage or too few years is left out of the bar.</Text>
       </VStack>
       <SeriesChart

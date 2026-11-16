@@ -4,7 +4,7 @@
  *   #/?section=cases           homepage case files (#/cases is a legacy alias)
  *   #/case/<id>                case file
  *   #/atlas/<ISO3>?v=&layer=&cell=&from=&to=&band=
- *   #/method?s=<section>
+ *   #/method?s=<section>        (#method-<section> from the outline also works)
  *   #/world?v=&layer=&year=&cell=&country=
  *   #/brief/<ISO3>
  *   #/proof?n=<ISO3>&v=<variable>   how a verdict is reached, step by step
@@ -34,6 +34,8 @@ export function parseHash(hash: string): Route {
   if (parts[0] === 'brief' && parts[1]) return {page: 'brief', iso3: parts[1].toUpperCase()};
   if (parts[0] === 'world') return {page: 'world', params: new URLSearchParams(query)};
   if (parts[0] === 'method') return {page: 'method', params: new URLSearchParams(query)};
+  // The Method outline writes #method-<section> when a heading is chosen.
+  if (parts.length === 1 && parts[0].startsWith('method-')) return {page: 'method', params: new URLSearchParams({s: parts[0].slice('method-'.length)})};
   if (parts[0] === 'proof') return {page: 'proof', params: new URLSearchParams(query)};
   if (parts[0] === 'impact') return {page: 'impact'};
   return {page: 'missing', path};

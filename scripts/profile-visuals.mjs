@@ -43,13 +43,38 @@ try {
   await cdp.send('Profiler.enable');
   const results = [];
   const renderers = {};
-  for (const scenario of ['globe', 'world-years']) {
+  if (process.env.PROFILE_REGION_BASELINE) await page.route('**/data/admin1.json', r => r.fulfill({json: {type: 'MultiLineString', coordinates: []}}));
+  const scenarios = process.env.PROFILE_REGIONS ? ['globe-regions', 'world-regions'] : ['globe', 'world-years'];
+  for (const scenario of scenarios) {
     if (process.env.PROFILE_SCENARIO && scenario !== process.env.PROFILE_SCENARIO) continue;
-    await page.goto(base + (scenario === 'globe' ? '#/' : '#/world?layer=year'));
+    const isGlobe = scenario.startsWith('globe');
+    const isRegional = scenario.endsWith('regions');
+    await page.goto(base + (isGlobe ? '#/' : isRegional ? '#/world' : '#/world?layer=year'));
     const map = page.getByRole('application').first();
     await map.waitFor({timeout: 30000});
     await page.waitForTimeout(1500);
-    const start = page.getByRole('button', {name: scenario === 'globe' ? 'Rotate globe' : 'Play the years', exact: true});
+    if (isRegional) {
+      if (isGlobe) {
+        await map.focus();
+        for (let i = 0; i < 18; i++) await page.keyboard.press('ArrowLeft');
+        await page.keyboard.press('ArrowUp');
+        await page.keyboard.press('ArrowUp');
+        for (let i = 0; i < 3; i++) await page.getByRole('button', {name: 'Zoom in', exact: true}).click();
+      } else {
+        const rect = await map.boundingBox();
+        await page.mouse.move(rect.x + rect.width * 0.23, rect.y + rect.height * 0.32);
+        await page.mouse.wheel(0, -1100);
+        await map.focus();
+      }
+      await page.waitForTimeout(1500);
+      if (!isGlobe) await page.evaluate(() => {
+        let step = 0;
+        const keys = ['ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp'];
+        const map = document.querySelector('canvas[role="application"]');
+        window.__regionPan = setInterval(() => map.dispatchEvent(new KeyboardEvent('keydown', {key: keys[step++ % keys.length], bubbles: true})), 250);
+      });
+    }
+    const start = page.getByRole('button', {name: isGlobe ? 'Rotate globe' : 'Play the years', exact: true});
     if (await start.count()) await start.click();
     for (let repeat = 0; repeat < 3; repeat++) {
       if (process.env.PROFILE_CPU && repeat === 0) await cdp.send('Profiler.start');
@@ -90,13 +115,15 @@ try {
       results.push({scenario, repeat: repeat + 1, ...frames, scriptMs: Math.round((metric(after, 'ScriptDuration') - metric(before, 'ScriptDuration')) * 1000), taskMs: Math.round((metric(after, 'TaskDuration') - metric(before, 'TaskDuration')) * 1000)});
     }
     renderers[scenario] = await page.evaluate(() => window.__globeGpu);
+    if (isRegional && !isGlobe) await page.evaluate(() => clearInterval(window.__regionPan));
     if (process.env.PROFILE_ARTIFACT_DIR) {
       mkdirSync(process.env.PROFILE_ARTIFACT_DIR, {recursive: true});
-      await page.getByRole('button', {name: scenario === 'globe' ? 'Pause globe rotation' : 'Pause the years', exact: true}).click();
+      const pause = page.getByRole('button', {name: isGlobe ? 'Pause globe rotation' : 'Pause the years', exact: true});
+      if (await pause.count()) await pause.click();
       await page.screenshot({path: `${process.env.PROFILE_ARTIFACT_DIR}/${scenario}.png`});
     }
   }
-  const report = {conditions: 'Chrome headless, 1440x900, 4x CPU throttle, warm data, 3x3-second samples', browser: browser.version(), swiftshader: !!process.env.PROFILE_SWIFTSHADER, renderers, results};
+  const report = {conditions: 'Chrome headless, 1440x900, 4x CPU throttle, warm data, 3x3-second samples', browser: browser.version(), swiftshader: !!process.env.PROFILE_SWIFTSHADER, regionBaseline: !!process.env.PROFILE_REGION_BASELINE, renderers, results};
   if (process.env.PROFILE_OUTPUT) writeFileSync(process.env.PROFILE_OUTPUT, JSON.stringify(report, null, 2));
   console.log(JSON.stringify(report, null, 2));
 } finally {

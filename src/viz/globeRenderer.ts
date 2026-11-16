@@ -1,11 +1,14 @@
 import {geoGraticule10, geoPath, type GeoPermissibleObjects} from 'd3-geo';
 import type {GlobalCells} from '../lib/globalData';
 import {globeTexturePoint, globeTextureProjection} from './globeTexture';
+import type {canvasChrome} from './chrome';
+import type {MultiLineString} from 'geojson';
 
 type Camera = {lon: number; lat: number};
 export type GlobeRenderer = {
   canvas: HTMLCanvasElement;
-  paint: (width: number, height: number, radius: number, camera: Camera) => boolean;
+  paint: (width: number, height: number, radius: number, camera: Camera, regions: boolean) => boolean;
+  setRegions: (shape: MultiLineString) => void;
   dispose: () => void;
 };
 
@@ -15,7 +18,7 @@ export type GlobeRenderer = {
  * Nearest-neighbour sampling preserves categorical verdicts and cell colours.
  * A separate canvas lets the existing 2D renderer remain a fallback.
  */
-export function createGlobeRenderer(cells: GlobalCells, groups: [string, number[]][], borders: {inner: GeoPermissibleObjects; coast: GeoPermissibleObjects} | null): GlobeRenderer | null {
+export function createGlobeRenderer(cells: GlobalCells, groups: [string, number[]][], borders: {inner: GeoPermissibleObjects; coast: GeoPermissibleObjects} | null, colors: ReturnType<typeof canvasChrome>): GlobeRenderer | null {
   const canvas = document.createElement('canvas');
   const gl = canvas.getContext('webgl', {alpha: true, premultipliedAlpha: false, antialias: false, preserveDrawingBuffer: true});
   if (!gl) return null;
@@ -42,6 +45,8 @@ export function createGlobeRenderer(cells: GlobalCells, groups: [string, number[
       uniform float radius;
       uniform vec3 camera;
       uniform sampler2D atlas;
+      uniform sampler2D regions;
+      uniform bool showRegions;
       const float PI = 3.141592653589793;
       void main() {
         vec2 p = (gl_FragCoord.xy - resolution * 0.5) / radius;
@@ -52,6 +57,10 @@ export function createGlobeRenderer(cells: GlobalCells, groups: [string, number[
         float longitude = camera.x + atan(p.x, z * camera.z - p.y * camera.y);
         vec2 uv = vec2(fract(longitude / (2.0*PI) + 0.5), latitude / PI + 0.5);
         gl_FragColor = texture2D(atlas, uv);
+        if (showRegions) {
+          vec4 line = texture2D(regions, uv);
+          gl_FragColor.rgb = mix(gl_FragColor.rgb, line.rgb, line.a);
+        }
       }
     `);
     const program = gl.createProgram();
@@ -76,7 +85,7 @@ export function createGlobeRenderer(cells: GlobalCells, groups: [string, number[
     surface.height = 720;
     const ctx = surface.getContext('2d');
     if (!ctx) throw new Error('Could not paint geographic texture');
-    ctx.fillStyle = '#d5dcd8';
+    ctx.fillStyle = colors.ocean;
     ctx.fillRect(0, 0, surface.width, surface.height);
     for (const [color, list] of groups) {
       ctx.fillStyle = color;
@@ -87,19 +96,21 @@ export function createGlobeRenderer(cells: GlobalCells, groups: [string, number[
       }
     }
     const path = geoPath(globeTextureProjection(surface.width, surface.height), ctx);
-    const line = (shape: GeoPermissibleObjects, color: string, width: number) => {
+    const line = (shape: GeoPermissibleObjects, opacity: number, width: number) => {
       ctx.beginPath();
       path(shape);
-      ctx.strokeStyle = color;
+      ctx.strokeStyle = colors.ink;
+      ctx.globalAlpha = opacity;
       ctx.lineWidth = width;
       ctx.stroke();
     };
-    line(geoGraticule10(), 'rgba(28,26,23,0.08)', 0.6);
+    line(geoGraticule10(), 0.12, 0.6);
     if (borders) {
-      line(borders.coast, 'rgba(28,26,23,0.55)', 0.7);
-      line(borders.inner, 'rgba(28,26,23,0.3)', 0.5);
+      line(borders.coast, 0.55, 0.7);
+      line(borders.inner, 0.3, 0.5);
     }
     const texture = gl.createTexture();
+    if (!texture) throw new Error('Could not allocate atlas texture');
     gl.bindTexture(gl.TEXTURE_2D, texture);
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
@@ -107,12 +118,43 @@ export function createGlobeRenderer(cells: GlobalCells, groups: [string, number[
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, surface);
+    gl.uniform1i(gl.getUniformLocation(program, 'atlas'), 0);
+    gl.uniform1i(gl.getUniformLocation(program, 'regions'), 1);
+    const regionalTexture = gl.createTexture();
+    if (!regionalTexture) throw new Error('Could not allocate regional texture');
+    gl.activeTexture(gl.TEXTURE1);
+    gl.bindTexture(gl.TEXTURE_2D, regionalTexture);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(4));
+    const showRegions = gl.getUniformLocation(program, 'showRegions');
     const resolution = gl.getUniformLocation(program, 'resolution');
     const radius = gl.getUniformLocation(program, 'radius');
     const camera = gl.getUniformLocation(program, 'camera');
     return {
       canvas,
-      paint(width, height, r, view) {
+      setRegions(shape) {
+        // A separate, filtered texture keeps thin boundaries smooth while the
+        // climate atlas retains exact nearest-neighbour categorical colours.
+        const detail = document.createElement('canvas');
+        const width = Math.min(2304, gl.getParameter(gl.MAX_TEXTURE_SIZE));
+        detail.width = width;
+        detail.height = Math.round(width * 720 / 1152);
+        const lines = detail.getContext('2d');
+        if (!lines) return;
+        lines.beginPath();
+        geoPath(globeTextureProjection(detail.width, detail.height), lines)(shape);
+        lines.strokeStyle = colors.ink;
+        lines.globalAlpha = 0.55;
+        lines.lineWidth = 0.8;
+        lines.stroke();
+        gl.activeTexture(gl.TEXTURE1);
+        gl.bindTexture(gl.TEXTURE_2D, regionalTexture);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, detail);
+      },
+      paint(width, height, r, view, regions) {
         if (gl.isContextLost()) return false;
         if (canvas.width !== width || canvas.height !== height) {
           canvas.width = width;
@@ -121,6 +163,7 @@ export function createGlobeRenderer(cells: GlobalCells, groups: [string, number[
         }
         gl.uniform2f(resolution, width, height);
         gl.uniform1f(radius, r);
+        gl.uniform1i(showRegions, regions ? 1 : 0);
         const phi = view.lat * Math.PI / 180;
         gl.uniform3f(camera, view.lon * Math.PI / 180, Math.sin(phi), Math.cos(phi));
         gl.drawArrays(gl.TRIANGLES, 0, 6);
@@ -128,6 +171,7 @@ export function createGlobeRenderer(cells: GlobalCells, groups: [string, number[
       },
       dispose() {
         gl.deleteTexture(texture);
+        gl.deleteTexture(regionalTexture);
         gl.deleteBuffer(buffer);
         gl.deleteProgram(program);
         release();

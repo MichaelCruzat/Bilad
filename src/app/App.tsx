@@ -94,6 +94,11 @@ function withGlossary(content: ReactNode): ReactNode {
   );
 }
 
+/** Paneled pages (maps, and Method with its outline) size to the viewport so each panel scrolls on its own. */
+function fillsViewport(route: Route): boolean {
+  return route.page === 'atlas' || route.page === 'world' || route.page === 'method';
+}
+
 function page(route: Route): ReactNode {
   switch (route.page) {
     case 'home':
@@ -109,7 +114,7 @@ function page(route: Route): ReactNode {
     case 'proof':
       return <Layout contentWidth={1400} content={withGlossary(<Proof params={route.params} />)} />;
     case 'method':
-      return <Layout contentWidth={1200} content={withGlossary(<Method section={route.params.get('s')} />)} />;
+      return <Method section={route.params.get('s')} />;
     case 'impact':
       return <Layout contentWidth={1200} content={<Impact />} />;
     default:
@@ -139,7 +144,7 @@ export default function App() {
           </LayoutContent>
         }
       >
-        <PageBoundary key={window.location.hash.split('?')[0]}><MotionStack key={window.location.hash.split('?')[0]}>{page(route)}</MotionStack></PageBoundary>
+        <PageBoundary key={window.location.hash.split('?')[0]}><MotionStack key={window.location.hash.split('?')[0]} height={fillsViewport(route) ? '100%' : undefined}>{page(route)}</MotionStack></PageBoundary>
       </Suspense>
     </AppShell>
   );

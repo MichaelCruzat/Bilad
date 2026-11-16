@@ -16,7 +16,7 @@ it('reports a failed witness request and completes the walkthrough after retry',
     return new Response(readFileSync(join(__dirname, '../public/data', path)));
   }));
   render(
-    <Theme theme={themes[defaultThemeSlug]} mode="light">
+    <Theme theme={themes[defaultThemeSlug]} mode="dark">
       <Proof params={new URLSearchParams('n=BGD&v=T2M')} />
     </Theme>,
   );

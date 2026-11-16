@@ -26,7 +26,8 @@ identify places needing product investigation. Public agencies can use the
 exports as a reviewable input to further warming or rainfall assessments.
 These are intended uses: institutional adoption and policy outcomes have not
 been demonstrated. TRACE does not forecast, attribute causes, or replace
-validated local risk models. Home must state this purpose and its limits.
+validated local risk models. Home states the purpose; the dedicated Impact
+tab explains the need, cross-record comparison, intended benefits and limits.
 
 Impact still needs to be measured through analyst time to a reviewed result,
 correct interpretation of uncertainty, reproducibility by other teams, and
@@ -36,13 +37,23 @@ globe, and matching implementations are not evidence of policy impact.
 Home must retain the acronym, purpose, observation window, geographic limits,
 and a clear route into global exploration. It must not open on Bangladesh or
 another country, or imply that only a few nations are supported. Country case
-files remain examples of the global method.
+files remain examples of the global method and live on the homepage, rather
+than occupying a separate navigation tab. Preserve `#/cases` as a link to
+the homepage case section.
 
 The interaction reference is [GRIME](https://grime.world/): a large geographic
 visual, continuity across scroll, and a clear transition into an explorer.
-TRACE keeps its own printed-atlas identity: cream paper, dark serif type,
-red editorial marks, and measured data colours. It does not copy GRIME's
-branding, prose, or mint-on-black palette.
+The user selected Midnight blue: navy surfaces, cool-white serif headings,
+IBM Plex body/monospace text and blue controls. Data colours retain their
+scientific meaning. It does not copy GRIME's branding or prose.
+
+Show state/province boundaries only after zooming to 3×, without region names,
+tooltips or extra statistics. Use generalized Natural Earth admin-1 lines,
+load the shared geometry once on demand, cache global-map outlines in textures,
+and cull off-screen lines in the 2D globe fallback. Project the
+outlines with the climate grid's existing transform. The outlines are
+geographic context only. They add no statistics by region, and the climate
+grid is too coarse to resolve administrative boundaries.
 
 Motion should carry meaning: the globe changes from a reanalysis claim to a
 station witness to an agreement map as the reader follows the evidence.

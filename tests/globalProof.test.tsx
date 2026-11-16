@@ -12,7 +12,7 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 function open(query: string) {
-  render(<Theme theme={themes[defaultThemeSlug]} mode="light"><GlobalProof params={new URLSearchParams(query)} /></Theme>);
+  render(<Theme theme={themes[defaultThemeSlug]} mode="dark"><GlobalProof params={new URLSearchParams(query)} /></Theme>);
 }
 
 it('calculates a worldwide footprint by default, without loading national packs', async () => {

@@ -3,6 +3,8 @@ import {divergingColor, robustLimit} from './color';
 import {CHROME, textScale} from './chrome';
 import {signed} from '../lib/format';
 import {useWidth} from './useWidth';
+import {ReadoutMark, ReadoutText, useChartHover} from './readout';
+import {VStack} from '@astryxdesign/core/Stack';
 
 type Props = {
   years: number[];
@@ -33,7 +35,11 @@ export function YearStrip({years, series, variable, unit, current, onPick, title
     if (i >= 0 && i < years.length) onPick(years[i]);
   };
   const ci = current === null ? -1 : years.indexOf(current);
+  const hover = useChartHover(years.length, sx => Math.floor((sx - m.l) / bw));
+  const hi = hover.index;
+  const hv = hi === null ? NaN : series[hi];
   return (
+    <VStack gap={1}>
     <svg
       ref={ref}
       viewBox={`0 0 ${W} ${H}`}
@@ -49,8 +55,14 @@ export function YearStrip({years, series, variable, unit, current, onPick, title
       onPointerDown={e => {
         e.currentTarget.setPointerCapture(e.pointerId);
         pick(e.clientX, e.currentTarget.getBoundingClientRect());
+        hover.handlers.onPointerDown(e);
       }}
-      onPointerMove={e => e.buttons && pick(e.clientX, e.currentTarget.getBoundingClientRect())}
+      onPointerMove={e => {
+        if (e.buttons) pick(e.clientX, e.currentTarget.getBoundingClientRect());
+        hover.handlers.onPointerMove(e);
+      }}
+      onPointerLeave={hover.handlers.onPointerLeave}
+      onBlur={hover.handlers.onBlur}
       onKeyDown={e => {
         const step = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
         if (!step) return;
@@ -71,9 +83,7 @@ export function YearStrip({years, series, variable, unit, current, onPick, title
         const v = series[i];
         if (!Number.isFinite(v)) return null;
         return (
-          <rect key={yr} x={m.l + i * bw + bw * 0.12} width={bw * 0.76} y={Math.min(y(v), y(0))} height={Math.max(1, Math.abs(y(v) - y(0)))} rx={1} fill={divergingColor(def.palette, v, lim)} fillOpacity={ci < 0 || i === ci ? 1 : 0.55}>
-            <title>{`${yr}: ${signed(v, 2)} ${unit}`}</title>
-          </rect>
+          <rect key={yr} x={m.l + i * bw + bw * 0.12} width={bw * 0.76} y={Math.min(y(v), y(0))} height={Math.max(1, Math.abs(y(v) - y(0)))} rx={1} fill={divergingColor(def.palette, v, lim)} fillOpacity={ci < 0 || i === ci ? 1 : 0.55} />
         );
       })}
       {years.filter(yr => yr % 10 === 0 || yr === years[0] || yr === years[years.length - 1]).map(yr => (
@@ -82,6 +92,9 @@ export function YearStrip({years, series, variable, unit, current, onPick, title
         </text>
       ))}
       {ci >= 0 && <rect x={m.l + ci * bw} y={m.t - 6} width={bw} height={H - m.t - m.b + 8} fill="none" stroke={CHROME.ink} strokeOpacity={0.8} rx={2} />}
+      {hi !== null && <ReadoutMark x={m.l + (hi + 0.5) * bw} y={y(Number.isFinite(hv) ? hv : 0)} top={m.t} bottom={H - m.b} r={3.5} />}
     </svg>
+    <ReadoutText lines={hi === null ? null : [String(years[hi]), Number.isFinite(hv) ? `${signed(hv, 2)} ${unit}` : 'no data']} hint="Point at a bar to read that year's value." />
+    </VStack>
   );
 }

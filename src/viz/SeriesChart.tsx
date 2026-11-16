@@ -3,6 +3,8 @@ import {divergingColor} from './color';
 import {CHROME, ticks, textScale} from './chrome';
 import {num} from '../lib/format';
 import {useWidth} from './useWidth';
+import {ReadoutMark, ReadoutText, useChartHover} from './readout';
+import {VStack} from '@astryxdesign/core/Stack';
 import type {SeriesAnalysis, StepScreen} from '../lib/stats';
 
 type Props = {
@@ -56,9 +58,37 @@ export function SeriesChart({years, series, analysis, variable, unit, witness, w
   const tickStep = yt.length > 1 ? yt[1] - yt[0] : 1;
   const tickDigits = (String(+tickStep.toPrecision(6)).split('.')[1] ?? '').length;
   const xt = years.filter(yr => yr % 10 === 0 || yr === years[0]);
+  const slot = (W - m.l - m.r) / years.length;
+  const hover = useChartHover(years.length, sx => Math.floor((sx - m.l) / slot));
+  const hov = hover.index;
+  const senAt = (yr: number) => trend.intercept + trend.slope * yr;
+  const readout = (() => {
+    if (hov === null) return null;
+    const yr = years[hov];
+    const v = series[hov];
+    const w = witness?.[hov];
+    const lines = [
+      String(yr),
+      `yearly value  ${Number.isFinite(v) ? `${num(v, 2)} ${unit}` : 'no data'}`,
+      ...(witness ? [`${witnessLabel ?? 'Independent record'}  ${w !== undefined && Number.isFinite(w) ? `${num(w, 2)} ${unit}` : 'no data'}`] : []),
+      ...(Number.isFinite(trend.slope) ? [`Sen trend  ${num(senAt(yr), 2)} ${unit}`] : []),
+    ];
+    return {x: x(yr), y: y(Number.isFinite(v) ? v : 0), lines};
+  })();
 
   return (
-    <svg ref={ref} viewBox={`0 0 ${W} ${H}`} width="100%" height={H} role="img" aria-label={title} style={{display: 'block'}}>
+    <VStack gap={1}>
+    <svg
+      ref={ref}
+      viewBox={`0 0 ${W} ${H}`}
+      width="100%"
+      height={H}
+      role="group"
+      aria-label={`${title}. Point at, tap or use the arrow keys to read each year's values.`}
+      tabIndex={0}
+      style={{display: 'block', cursor: 'crosshair'}}
+      {...hover.handlers}
+    >
       <title>{title}</title>
       {yt.map(v => (
         <g key={v}>
@@ -77,9 +107,7 @@ export function SeriesChart({years, series, analysis, variable, unit, witness, w
         const v = series[i];
         if (!Number.isFinite(v)) return null;
         return (
-          <rect key={yr} x={x(yr) - bw / 2} width={bw} y={Math.min(y(v), y(0))} height={Math.max(0.6, Math.abs(y(v) - y(0)))} fill={divergingColor(def.palette, v, lim)} rx={0.8}>
-            <title>{`${yr}: ${num(v, 2)} ${unit}`}</title>
-          </rect>
+          <rect key={yr} x={x(yr) - bw / 2} width={bw} y={Math.min(y(v), y(0))} height={Math.max(0.6, Math.abs(y(v) - y(0)))} fill={divergingColor(def.palette, v, lim)} rx={0.8} fillOpacity={hov === null || hov === i ? 1 : 0.6} />
         );
       })}
       {Number.isFinite(trend.slopeLow) && (
@@ -102,6 +130,8 @@ export function SeriesChart({years, series, analysis, variable, unit, witness, w
           strokeWidth={1.6}
         />
       )}
+      {witness &&
+        years.map((yr, i) => (Number.isFinite(witness[i]) ? <circle key={yr} cx={x(yr)} cy={y(witness[i])} r={hov === i ? 3.4 : 1.9} fill={CHROME.witness} /> : null))}
       {step?.stepDominated && (
         <g>
           <line x1={x(step.breakAt) - bw * 0.64} x2={x(step.breakAt) - bw * 0.64} y1={m.t} y2={H - m.b} stroke={CHROME.accent} strokeDasharray="3 3" />
@@ -143,6 +173,9 @@ export function SeriesChart({years, series, analysis, variable, unit, witness, w
           });
         })()}
       </g>
+      {readout && <ReadoutMark x={readout.x} y={readout.y} top={m.t} bottom={H - m.b} />}
     </svg>
+    <ReadoutText lines={readout?.lines ?? null} hint="Point at, tap or arrow through the chart to read each year's values." />
+    </VStack>
   );
 }

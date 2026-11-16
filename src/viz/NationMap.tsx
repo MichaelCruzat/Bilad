@@ -8,9 +8,11 @@ import {reliefUrl, type Boundary, type Context, type NationMeta} from '../lib/na
 import type {VariableAnalysis} from '../lib/analysis';
 import {getVariable} from '../data/variables';
 import {divergingColor, emergenceRamp, NO_DATA, robustLimit} from './color';
-import {lat as fmtLat, signed} from '../lib/format';
+import {lat as fmtLat, num, signed} from '../lib/format';
 import {CHROME, rootPx} from './chrome';
+import {Readout} from './readout';
 import {fullName} from '../lib/names';
+import {regionalLinesInBounds, useRegionalBoundaries, type Bounds} from '../lib/regionalBoundaries';
 
 export type MapLayer = 'change' | 'emergence' | 'normal' | 'year';
 
@@ -144,6 +146,13 @@ type Props = {
   emphasis?: ReadonlySet<number> | null;
   showProfile?: boolean;
   maxHeight?: number;
+  /**
+   * CSS height limit. When set, the map fills its column's width and takes
+   * its height from the nation's shape up to this limit, so tall nations
+   * such as Chile grow down the page instead of shrinking to fit a box.
+   * Without it, the map fits inside its parent's height.
+   */
+  heightCap?: string;
   /** Unit caption under the latitude profile, e.g. "°C per decade". */
   unitLabel?: string;
   /** Cell groups drawn with a coloured outline (for contrasts). */
@@ -179,6 +188,7 @@ export function NationMap({
   emphasis = null,
   showProfile = true,
   maxHeight = 620,
+  heightCap,
   unitLabel,
   outlines = [],
   context = null,
@@ -192,10 +202,17 @@ export function NationMap({
   const coloring = useMemo(() => colorCells(analysis, layer, year), [analysis, layer, year]);
   const [hover, setHover] = useState<number | null>(null);
   const [drag, setDrag] = useState<[number, number] | null>(null);
+  const [profileY, setProfileY] = useState<number | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const zoomRef = useRef<SVGGElement>(null);
   const zoomer = useRef<ZoomBehavior<SVGGElement, unknown> | null>(null);
   const [zt, setZt] = useState<ZoomTransform>(zoomIdentity);
+  const regional = useRegionalBoundaries(zt.k);
+  const regionalPath = useMemo(() => {
+    if (!regional) return null;
+    const bounds = meta.extent ?? geoBounds(boundary).flat() as Bounds;
+    return geoPath(geo.projection)({type: 'MultiLineString', coordinates: regionalLinesInBounds(regional, bounds).map(line => line.points)});
+  }, [regional, geo, meta, boundary]);
   const reduced = useMemo(() => prefersReducedMotion(), []);
   // Screen pixels per SVG unit, so labels and buttons keep a readable,
   // tappable size however large or small the map is drawn.
@@ -288,17 +305,22 @@ export function NationMap({
 
   // Zonal (row) means, area-weighted, for the profile line.
   const rows = useMemo(() => {
-    const byLat = new Map<number, {sum: number; w: number}>();
+    const byLat = new Map<number, {sum: number; w: number; n: number}>();
     meta.cells.forEach((c, i) => {
       const v = values[i];
       if (!Number.isFinite(v)) return;
-      const row = byLat.get(c.lat) ?? {sum: 0, w: 0};
+      const row = byLat.get(c.lat) ?? {sum: 0, w: 0, n: 0};
       row.sum += v * c.areaKm2;
       row.w += c.areaKm2;
+      row.n += 1;
       byLat.set(c.lat, row);
     });
-    return [...byLat.entries()].sort((a, b) => b[0] - a[0]).map(([latV, r]) => ({lat: latV, mean: r.sum / r.w}));
+    return [...byLat.entries()].sort((a, b) => b[0] - a[0]).map(([latV, r]) => ({lat: latV, mean: r.sum / r.w, cells: r.n}));
   }, [meta, values]);
+  const profileRow =
+    profileY === null || drag || !rows.length
+      ? null
+      : rows.reduce((best, r) => (Math.abs(latToY(r.lat) - profileY) < Math.abs(latToY(best.lat) - profileY) ? r : best));
 
 
   const eventCell = (e: PointerEvent<SVGElement>) => {
@@ -349,12 +371,12 @@ export function NationMap({
       viewBox={`0 0 ${totalW.toFixed(0)} ${totalH.toFixed(0)}`}
       preserveAspectRatio="xMidYMid meet"
       width="100%"
-      height="100%"
+      height={heightCap ? undefined : '100%'}
       role="application"
       aria-label={`${title}. Arrow keys move between grid cells, Enter zooms to the selected cell, plus and minus zoom, 0 resets, Escape clears.`}
       tabIndex={onSelect ? 0 : -1}
       onKeyDown={onKeyDown}
-      style={{display: 'block', maxHeight: '100%', touchAction: 'none', outline: 'none'}}
+      style={{display: 'block', height: heightCap ? 'auto' : undefined, maxHeight: heightCap ?? '100%', touchAction: 'none', outline: 'none'}}
     >
       <title>{title}</title>
       <defs>
@@ -365,9 +387,9 @@ export function NationMap({
       <filter id={`relief-${clipId}`} colorInterpolationFilters="sRGB">
         <feColorMatrix type="saturate" values="0.12" />
           <feComponentTransfer>
-            <feFuncR type="linear" slope="0.4" intercept="0.56" />
-            <feFuncG type="linear" slope="0.4" intercept="0.53" />
-            <feFuncB type="linear" slope="0.38" intercept="0.47" />
+            <feFuncR type="linear" slope="0.36" intercept="0.03" />
+            <feFuncG type="linear" slope="0.4" intercept="0.05" />
+            <feFuncB type="linear" slope="0.45" intercept="0.08" />
           </feComponentTransfer>
       </filter>
       <filter id={`glow-${clipId}`} x="-10%" y="-10%" width="120%" height="120%">
@@ -448,6 +470,7 @@ export function NationMap({
         {(band || emphasis) &&
           geo.cellPaths.map((d, i) => (dimmed(i) ? <path key={i} d={d} fill={CHROME.body} fillOpacity={0.62} pointerEvents="none" /> : null))}
         {stipple}
+        {regionalPath && <path d={regionalPath} fill="none" stroke={CHROME.ink} strokeOpacity={0.55} strokeWidth={0.65} vectorEffect="non-scaling-stroke" pointerEvents="none" />}
       </g>
       <path d={geo.boundaryPath} fill="none" stroke={CHROME.ink} strokeOpacity={0.7} strokeWidth={0.9} vectorEffect="non-scaling-stroke" pointerEvents="none" />
       {outlines.map(group =>
@@ -551,7 +574,11 @@ export function NationMap({
             const y = svgPoint(e);
             setDrag([y, y]);
           }}
-          onPointerMove={e => drag && setDrag([drag[0], svgPoint(e)])}
+          onPointerMove={e => {
+            if (drag) setDrag([drag[0], svgPoint(e)]);
+            else setProfileY(svgPoint(e));
+          }}
+          onPointerLeave={e => e.pointerType === 'mouse' && setProfileY(null)}
           onPointerCancel={() => setDrag(null)}
           onPointerUp={() => {
             if (!drag) return;
@@ -566,6 +593,36 @@ export function NationMap({
             onBand([Math.round(south * 2) / 2, Math.round(north * 2) / 2]);
           }}
         />
+      )}
+      {showProfile && (
+        <rect
+          x={profileX0 - 6}
+          y={PAD}
+          width={PROFILE_W + 12}
+          height={geo.height - 2 * PAD}
+          fill="transparent"
+          pointerEvents={onBand ? 'none' : undefined}
+          onPointerMove={e => setProfileY(svgPoint(e))}
+          onPointerDown={e => setProfileY(svgPoint(e))}
+          onPointerLeave={e => e.pointerType === 'mouse' && setProfileY(null)}
+        />
+      )}
+      {showProfile && profileRow && (
+        <g pointerEvents="none" aria-hidden="true">
+          <line x1={profileX0 - 6} x2={profileX0 + PROFILE_W + 6} y1={latToY(profileRow.lat)} y2={latToY(profileRow.lat)} stroke={CHROME.ink} strokeOpacity={0.5} strokeDasharray="2 3" />
+          <Readout
+            x={px(profileRow.mean)}
+            y={latToY(profileRow.lat)}
+            lines={[
+              `${fmtLat(profileRow.lat)} row`,
+              `${layer === 'normal' ? num(profileRow.mean, pLim < 1 ? 2 : 1) : signed(profileRow.mean, pLim < 1 ? 2 : 1)} ${layer === 'emergence' ? 'signal ÷ noise' : unitLabel ?? ''}`.trim(),
+              `area-weighted mean of ${profileRow.cells} cell${profileRow.cells === 1 ? '' : 's'}`,
+            ]}
+            width={totalW}
+            height={totalH}
+            fontSize={profileFont}
+          />
+        </g>
       )}
     </svg>
   );

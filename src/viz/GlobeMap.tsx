@@ -5,8 +5,9 @@ import {Text} from '@astryxdesign/core/Text';
 import type {Feature, MultiPolygon, Polygon} from 'geojson';
 import type {GlobalCells} from '../lib/globalData';
 import {useMediaQuery} from '../lib/hooks';
-import {rootPx} from './chrome';
+import {canvasChrome, rootPx} from './chrome';
 import {createGlobeRenderer, type GlobeRenderer} from './globeRenderer';
+import {globeViewBounds, regionalLinesInBounds, useRegionalBoundaries} from '../lib/regionalBoundaries';
 
 /**
  * TRACE's globe: every land cell on an orthographic sphere, coloured by one
@@ -45,13 +46,6 @@ type Props = {
 const D_LAT = 0.5;
 const D_LON = 0.625;
 const RAD = Math.PI / 180;
-const OCEAN = '#d5dcd8';
-const INK = '#1c1a17';
-
-function cssVar(name: string, fallback: string): string {
-  if (typeof window === 'undefined') return fallback;
-  return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
-}
 
 export function GlobeMap({cells, colorOf, colorKey, world, selectedCell, selectedCountryId, onSelectCell, onInteract, describeCell, controls, focus, spinning, onSpinningChange, title}: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -156,11 +150,15 @@ export function GlobeMap({cells, colorOf, colorKey, world, selectedCell, selecte
 
   const gpu = useRef<GlobeRenderer | null>(null);
   useEffect(() => {
-    gpu.current = createGlobeRenderer(cells, groups, borders);
+    if (canvasRef.current) gpu.current = createGlobeRenderer(cells, groups, borders, canvasChrome(canvasRef.current));
     return () => { gpu.current?.dispose(); gpu.current = null; };
   }, [cells, groups, borders]);
 
   const radius = (Math.min(size.w, size.h) / 2) * 0.9 * view.k;
+  const regional = useRegionalBoundaries(view.k);
+  useEffect(() => {
+    if (regional) gpu.current?.setRegions({type: 'MultiLineString', coordinates: regional.map(line => line.points)});
+  }, [regional, cells, groups, borders]);
   const projection = useMemo(
     () => geoOrthographic().rotate([-view.lon, -view.lat]).scale(radius).translate([size.w / 2, size.h / 2]).clipAngle(90).precision(0.5),
     [view, radius, size],
@@ -236,6 +234,7 @@ export function GlobeMap({cells, colorOf, colorKey, world, selectedCell, selecte
     if (el.height !== size.h * dpr) el.height = size.h * dpr;
     const ctx = el.getContext('2d');
     if (!ctx) return;
+    const colors = canvasChrome(el);
     const frame = requestAnimationFrame(() => {
       const cx = size.w / 2;
       const cy = size.h / 2;
@@ -246,25 +245,29 @@ export function GlobeMap({cells, colorOf, colorKey, world, selectedCell, selecte
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, size.w, size.h);
 
-      // A printed globe: soft shadow, pale sea, faint graticule.
+      // Theme-matched sea and a faint graticule in both rendering paths.
       ctx.save();
       ctx.beginPath();
       ctx.arc(cx, cy, R, 0, Math.PI * 2);
-      ctx.shadowColor = 'rgba(60, 45, 20, 0.28)';
+      ctx.shadowColor = colors.border;
       ctx.shadowBlur = R * 0.08;
       ctx.shadowOffsetY = R * 0.03;
-      ctx.fillStyle = OCEAN;
+      ctx.fillStyle = colors.ocean;
       ctx.fill();
       ctx.restore();
       const path = geoPath(projection, ctx);
-      if (gpu.current?.paint(el.width, el.height, R * dpr, view)) {
-        ctx.drawImage(gpu.current.canvas, 0, 0, size.w, size.h);
+      const renderer = gpu.current;
+      const accelerated = renderer?.paint(el.width, el.height, R * dpr, view, !!regional);
+      if (accelerated && renderer) {
+        ctx.drawImage(renderer.canvas, 0, 0, size.w, size.h);
       } else {
         ctx.beginPath();
         path(geoGraticule10());
-        ctx.strokeStyle = 'rgba(28, 26, 23, 0.08)';
+        ctx.strokeStyle = colors.ink;
+        ctx.globalAlpha = 0.12;
         ctx.lineWidth = 0.6;
         ctx.stroke();
+        ctx.globalAlpha = 1;
 
         // Cells.
         const dLon = (D_LON / 2) * RAD;
@@ -301,20 +304,33 @@ export function GlobeMap({cells, colorOf, colorKey, world, selectedCell, selecte
         if (borders) {
           ctx.beginPath();
           path(borders.coast);
-          ctx.strokeStyle = 'rgba(28, 26, 23, 0.55)';
+          ctx.strokeStyle = colors.ink;
+          ctx.globalAlpha = 0.55;
           ctx.lineWidth = 0.7;
           ctx.stroke();
           ctx.beginPath();
           path(borders.inner);
-          ctx.strokeStyle = 'rgba(28, 26, 23, 0.3)';
+          ctx.globalAlpha = 0.3;
           ctx.lineWidth = 0.5;
           ctx.stroke();
+          ctx.globalAlpha = 1;
         }
+      }
+      if (regional && !accelerated) {
+        const regionalShape = {type: 'MultiLineString' as const, coordinates: regionalLinesInBounds(regional, globeViewBounds(view.lon, view.lat, R, size.w, size.h)).map(line => line.points)};
+        ctx.save();
+        ctx.beginPath();
+        path(regionalShape);
+        ctx.strokeStyle = colors.ink;
+        ctx.globalAlpha = 0.5;
+        ctx.lineWidth = 0.65;
+        ctx.stroke();
+        ctx.restore();
       }
       if (countryShape) {
         ctx.beginPath();
         path(countryShape);
-        ctx.strokeStyle = INK;
+        ctx.strokeStyle = colors.ink;
         ctx.lineWidth = 2.2;
         ctx.stroke();
       }
@@ -332,19 +348,19 @@ export function GlobeMap({cells, colorOf, colorKey, world, selectedCell, selecte
         };
         ctx.beginPath();
         path(ring);
-        ctx.strokeStyle = INK;
+        ctx.strokeStyle = colors.ink;
         ctx.lineWidth = 2;
         ctx.stroke();
       }
       // Rim.
       ctx.beginPath();
       ctx.arc(cx, cy, R, 0, Math.PI * 2);
-      ctx.strokeStyle = 'rgba(28, 26, 23, 0.6)';
+      ctx.strokeStyle = colors.border;
       ctx.lineWidth = 1.2;
       ctx.stroke();
 
       if (keyboard) {
-        ctx.strokeStyle = INK;
+        ctx.strokeStyle = colors.ink;
         ctx.lineWidth = 1.5;
         ctx.beginPath();
         ctx.moveTo(cx - 12, cy);
@@ -364,21 +380,21 @@ export function GlobeMap({cells, colorOf, colorKey, world, selectedCell, selecte
         const [sx, sy] = projection([cells.lon[hover], cells.lat[hover]]) ?? [cx, cy];
         const tx = Math.min(Math.max(6, sx + 14), size.w - w - 6);
         const ty = Math.min(Math.max(6, sy - h - 12), size.h - h - 6);
-        ctx.fillStyle = cssVar('--color-background-card', '#f8f4ec');
+        ctx.fillStyle = colors.card;
         ctx.globalAlpha = 0.96;
         ctx.fillRect(tx, ty, w, h);
         ctx.globalAlpha = 1;
-        ctx.strokeStyle = 'rgba(28, 26, 23, 0.35)';
+        ctx.strokeStyle = colors.border;
         ctx.lineWidth = 1;
         ctx.strokeRect(tx + 0.5, ty + 0.5, w - 1, h - 1);
         lines.forEach((l, k) => {
-          ctx.fillStyle = k === 0 ? INK : cssVar('--color-text-secondary', '#4b463c');
+          ctx.fillStyle = k === 0 ? colors.ink : colors.muted;
           ctx.fillText(l, tx + fs * 0.75, ty + fs * 1.45 + k * fs * 1.4);
         });
       }
     });
     return () => cancelAnimationFrame(frame);
-  }, [size, view, radius, projection, groups, geom, borders, countryShape, selectedCell, hover, keyboard, cells, describeCell]);
+  }, [size, view, radius, projection, groups, geom, borders, countryShape, selectedCell, hover, keyboard, cells, describeCell, regional]);
 
   const cellAt = (x: number, y: number): number | null => {
     const dx = x - size.w / 2;

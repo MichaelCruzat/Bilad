@@ -191,7 +191,7 @@ export function Atlas({iso3, params}: Props) {
   );
 
   const mapArea = (
-    <VStack gap={2} height="100%">
+    <VStack gap={2}>
       <HStack gap={3} hAlign="between" vAlign="center" wrap="wrap">
         <Heading level={1}>
           {meta?.name ?? iso3} <Text color="secondary" type="large">· {def.short.toLowerCase()}, {from}–{to}</Text>
@@ -205,9 +205,10 @@ export function Atlas({iso3, params}: Props) {
         )}
       </HStack>
       <StackItem size="fill">
-        <VStack height={narrow ? '28rem' : '100%'}>
+        <VStack>
         {nation.status === 'ready' && data.status === 'ready' ? (
           <NationMap
+            heightCap={narrow ? '80vh' : '140vh'}
             meta={nation.data.meta}
             boundary={nation.data.boundary}
             context={nation.data.context}
@@ -281,17 +282,17 @@ export function Atlas({iso3, params}: Props) {
   return (
     <Layout
       start={
-        <LayoutPanel width={wide ? 360 : 300} padding={5} hasDivider label="Atlas controls" role="region">
+        <LayoutPanel width={wide ? 340 : 280} padding={5} hasDivider label="Atlas controls" role="region">
           {controls}
         </LayoutPanel>
       }
       content={
-        <LayoutContent padding={5} isScrollable={false} label="Map">
+        <LayoutContent padding={5} label="Map">
           {mapArea}
         </LayoutContent>
       }
       end={
-        <LayoutPanel width={wide ? 600 : 460} padding={5} hasDivider label="Evidence" role="region">
+        <LayoutPanel width={wide ? 520 : 400} padding={5} hasDivider label="Evidence" role="region">
           {evidence}
         </LayoutPanel>
       }

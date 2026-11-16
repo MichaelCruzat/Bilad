@@ -13,6 +13,21 @@ export const CHROME = {
   mono: 'var(--font-family-code)',
 } as const;
 
+/** Canvas cannot resolve var(); read tokens from its themed DOM ancestry. */
+export function canvasChrome(element: Element) {
+  const style = getComputedStyle(element);
+  const token = (name: string, fallback: string) => style.getPropertyValue(name).trim() || fallback;
+  return {
+    ink: token('--color-text-primary', 'CanvasText'),
+    muted: token('--color-text-secondary', 'CanvasText'),
+    faint: token('--color-text-disabled', 'GrayText'),
+    border: token('--color-border-emphasized', 'GrayText'),
+    ocean: token('--color-background-surface', 'Canvas'),
+    body: token('--color-background-body', 'Canvas'),
+    card: token('--color-background-card', 'Canvas'),
+  };
+}
+
 /** Nice tick values covering [min, max]. */
 export function ticks(min: number, max: number, count = 5): number[] {
   if (!Number.isFinite(min) || !Number.isFinite(max) || min === max) return [min];

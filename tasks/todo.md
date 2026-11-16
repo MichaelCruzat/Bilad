@@ -14,7 +14,7 @@ as supplemental deep links. The global correction in
 - [x] Correct FDR wording and remove unrecorded audit claims.
 - [x] Reject non-finite validation differences instead of silently passing them.
 - [x] Preserve binary UI fixtures and add regression tests.
-- [x] Simplify home; move the case list to its own route and remove repeated sections.
+- [x] Simplify repeated home content; restore case files on Home per the user's later correction.
 - [x] Profile and optimize globe rotation and World year playback; retain a 2D fallback.
 - [x] Replace sentence/verdict badges with text labels under the project UI rules.
 - [x] Restore the full acronym and vital global context; remove seeded national home content.
@@ -23,9 +23,18 @@ as supplemental deep links. The global correction in
 - [x] Align globe data and boundary texture projections; test latitudes and the antimeridian.
 - [x] Complete final browser acceptance, visual review, and demo regeneration.
 - [x] Record final verification results in the handoff.
-- [ ] Review and commit the application changes on `rebuild/national-atlas`.
-- [ ] Confirm remote CI for that exact commit.
-- [ ] Merge to `main` and verify GitHub Pages after an authorized release.
+- [x] Review, commit and release the global continuation through PR #1; verify Pages at `48ae803`.
+- [x] Add a separate Impact tab explaining significance, cross-record checks, intended users and limits.
+- [x] Add label-free regional outlines on zoom, with a shared lazy asset and projection alignment checks.
+- [x] Apply the user's Midnight blue theme through the Astryx editor; adapt native map chrome.
+- [x] Restore viewport height on the Atlas and World routes so the national map is not pushed below the fold.
+- [x] Size national maps from the column width so Chile and other tall nations are no longer squeezed.
+- [x] Enlarge the World map by narrowing the Explore side panels.
+- [x] Give every chart point-level readouts (pointer, touch and keyboard) and label the World verdict shares.
+- [x] Rebuild the Method page with a sidebar outline, verdict steps, structured calculation sections and a variables table.
+
+Release evidence is the exact commit's GitHub Actions results and the live
+Pages build. A local checklist is not proof that a later commit deployed.
 
 The older V1 tasks below are historical. They are superseded by the current
 README and [handoff](../docs/HANDOFF.md); their unchecked boxes are not an

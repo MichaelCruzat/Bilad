@@ -4,6 +4,8 @@ import {CHROME, textScale} from './chrome';
 import {fdrThreshold, type TrendTest} from '../lib/stats';
 import {num, signed} from '../lib/format';
 import {useWidth} from './useWidth';
+import {ReadoutMark, ReadoutText, useChartHover} from './readout';
+import {VStack} from '@astryxdesign/core/Stack';
 
 const MONTHS = ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'];
 const NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -25,9 +27,22 @@ export function MonthStrip({trends, variable, unit, digits, title}: Props) {
   const pStar = fdrThreshold(trends.map(t => t.p), 0.1);
   const bw = (W - m.l - m.r) / 12;
   const y = (v: number) => m.t + ((lim - Math.max(-lim, Math.min(lim, v))) / (2 * lim)) * (H - m.t - m.b);
+  const hover = useChartHover(12, sx => Math.floor((sx - m.l) / bw));
+  const hi = hover.index;
   const summary = trends.map((t, i) => `${NAMES[i]} ${signed(t.slope, digits)}${pStar > 0 && t.p <= pStar ? ' (significant)' : ''}`).join(', ');
   return (
-    <svg ref={ref} viewBox={`0 0 ${W} ${H}`} width="100%" height={H} role="img" aria-label={`${title}. ${summary}. ${unit} per decade.`} style={{display: 'block'}}>
+    <VStack gap={1}>
+    <svg
+      ref={ref}
+      viewBox={`0 0 ${W} ${H}`}
+      width="100%"
+      height={H}
+      role="group"
+      aria-label={`${title}. ${summary}. ${unit} per decade.`}
+      tabIndex={0}
+      style={{display: 'block', cursor: 'crosshair'}}
+      {...hover.handlers}
+    >
       <title>{title}</title>
       {[lim, 0, -lim].map(v => (
         <g key={v}>
@@ -51,15 +66,17 @@ export function MonthStrip({trends, variable, unit, digits, title}: Props) {
               stroke={sig ? CHROME.ink : 'none'}
               strokeWidth={1.2}
               rx={1}
-            >
-              <title>{`${NAMES[i]}: ${signed(t.slope, digits)} ${unit}/decade, p = ${num(t.p, 3)}`}</title>
-            </rect>
+              fillOpacity={hi === null || hi === i ? 1 : 0.6}
+            />
             <text x={m.l + i * bw + bw / 2} y={H - 5} fontSize={10 * TS} fill={sig ? CHROME.ink : CHROME.muted} textAnchor="middle" fontFamily={CHROME.font}>
               {MONTHS[i]}
             </text>
           </g>
         );
       })}
+      {hi !== null && <ReadoutMark x={m.l + (hi + 0.5) * bw} y={y(Number.isFinite(trends[hi].slope) ? trends[hi].slope : 0)} top={m.t} bottom={H - m.b} r={3.5} />}
     </svg>
+    <ReadoutText lines={hi === null ? null : [NAMES[hi], `${signed(trends[hi].slope, digits)} ${unit}/decade`, `p = ${num(trends[hi].p, 3)}`, pStar > 0 && trends[hi].p <= pStar ? 'significant after correction' : 'exploratory only']} hint="Point at, tap or arrow through the months to read each trend." />
+    </VStack>
   );
 }

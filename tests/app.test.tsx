@@ -64,6 +64,8 @@ describe('router', () => {
     }
     const method = parseHash('#/method?s=fdr');
     expect(method.page === 'method' && method.params.get('s')).toBe('fdr');
+    const outlined = parseHash('#method-integrity');
+    expect(outlined.page === 'method' && outlined.params.get('s')).toBe('integrity');
     const bare = parseHash('#/atlas');
     expect(bare.page === 'atlas' && bare.iso3).toBe('CHL');
     expect(parseHash('#/nope').page).toBe('missing');
@@ -219,7 +221,10 @@ describe('method', () => {
     for (const name of ['Trend size: Theil–Sen', 'Field significance: false-discovery control', 'Integrity screen: ramp or jump?', 'Cross-examination']) {
       expect(screen.getByRole('heading', {name})).toBeInTheDocument();
     }
-    expect(screen.getByRole('link', {name: /Hamed & Rao \(1998\)/})).toHaveAttribute('href', expect.stringContaining('doi.org'));
+    // Cited under its section and again in the reference list, both to the DOI.
+    const hamedRao = screen.getAllByRole('link', {name: /Hamed & Rao \(1998\)/});
+    expect(hamedRao).toHaveLength(2);
+    for (const link of hamedRao) expect(link).toHaveAttribute('href', expect.stringContaining('doi.org'));
     expect(screen.getByText('Terms and abbreviations')).toBeInTheDocument();
   });
 });

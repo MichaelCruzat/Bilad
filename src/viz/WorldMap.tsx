@@ -8,7 +8,9 @@ import type {GlobalCells, GlobalStats} from '../lib/globalData';
 import {getVariable} from '../data/variables';
 import {divergingColor, emergenceRamp, robustLimit, VERDICT_COLORS} from './color';
 import {prefersReducedMotion} from './usePlayback';
-import {rootPx} from './chrome';
+import {canvasChrome, rootPx} from './chrome';
+import {globeTexturePoint} from './globeTexture';
+import {useRegionalBoundaries} from '../lib/regionalBoundaries';
 
 export type WorldLayer = 'trend' | 'year' | 'verdict' | 'normal';
 
@@ -38,11 +40,6 @@ export type WorldMapControls = {zoomBy: (factor: number) => void; reset: () => v
 const BINS = 72;
 const D_LAT = 0.5;
 const D_LON = 0.625;
-
-function cssVar(name: string, fallback: string): string {
-  if (typeof window === 'undefined') return fallback;
-  return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
-}
 
 /** Colour index (0..BINS-1, or 255 for no data / transparent) for every cell. */
 function binCells(stats: GlobalStats, annual: Float32Array | null, layer: WorldLayer, year: number, firstYear: number, annualLimit: number): {bins: Uint8Array; palette: string[]; limit: number} {
@@ -90,6 +87,7 @@ export function WorldMap({cells, stats, annual, layer, year, firstYear, extent, 
   const [zt, setZt] = useState<ZoomTransform>(zoomIdentity);
   const [hover, setHover] = useState<number | null>(null);
   const [relief, setRelief] = useState<HTMLImageElement | null>(null);
+  const [lines, setLines] = useState<HTMLCanvasElement | null>(null);
   const reduced = useMemo(() => prefersReducedMotion(), []);
   // Keyboard focus: a crosshair marks the cell at the centre, which Enter opens.
   const [keyboard, setKeyboard] = useState(false);
@@ -101,6 +99,12 @@ export function WorldMap({cells, stats, annual, layer, year, firstYear, extent, 
   const oy = (size.h - (north - south) * s) / 2;
   const X = (lon: number) => ox + (lon - west) * s;
   const Y = (lat: number) => oy + (north - lat) * s;
+  const regional = useRegionalBoundaries(zt.k);
+  const viewBounds = useMemo(() => {
+    const [left, top] = zt.invert([0, 0]);
+    const [right, bottom] = zt.invert([size.w, size.h]);
+    return [west + (left - ox) / s, north - (bottom - oy) / s, west + (right - ox) / s, north - (top - oy) / s] as [number, number, number, number];
+  }, [zt, size, west, north, ox, oy, s]);
 
   const index = useMemo(() => {
     const m = new Map<number, number>();
@@ -127,6 +131,32 @@ export function WorldMap({cells, stats, annual, layer, year, firstYear, extent, 
     const topo = world as Parameters<typeof mesh>[0] & {objects: {countries: Parameters<typeof mesh>[1]}};
     return mesh(topo, topo.objects.countries, (a, b) => a === b);
   }, [world]);
+  useEffect(() => {
+    if (!canvasRef.current) return;
+    const image = document.createElement('canvas');
+    image.width = 2304;
+    image.height = 1440;
+    const ctx = image.getContext('2d');
+    if (!ctx) return;
+    const colors = canvasChrome(canvasRef.current);
+    const line = (shape: {coordinates: number[][][]} | null, width: number, color: string, opacity = 1) => {
+      if (!shape) return;
+      ctx.beginPath();
+      for (const part of shape.coordinates) part.forEach(([lo, la], i) => {
+        const [x, y] = globeTexturePoint(lo, la, image.width, image.height);
+        if (i && Math.abs(lo - part[i - 1][0]) < 180) ctx.lineTo(x, y);
+        else ctx.moveTo(x, y);
+      });
+      ctx.strokeStyle = color;
+      ctx.globalAlpha = opacity;
+      ctx.lineWidth = width;
+      ctx.stroke();
+    };
+    line(coast as {coordinates: number[][][]} | null, 0.7, colors.faint);
+    line(borders as {coordinates: number[][][]} | null, 0.5, colors.faint);
+    if (regional) line({coordinates: regional.map(part => part.points)}, 0.65, colors.ink, 0.55);
+    setLines(image);
+  }, [coast, borders, regional]);
   const countryShape = useMemo(() => {
     if (!world || selectedCountry === null) return null;
     const topo = world as Parameters<typeof feature>[0] & {objects: {countries: Parameters<typeof feature>[1]}};
@@ -135,13 +165,14 @@ export function WorldMap({cells, stats, annual, layer, year, firstYear, extent, 
   }, [world, selectedCountry, countryIds]);
   // Hover and keyboard feedback reuse the rendered map. Only data, camera or
   // country-outline changes invalidate the geographic layer.
-  const sceneKey = useMemo(() => ({}), [size, zt, relief, byBin, coloured, borders, coast, countryShape, layer, stats, cells, extent]);
+  const sceneKey = useMemo(() => ({}), [size, zt, relief, byBin, coloured, lines, countryShape, layer, stats, cells, extent]);
   const scene = useRef<{key: object; image: HTMLCanvasElement} | null>(null);
 
   useEffect(() => {
     const img = new Image();
     img.onload = () => setRelief(img);
     img.src = reliefUrl;
+    return () => { img.onload = null; };
   }, [reliefUrl]);
 
   useEffect(() => {
@@ -179,10 +210,13 @@ export function WorldMap({cells, stats, annual, layer, year, firstYear, extent, 
     if (el.height !== size.h * dpr) el.height = size.h * dpr;
     const ctx = el.getContext('2d');
     if (!ctx) return;
+    const colors = canvasChrome(el);
     const frame = requestAnimationFrame(() => {
       const cw = D_LON * s;
       const ch = D_LAT * s;
-      const ink = cssVar('--color-text-primary', '#eee');
+      // Include edge cells whose centres lie just outside the viewport.
+      const visible = (c: number) => cells.lon[c] >= viewBounds[0] - D_LON / 2 && cells.lon[c] <= viewBounds[2] + D_LON / 2 && cells.lat[c] >= viewBounds[1] - D_LAT / 2 && cells.lat[c] <= viewBounds[3] + D_LAT / 2;
+      const ink = colors.ink;
       if (scene.current?.key === sceneKey) {
         ctx.setTransform(1, 0, 0, 1, 0, 0);
         ctx.clearRect(0, 0, el.width, el.height);
@@ -197,7 +231,7 @@ export function WorldMap({cells, stats, annual, layer, year, firstYear, extent, 
         ctx.clip();
         if (relief) {
           ctx.save();
-          ctx.filter = 'grayscale(0.88) sepia(0.35) contrast(0.42) brightness(1.55)';
+          ctx.filter = 'grayscale(0.8) contrast(0.9) brightness(0.48)';
           ctx.drawImage(relief, X(west), Y(north), (east - west) * s, (north - south) * s);
           ctx.restore();
         }
@@ -206,34 +240,21 @@ export function WorldMap({cells, stats, annual, layer, year, firstYear, extent, 
           if (!list.length) return;
           ctx.fillStyle = coloured.palette[b];
           ctx.beginPath();
-          for (const c of list) ctx.rect(X(cells.lon[c]) - cw / 2, Y(cells.lat[c]) - ch / 2, cw + 0.15 / zt.k, ch + 0.15 / zt.k);
+          for (const c of list) if (visible(c)) ctx.rect(X(cells.lon[c]) - cw / 2, Y(cells.lat[c]) - ch / 2, cw + 0.15 / zt.k, ch + 0.15 / zt.k);
           ctx.fill();
         });
         ctx.globalAlpha = 1;
-        const line = (geom: {coordinates: number[][][]} | null, width: number, color: string) => {
-          if (!geom) return;
-          ctx.strokeStyle = color;
-          ctx.lineWidth = width / zt.k;
-          ctx.beginPath();
-          for (const part of geom.coordinates) {
-            // Lift the pen where a line jumps across the antimeridian.
-            part.forEach(([lo, la], i) => {
-              if (i && Math.abs(lo - part[i - 1][0]) < 180) ctx.lineTo(X(lo), Y(la));
-              else ctx.moveTo(X(lo), Y(la));
-            });
-          }
-          ctx.stroke();
-        };
-        const faint = cssVar('--color-text-disabled', '#9aa');
-        line(coast as unknown as {coordinates: number[][][]}, 0.7, faint);
-        line(borders as unknown as {coordinates: number[][][]}, 0.5, faint);
+        if (lines) {
+          const [gx, gy] = globeTexturePoint(west, north, lines.width, lines.height);
+          ctx.drawImage(lines, gx, gy, (east - west) / 360 * lines.width, (north - south) / 180 * lines.height, X(west), Y(north), (east - west) * s, (north - south) * s);
+        }
         // Stipple significant cells once cells are large enough to read.
         if (layer === 'trend' && ch * zt.k > 7) {
           ctx.fillStyle = ink;
           ctx.globalAlpha = 0.8;
           ctx.beginPath();
           for (let c = 0; c < cells.n; c++) {
-            if (!(stats.flags[c] & 1)) continue;
+            if (!(stats.flags[c] & 1) || !visible(c)) continue;
             const x = X(cells.lon[c]);
             const y = Y(cells.lat[c]);
             ctx.moveTo(x + 1.4 / zt.k, y);
@@ -291,15 +312,15 @@ export function WorldMap({cells, stats, annual, layer, year, firstYear, extent, 
         const [sx, sy] = zt.apply([X(cells.lon[hover]), Y(cells.lat[hover])]);
         const tx = Math.min(Math.max(6, sx + 12), size.w - w - 6);
         const ty = Math.min(Math.max(6, sy - h - 10), size.h - h - 6);
-        ctx.fillStyle = cssVar('--color-background-body', '#111');
+        ctx.fillStyle = colors.card;
         ctx.globalAlpha = 0.92;
         ctx.fillRect(tx, ty, w, h);
         ctx.globalAlpha = 1;
-        ctx.strokeStyle = cssVar('--color-border-emphasized', '#444');
+        ctx.strokeStyle = colors.border;
         ctx.lineWidth = 1;
         ctx.strokeRect(tx + 0.5, ty + 0.5, w - 1, h - 1);
         lines.forEach((l, k) => {
-          ctx.fillStyle = k === 0 ? ink : cssVar('--color-text-secondary', '#bbb');
+          ctx.fillStyle = k === 0 ? ink : colors.muted;
           ctx.fillText(l, tx + fs * 0.75, ty + fs * 1.45 + k * fs * 1.35);
         });
       }

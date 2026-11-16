@@ -12,7 +12,9 @@ TRACE screens temperature and rainfall trends across a global land grid, 60°S�
 | `global-explorer` | Any covered country or cell, source comparison, year playback, shareable URL, and evidence export | `src/pages/World.tsx`, `src/lib/globalEvidence.ts`, `src/viz/WorldMap.tsx` | `statistics`, `witnesses` |
 | `global-walkthrough` | All land, any country, or a linked cell through the calculation and its limits | `src/pages/GlobalProof.tsx` | `global-explorer` |
 | `supplemental-atlas` | Extra variables, monthly diagnostics, profiles, briefs for seven national packs | `src/pages/Atlas.tsx`, `src/pages/Brief.tsx` | `statistics`, `witnesses` |
-| `global-home` | Full identity, purpose and beneficiaries, pinned globe, scroll-led evidence trail, and global highlights | `src/pages/Casebook.tsx`, `src/features/MotionStack.tsx`, `src/viz/GlobeMap.tsx` | `summaries`, `witnesses` |
-| `casebook` | Four guided examples and a method reference | `src/pages/Cases.tsx`, `src/pages/CaseFile.tsx`, `src/data/cases.ts` | `statistics`, `witnesses` |
+| `global-home` | Full identity, purpose, pinned globe, scroll-led evidence trail, global highlights and homepage case files | `src/pages/Casebook.tsx`, `src/features/MotionStack.tsx`, `src/viz/GlobeMap.tsx` | `summaries`, `witnesses` |
+| `impact` | Research significance, why temperature comparisons matter, intended users and limits of demonstrated impact | `src/pages/Impact.tsx` | — |
+| `casebook` | Four homepage examples linking to detailed investigations | `src/features/CaseFiles.tsx`, `src/pages/CaseFile.tsx`, `src/data/cases.ts` | `statistics`, `witnesses` |
+| `regional-context` | Optional label-free admin-1 outlines after 3× zoom; shared lazy asset and viewport culling | `src/lib/regionalBoundaries.ts`, `scripts/build-regional-boundaries.py`, `public/data/admin1.meta.json` | global and supplemental map projections |
 
 Build order: data → witnesses → shared statistics → summaries → verification → global explorer/walkthrough → global home and guided examples. Supplemental packs extend the product without defining its geographic coverage.

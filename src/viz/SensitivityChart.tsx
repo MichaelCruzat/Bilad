@@ -1,6 +1,8 @@
 import {CHROME, ticks, textScale} from './chrome';
 import {num, signed} from '../lib/format';
 import {useWidth} from './useWidth';
+import {ReadoutMark, ReadoutText, useChartHover} from './readout';
+import {VStack} from '@astryxdesign/core/Stack';
 import type {StartYearPoint} from '../lib/stats';
 
 type Props = {points: StartYearPoint[]; unit: string; digits: number; title: string};
@@ -15,15 +17,23 @@ export function SensitivityChart({points, unit, digits, title}: Props) {
   const H = 150;
   const TS = textScale();
   const m = {l: 40 * TS, r: 12, t: 10 * TS, b: 24 * TS};
+  const first = points[0]?.start ?? 0;
+  const last = points[points.length - 1]?.start ?? 0;
+  const x = (s: number) => m.l + ((s - first) / Math.max(1, last - first)) * (W - m.l - m.r);
+  const hover = useChartHover(points.length, sx => {
+    let best = 0;
+    points.forEach((p, i) => {
+      if (Math.abs(x(p.start) - sx) < Math.abs(x(points[best].start) - sx)) best = i;
+    });
+    return best;
+  });
   if (!points.length) return null;
+  const hov = hover.index;
   const lo = Math.min(0, ...points.map(p => p.slopeLow).filter(Number.isFinite));
   const hi = Math.max(0, ...points.map(p => p.slopeHigh).filter(Number.isFinite));
   const pad = (hi - lo) * 0.08 || 0.1;
   const y0 = lo - pad;
   const y1 = hi + pad;
-  const first = points[0].start;
-  const last = points[points.length - 1].start;
-  const x = (s: number) => m.l + ((s - first) / Math.max(1, last - first)) * (W - m.l - m.r);
   const y = (v: number) => m.t + ((y1 - v) / (y1 - y0)) * (H - m.t - m.b);
   const sig = points.filter(p => p.p < 0.05).length;
   const sameSign = points.filter(p => Math.sign(p.slope) === Math.sign(points[0].slope)).length;
@@ -32,14 +42,17 @@ export function SensitivityChart({points, unit, digits, title}: Props) {
     [...points].reverse().map(p => `L${x(p.start).toFixed(1)},${y(p.slopeLow).toFixed(1)}`).join('') +
     'Z';
   return (
+    <VStack gap={1}>
     <svg
       ref={ref}
       viewBox={`0 0 ${W} ${H}`}
       width="100%"
       height={H}
-      role="img"
+      role="group"
       aria-label={`${title}. ${sig} of ${points.length} start years give a significant trend; ${sameSign} keep the same sign.`}
-      style={{display: 'block'}}
+      tabIndex={0}
+      style={{display: 'block', cursor: 'crosshair'}}
+      {...hover.handlers}
     >
       <title>{title}</title>
       {ticks(y0, y1, 3).map(v => (
@@ -53,9 +66,7 @@ export function SensitivityChart({points, unit, digits, title}: Props) {
       <path d={band} fill={CHROME.ink} fillOpacity={0.08} />
       <path d={points.map((p, i) => `${i ? 'L' : 'M'}${x(p.start).toFixed(1)},${y(p.slope).toFixed(1)}`).join('')} fill="none" stroke={CHROME.ink} strokeWidth={1.4} />
       {points.map(p => (
-        <circle key={p.start} cx={x(p.start)} cy={y(p.slope)} r={2.6} fill={p.p < 0.05 ? CHROME.ink : CHROME.body} stroke={CHROME.ink} strokeWidth={1}>
-          <title>{`Start ${p.start}: ${signed(p.slope, digits)} ${unit}/decade, p = ${p.p.toFixed(3)}`}</title>
-        </circle>
+        <circle key={p.start} cx={x(p.start)} cy={y(p.slope)} r={2.6} fill={p.p < 0.05 ? CHROME.ink : CHROME.body} stroke={CHROME.ink} strokeWidth={1} />
       ))}
       {points
         .filter(p => p.start % 5 === 0 || p.start === first || p.start === last)
@@ -64,6 +75,9 @@ export function SensitivityChart({points, unit, digits, title}: Props) {
             {p.start}
           </text>
         ))}
+      {hov !== null && <ReadoutMark x={x(points[hov].start)} y={y(Number.isFinite(points[hov].slope) ? points[hov].slope : 0)} top={m.t} bottom={H - m.b} r={4} />}
     </svg>
+    <ReadoutText lines={hov === null ? null : [`Start ${points[hov].start}`, `${signed(points[hov].slope, digits)} ${unit}/decade`, `95% range ${signed(points[hov].slopeLow, digits)} to ${signed(points[hov].slopeHigh, digits)}`, `p = ${points[hov].p.toFixed(3)}`]} hint="Point at, tap or arrow through the start years to read each estimate." />
+    </VStack>
   );
 }

@@ -114,24 +114,24 @@ export const biladTheme = {
     "--color-syntax-diff-header": "transparent",
     "--color-syntax-added-marker": "var(--color-syntax-punctuation)",
     "--color-syntax-removed-marker": "var(--color-syntax-punctuation)",
-    "--color-background-surface": "#ebe3d3",
-    "--color-background-body": "#f3ede1",
-    "--color-background-card": "#f8f4ec",
-    "--color-background-popover": "light-dark(#ffffff, #ffffff)",
-    "--color-background-muted": "light-dark(#f9f3ea, #f8f3eb)",
-    "--color-accent": "light-dark(#b8322a, #b8322a)",
-    "--color-accent-muted": "light-dark(#ffc4bb, #ffc4bb)",
+    "--color-background-surface": "#0F1B2D",
+    "--color-background-body": "#0A1220",
+    "--color-background-card": "#142238",
+    "--color-background-popover": "light-dark(#111c2b, #121c29)",
+    "--color-background-muted": "light-dark(#111c2b, #121c29)",
+    "--color-accent": "light-dark(#62afff, #62afff)",
+    "--color-accent-muted": "light-dark(#004883, #004883)",
     "--color-neutral": "light-dark(#0000000F, #ffffff1A)",
     "--color-overlay": "light-dark(#00000080, #000000CC)",
-    "--color-overlay-hover": "light-dark(#0000000d, #0000000d)",
-    "--color-overlay-pressed": "light-dark(#0000001a, #0000001a)",
-    "--color-text-primary": "#1c1a17",
-    "--color-text-secondary": "light-dark(#4b463c, #4a463e)",
-    "--color-text-disabled": "light-dark(#969084, #959086)",
-    "--color-text-accent": "light-dark(#a8231e, #a7251e)",
+    "--color-overlay-hover": "light-dark(#ffffff0d, #ffffff0d)",
+    "--color-overlay-pressed": "light-dark(#ffffff1a, #ffffff1a)",
+    "--color-text-primary": "#EEF3FA",
+    "--color-text-secondary": "light-dark(#89a0be, #8ba0b9)",
+    "--color-text-disabled": "light-dark(#3e526c, #3f526b)",
+    "--color-text-accent": "light-dark(#9acaff, #9acaff)",
     "--color-on-dark": "#ffffff",
     "--color-on-light": "#111111",
-    "--color-on-accent": "light-dark(#ffffff, #ffffff)",
+    "--color-on-accent": "light-dark(#09111d, #0a111b)",
     "--color-on-success": "light-dark(#ffffff, #111111)",
     "--color-on-error": "light-dark(#ffffff, #111111)",
     "--color-on-warning": "#111111",
@@ -146,19 +146,19 @@ export const biladTheme = {
     "--color-on-success-muted": "light-dark(#00490b, #90ca90)",
     "--color-on-warning-muted": "light-dark(#4b3900, #eec448)",
     "--color-on-error-muted": "light-dark(#76000c, #ffaea7)",
-    "--color-icon-accent": "light-dark(#a8231e, #a7251e)",
-    "--color-icon-primary": "light-dark(#000000, #000000)",
-    "--color-icon-secondary": "light-dark(#706a5f, #6f6a60)",
-    "--color-icon-disabled": "light-dark(#969084, #959086)",
+    "--color-icon-accent": "light-dark(#9acaff, #9acaff)",
+    "--color-icon-primary": "light-dark(#ffffff, #ffffff)",
+    "--color-icon-secondary": "light-dark(#89a0be, #8ba0b9)",
+    "--color-icon-disabled": "light-dark(#3e526c, #3f526b)",
     "--color-success": "light-dark(#198100, #64af4c)",
     "--color-warning": "#ffce2f",
     "--color-error": "light-dark(#c9303a, #ff705d)",
     "--color-success-muted": "light-dark(#bce0bb, #90ca903D)",
     "--color-error-muted": "light-dark(#ffc4be, #ff98903D)",
     "--color-warning-muted": "light-dark(#fae19e, #e2b6233D)",
-    "--color-border": "light-dark(#00000014, #00000014)",
-    "--color-border-emphasized": "light-dark(#e1d9ca, #e0d9cb)",
-    "--color-skeleton": "light-dark(#f9f3ea, #f8f3eb)",
+    "--color-border": "light-dark(#ffffff1a, #ffffff1a)",
+    "--color-border-emphasized": "light-dark(#3e526c, #3f526b)",
+    "--color-skeleton": "light-dark(#3e526c, #3f526b)",
     "--color-shadow": "light-dark(#0000001A, #0000004D)",
     "--color-tint-hover": "light-dark(#000000, #ffffff)",
     "--color-background-red": "light-dark(#ffc4be, #5b2b28)",
@@ -215,7 +215,7 @@ export const biladTheme = {
     "--shadow-inset-success": "inset 0px 0px 0px 2px #2f7d334D",
     "--shadow-inset-warning": "inset 0px 0px 0px 2px #f8d36a4D",
     "--shadow-inset-error": "inset 0px 0px 0px 2px #de47454D",
-    "--focus-outline-color": "light-dark(#b8322a, #b8322a)"
+    "--focus-outline-color": "light-dark(#62afff, #62afff)"
   },
   localTokens: {
     "--astryx-theme-neutral-color-status-fill-accent": "light-dark(#0074e2, #6d9cfe)"
@@ -325,28 +325,35 @@ export const biladTheme = {
     },
     "item": {
       "selected": {
-        "--color-text-secondary": "light-dark(#4b463c, #565249)"
+        "--color-text-secondary": "light-dark(#b4c8e3, #b7c8df)"
       }
     },
     "tree-list-item": {
       "selected": {
-        "--color-text-secondary": "light-dark(#4b463c, #565249)"
+        "--color-text-secondary": "light-dark(#b4c8e3, #b7c8df)"
       }
     },
     "file-input": {
       "mode:dropzone": {
-        "--color-text-secondary": "light-dark(#4b463c, #565249)"
+        "--color-text-secondary": "light-dark(#b4c8e3, #b7c8df)"
       }
     },
     "citation": {
       "variant:number": {
-        "--color-text-secondary": "light-dark(#4b463c, #565249)"
+        "--color-text-secondary": "light-dark(#b4c8e3, #b7c8df)"
       }
     },
     "button": {
       "variant:destructive": {
         "backgroundColor": "var(--color-error-muted)",
         "color": "var(--color-on-error-muted)"
+      },
+      "variant:secondary": {
+        "background": "#22344f",
+        "border": "1px solid var(--color-border-emphasized)",
+        ":hover": {
+          "filter": "brightness(1.18)"
+        }
       }
     },
     "badge": {
@@ -402,7 +409,7 @@ export const biladTheme = {
     },
     "segmented-control-item": {
       "base": {
-        "--color-text-secondary": "light-dark(#4b463c, #625e54)"
+        "--color-text-secondary": "light-dark(#89a0be, #b7c8df)"
       },
       "size:sm": {
         "height": "calc(var(--size-element-sm) - 8px)"

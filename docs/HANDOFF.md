@@ -1,8 +1,8 @@
 # TRACE handoff
 
-The continuation is on `rebuild/national-atlas`. It completes the TRACE rename,
-paper theme, global globe home, worldwide proof walkthrough, motion, and the
-correctness fixes below. The user's global direction supersedes the older
+The global continuation was merged through PR #1 (`48ae803`). This follow-up
+adds homepage case files, a dedicated Impact page, zoomed regional outlines,
+and the user's selected Midnight blue theme. The user's global direction supersedes the older
 nation-led product plan. Treat the exact GitHub commit and its Actions results
 as the release record; do not infer deployment from a local build alone.
 GitHub has been renamed to `MichaelCruzat/TRACE`. The checkout folder and
@@ -20,7 +20,7 @@ cell scope, witness coverage, retry, and animation cleanup.
 The user's latest correction makes the product explicitly global. Home retains
 the full acronym, purpose, worldwide scope, and observation window, with no
 seeded nation. A pinned globe follows a three-stage evidence trail as the page
-scrolls. Primary navigation is Explore, Cases, How we know, and Method. The
+scrolls. Primary navigation is Explore, Impact, How we know, and Method. The
 default proof route supports all covered land, any country, and linked cells;
 the seven national packs remain supplemental deep links. The globe uses a
 cached geographic texture with WebGL,
@@ -47,8 +47,51 @@ build cache is absent, including in a clean CI checkout.
 See [tasks/todo.md](../tasks/todo.md) for final checks and release status. The
 older session results below are historical, not results for this working tree.
 
-- Review the branch: https://github.com/MichaelCruzat/TRACE/compare/main...rebuild/national-atlas.
+- Prior continuation: https://github.com/MichaelCruzat/TRACE/pull/1.
 - CI runs on pull requests and only deploys on `main`.
+
+## Homepage, impact, regions and theme follow-up
+
+- The four case-file rows live in `src/features/CaseFiles.tsx` on Home.
+  `#/?section=cases` scrolls there; `#/cases` remains a legacy alias. There
+  is no separate Cases navigation tab. The full TRACE acronym stays in the hero.
+- `#/impact` explains the problem, temperature cross-comparison, concrete
+  intended uses for people, NASA and governments, and unproven institutional
+  outcomes. NASA sources are linked in the page. Keep scientific caveats here
+  rather than repeating the detailed explanation on Home.
+- `public/data/admin1.json` contains only generalized Natural Earth line
+  coordinates. At 3× zoom it loads once, then hides again below that scale.
+  World and WebGL cache separate outline textures; the 2D globe fallback
+  culls by viewport. The supplemental SVG map clips to its
+  existing country geometry. All share the original map projection. There
+  are no new region names, tooltips or climate aggregates.
+- The source receipt is `public/data/admin1.meta.json`; reproduce the asset
+  with `scripts/build-regional-boundaries.py` and the pinned/checksummed input.
+  Administrative coverage follows Natural Earth and is not exhaustive.
+- Midnight blue uses navy surfaces, cool-white text and blue controls.
+  Canvas chrome reads colour tokens from the canvas element's computed
+  style, which inherits the theme from its ancestors; reading them from the
+  document root missed the theme. Scientific data palettes are unchanged.
+- The route-transition wrapper added in `4b42b40` had no height, so the
+  three-panel Atlas grew to the evidence panel (about 2,100px) and the
+  national map was centred far below the fold. `App.tsx` now gives that
+  wrapper full height on the Atlas and World routes only; Home keeps its
+  page scroll for the pinned globe. A smoke check covers it.
+- National maps take an optional `heightCap`. With it, the map fills the
+  column width and takes its height from the nation's shape, up to the cap
+  (140vh in the atlas, 110vh on case files, 80vh on phones). Chile is about
+  1.7× larger than before; wide nations gain about 12% from narrower Atlas
+  and World side panels (280/400px, 340/520px on wide screens).
+- Charts share `src/viz/readout.tsx`. Pointing, tapping or arrowing through
+  a chart draws a guide line and ring on the point, and a text line under the
+  chart gives the exact values (announced to screen readers). The latitude
+  profile shows a boxed row readout. The World verdict bar lists each share.
+- Method uses an Astryx `Outline` in a left panel. Outline writes
+  `#method-<section>` with `pushState`; the router maps that back to the
+  Method page so reloads and shared links work.
+- Verification and regional rendering costs are recorded in
+  [PERFORMANCE.md](PERFORMANCE.md). For release state, use the exact commit's
+  GitHub Actions results and live Pages build.
 
 ## What TRACE is now
 
@@ -78,14 +121,15 @@ Seven featured nations also ship with the full seven-variable atlas: Bangladesh,
 
 | Route | What it is |
 |---|---|
-| `#/` | Global identity and scope, scroll-led interactive globe, evidence trail, global temperature highlights, and a direct route into Explore |
-| `#/cases` | The four guided investigations, each linking to its case file |
+| `#/` | Global identity and scope, scroll-led interactive globe, evidence trail, global highlights, case files, and a direct route into Explore |
+| `#/?section=cases` | Homepage case section; `#/cases` is a legacy alias |
+| `#/impact` | Research significance, why cross-reference temperature, intended benefits and current limits |
 | `#/proof?country=&cell=&v=` | Global statistical walkthrough: all covered land, any country, or one cell; `?n=<ISO3>` preserves older monthly-pack links |
 | `#/world?v=&layer=&year=&cell=&country=` | Global atlas on canvas: verdict / trend / year (playable) / normal layers, T2M and rainfall, zoom and pan, search any of 223 countries, click a cell, year strip under the map that drives the year layer, country rankings, verdict strip and cross-examination per country or cell |
 | `#/atlas/<ISO3>?v=&layer=&from=&to=&cell=&band=&region=&sig=&year=` | Featured-nation atlas: seven variables, NASA GIBS relief basemap, zoom/pan, latitude profile with band brushing, year playback, verdict strip, copy link, download evidence JSON, diagnostics behind "Inspect" sections |
 | `#/case/<id>` | Four case files: `chile-megadrought`, `chile-coast-andes`, `bangladesh-phantom-cooling`, `kenya-half-the-warming` |
 | `#/brief/<ISO3>` | National evidence brief: all seven variables, trend with 95% range, corrected p, significant area, ramp-or-jump, change-point clue, witness, verdict; CSV and JSON downloads |
-| `#/method?s=<section>` | "How to read a verdict" guide, then numbered linkable technical sections with formulas and references |
+| `#/method?s=<section>` | Sidebar outline; key settings, four verdict steps, verdict list, eight numbered calculations (summary, detail, formula, sources), variables table, limits and references. `#method-<section>` from the outline is an alias |
 
 ## Architecture
 
@@ -111,7 +155,7 @@ scripts/smoke.mjs           Playwright browser acceptance against the production
   - `src/viz/GlobeMap.tsx` and `globeRenderer.ts` (WebGL texture projection with a 2D fallback)
   - `src/viz/YearStrip.tsx`, `src/viz/MonthStrip.tsx`, `src/viz/SeriesChart.tsx`
   - `src/brand/Logo.tsx`: the `APP_NAME` constant, so a rename is one line
-- Theme: cream paper, dark ink, red accent, Source Serif 4 headings and IBM Plex Sans/Mono, set with the Astryx theme editor. Fonts load through `src/themes/bilad/bilad.fonts.css`.
+- Theme: Midnight blue, navy surfaces, cool-white text, blue accent, Source Serif 4 headings and IBM Plex Sans/Mono, set with the Astryx theme editor. Theme mode is dark. Fonts load through `src/themes/bilad/bilad.fonts.css`.
 
 ## How to run (this machine)
 
